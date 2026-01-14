@@ -1,0 +1,120 @@
+/* Базовые настройки */
+* {
+  box-sizing: border-box;
+}
+
+/* Тело страницы */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #0f0f14;
+  color: #ffffff;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Основной контейнер */
+.container {
+  padding: 20px;
+  height: 100%;
+}
+
+/* Заголовок */
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-size: 20px;
+}
+
+/* Сетка сфер */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* Карточки сфер */
+.card {
+  background: #1c1c24;
+  border: none;
+  border-radius: 14px;
+  padding: 20px 10px;
+  color: white;
+  font-size: 14px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.card:active {
+  background: #2a2a35;
+}
+
+.card .icon {
+  font-size: 22px;
+  opacity: 0.9;
+}
+
+.card .label {
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Скрытые экраны */
+.hidden {
+  display: none;
+}
+
+/* Экран контента */
+#screen-content {
+  height: 100%;
+  overflow-y: auto;
+  padding-bottom: 40px;
+}
+
+/* Кнопка назад */
+#back-btn {
+  background: none;
+  border: none;
+  color: #9aa0ff;
+  font-size: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+/* Заголовок контента */
+#content-title {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Текст контента */
+#content-text {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #d6d6df;
+  white-space: pre-line;
+}
+
+/* Мягкая анимация появления */
+#screen-menu,
+#screen-content {
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

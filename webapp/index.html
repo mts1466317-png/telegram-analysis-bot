@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Разбор по сферам</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Telegram Web App -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <link rel="stylesheet" href="style.css?v=3" />
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- ЭКРАН СПИСКА СФЕР -->
+    <div id="screen-menu">
+      <h1>Выбери сферу</h1>
+
+      <div class="grid">
+        <button class="card" data-sphere="physical">
+          <span class="icon">🧍</span>
+          <span class="label">Физическое тело</span>
+        </button>
+
+        <button class="card" data-sphere="astral">
+          <span class="icon">🌙</span>
+          <span class="label">Астральное тело</span>
+        </button>
+
+        <button class="card" data-sphere="mental">
+          <span class="icon">🧠</span>
+          <span class="label">Ментальное тело</span>
+        </button>
+
+        <button class="card" data-sphere="life">
+          <span class="icon">🎯</span>
+          <span class="label">Жизненная задача</span>
+        </button>
+
+        <button class="card" data-sphere="egregor">
+          <span class="icon">🌳</span>
+          <span class="label">Родовой эгрегор</span>
+        </button>
+
+        <button class="card" data-sphere="higher">
+          <span class="icon">✨</span>
+          <span class="label">Высшее Я</span>
+        </button>
+
+        <button class="card" data-sphere="program">
+          <span class="icon">🧬</span>
+          <span class="label">Родовая программа</span>
+        </button>
+
+        <button class="card" data-sphere="social">
+          <span class="icon">🌍</span>
+          <span class="label">Социальная задача</span>
+        </button>
+
+        <button class="card" data-sphere="combo">
+          <span class="icon">♾</span>
+          <span class="label">Сочетание задач</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ЭКРАН ТЕКСТА -->
+    <div id="screen-content" class="hidden">
+      <button id="back-btn">← Назад</button>
+      <h2 id="content-title"></h2>
+      <div id="content-text"></div>
+    </div>
+
+  </div>
+
+  <!-- app.js -->
+  <script src="app.js?v=4"></script>
+
+</body>
+</html>
+
