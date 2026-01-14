@@ -21,14 +21,14 @@ let dataLoaded = false;
 function getTelegramUserId() {
   // Приоритет 1: Telegram WebApp
   if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
-    return String(window.Telegram.WebApp.initDataUnsafe.user.id);
+    return String(window.Telegram.WebApp.initDataUnsafe.user.id).trim();
   }
 
   // Приоритет 2: Fallback из URL параметра ?user=
   const params = new URLSearchParams(window.location.search);
   const urlUser = params.get("user");
   if (urlUser) {
-    return urlUser;
+    return String(urlUser).trim();
   }
 
   return null;
@@ -85,10 +85,14 @@ async function loadUserData() {
   dataLoaded = false;
 
   try {
-    const response = await fetch(`/result?user=${encodeURIComponent(currentUserId)}`);
+    const url = `/result?user=${encodeURIComponent(currentUserId)}`;
+    console.log("🔹 WEBAPP FETCH:", url);
+    const response = await fetch(url);
+    console.log("🔹 WEBAPP RESPONSE:", response.status, response.statusText);
 
     // 404 = данных реально нет в базе
     if (response.status === 404) {
+      console.log("❌ WEBAPP: 404 - данные не найдены для ID:", currentUserId);
       showError("Для этого пользователя пока нет сохранённого разбора.");
       return;
     }
@@ -171,6 +175,7 @@ function init() {
 
   // Получаем user ID
   currentUserId = getTelegramUserId();
+  console.log("🔹 WEBAPP ID:", currentUserId, "type:", typeof currentUserId);
 
   if (!currentUserId) {
     showError("Открой приложение из Telegram.");

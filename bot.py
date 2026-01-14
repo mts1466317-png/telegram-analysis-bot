@@ -50,6 +50,9 @@ def save_user_result_to_db(telegram_id, user_result):
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
+    # Убеждаемся что это строка и нормализуем
+    telegram_id = str(telegram_id).strip()
+    
     cursor.execute(
         "INSERT OR REPLACE INTO results (telegram_id, data) VALUES (?, ?)",
         (telegram_id, json.dumps(user_result, ensure_ascii=False))
@@ -58,7 +61,7 @@ def save_user_result_to_db(telegram_id, user_result):
     conn.commit()
     conn.close()
 
-    print(f"💾 SAVE TO DB: {telegram_id}")
+    print(f"💾 SAVE TO DB: telegram_id='{telegram_id}' (saved as string)")
 
 # =========================
 # Таблица букв (ЭТАЛОН)
@@ -1248,6 +1251,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             results[telegram_id] = user_result
             # Сохраняем результат в SQLite
+            print(f"🔹 SAVE: telegram_id={telegram_id}, type={type(telegram_id).__name__}")
             save_user_result_to_db(telegram_id, user_result)
 
             # Сохраняем весь словарь results в content.json
