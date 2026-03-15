@@ -1,67 +1,18 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, CallbackQueryHandler, filters
 import re
+import random
 import asyncio
 import os
-import sqlite3
-import json
 from datetime import datetime
+import json
+from urllib.parse import quote
 
 TOKEN = "8516228631:AAHKrA0rYf2fMhAApgpip6m40g21D1cN9RA"
 
 # Хранилище результатов расчётов пользователей (в памяти)
 results = {}
 
-def save_results_to_json(results, json_file_path="content.json"):
-    """
-    Сохраняет словарь results в JSON-файл.
-    
-    Args:
-        results: словарь вида {telegram_id: {sphere: {title: "...", text: "..."}}}
-        json_file_path: путь к файлу content.json (по умолчанию рядом с bot.py)
-    
-    Формат JSON:
-        {
-            "telegram_id": {
-                "physical": { "title": "...", "text": "..." },
-                "astral": { "title": "...", "text": "..." },
-                ...
-            }
-        }
-    """
-    try:
-        # Формируем путь к файлу в той же папке, где лежит bot.py
-        bot_dir = os.path.dirname(__file__)
-        full_path = os.path.join(bot_dir, json_file_path)
-        
-        # Сохраняем в JSON с правильным форматированием (отступы для читаемости)
-        with open(full_path, 'w', encoding='utf-8') as f:
-            json.dump(results, f, ensure_ascii=False, indent=4)
-        
-        print(f"✅ Результаты успешно сохранены в {full_path}")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Ошибка при сохранении в JSON: {e}")
-        return False
-
-# Сохранение одного результата пользователя в SQLite (database.db)
-def save_user_result_to_db(telegram_id, user_result):
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    # Убеждаемся что это строка и нормализуем
-    telegram_id = str(telegram_id).strip()
-    
-    cursor.execute(
-        "INSERT OR REPLACE INTO results (telegram_id, data) VALUES (?, ?)",
-        (telegram_id, json.dumps(user_result, ensure_ascii=False))
-    )
-
-    conn.commit()
-    conn.close()
-
-    print(f"💾 SAVE TO DB: telegram_id='{telegram_id}' (saved as string)")
 
 # =========================
 # Таблица букв (ЭТАЛОН)
@@ -1141,28 +1092,346 @@ def cycle_description(num: int, cycle: dict) -> str:
 # =========================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Введи данные строго в формате:\n"
-        "Фамилия Имя Отчество, ДД.ММ.ГГГГ"
+    greeting_text = (
+        "✨ Пространство самопознания «Статистика Души»\n\n"
+        "Этот инструмент показывает энергетическую структуру вашего Древа Жизни по имени и дате рождения.\n\n"
+        "Вы сможете увидеть:\n\n"
+        "🌙 эмоциональные вибрации\n"
+        "🧠 ментальные качества\n"
+        "🜁 задачу воплощения\n"
+        "🌳 влияние родового эгрегора\n"
+        "✨ энергию Высшего Я\n"
+        "🌍 социальную задачу души\n\n"
+        "Инструмент для глубокого понимания себя и своего пути."
     )
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔮 Получить статистику", callback_data="get_stats")],
+        [InlineKeyboardButton("📊 Пример статистики", callback_data="example_stats")],
+        [InlineKeyboardButton("🌌 Сонастройка с Высшим Я", url="https://t.me/octaviachi")],
+        [InlineKeyboardButton("💝 Поддержать проект", callback_data="support_project")],
+    ])
+
+    if update.message:
+        await update.message.reply_text(greeting_text, reply_markup=keyboard)
+    else:
+        # На случай, если /start пришёл из другого источника
+        await update.effective_chat.send_message(greeting_text, reply_markup=keyboard)
+
+
+async def show_action_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎁 Послание души", callback_data="soul_message")],
+        [InlineKeyboardButton("💝 Поддержать проект", callback_data="support_project")],
+        [InlineKeyboardButton("🌌 Сонастройка с Высшим Я", callback_data="consult_higher_self")],
+        [InlineKeyboardButton("📢 Поделиться ботом", callback_data="share_bot")],
+    ])
+
+    await update.effective_chat.send_message(
+        "Выберите дальнейшее действие:",
+        reply_markup=keyboard
+    )
+
+
+async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+
+    await query.answer()
+
+    data = query.data
+
+    if data == "get_stats":
+        context.user_data["step"] = "last_name"
+        await query.message.reply_text("Введите вашу фамилию")
+    elif data == "view_physical":
+        last_result = context.user_data.get("last_result")
+        if not last_result:
+            await query.message.reply_text("Статистика ещё не рассчитана.")
+        else:
+            text = last_result["physical"]["text"]
+            await query.message.reply_text(text)
+        await show_action_menu(update, context)
+    elif data == "view_astral":
+        last_result = context.user_data.get("last_result")
+        if not last_result:
+            await query.message.reply_text("Статистика ещё не рассчитана.")
+        else:
+            text = last_result["astral"]["text"]
+            await query.message.reply_text(text)
+        await show_action_menu(update, context)
+    elif data == "view_mental":
+        last_result = context.user_data.get("last_result")
+        if not last_result:
+            await query.message.reply_text("Статистика ещё не рассчитана.")
+        else:
+            text = last_result["mental"]["text"]
+            await query.message.reply_text(text)
+        await show_action_menu(update, context)
+    elif data == "view_life":
+        last_result = context.user_data.get("last_result")
+        if not last_result:
+            await query.message.reply_text("Статистика ещё не рассчитана.")
+        else:
+            text = last_result["life"]["text"]
+            await query.message.reply_text(text)
+        await show_action_menu(update, context)
+    elif data == "view_egregor":
+        last_result = context.user_data.get("last_result")
+        if not last_result:
+            await query.message.reply_text("Статистика ещё не рассчитана.")
+        else:
+            text = last_result["egregor"]["text"]
+            await query.message.reply_text(text)
+        await show_action_menu(update, context)
+    elif data == "view_higher":
+        last_result = context.user_data.get("last_result")
+        if not last_result:
+            await query.message.reply_text("Статистика ещё не рассчитана.")
+        else:
+            text = last_result["higher"]["text"]
+            await query.message.reply_text(text)
+        await show_action_menu(update, context)
+    elif data == "view_program":
+        last_result = context.user_data.get("last_result")
+        if not last_result:
+            await query.message.reply_text("Статистика ещё не рассчитана.")
+        else:
+            text = last_result["program"]["text"]
+            await query.message.reply_text(text)
+        await show_action_menu(update, context)
+    elif data == "view_social":
+        last_result = context.user_data.get("last_result")
+        if not last_result:
+            await query.message.reply_text("Статистика ещё не рассчитана.")
+        else:
+            text = last_result["social"]["text"]
+            await query.message.reply_text(text)
+        await show_action_menu(update, context)
+    elif data == "view_combo":
+        last_result = context.user_data.get("last_result")
+        if not last_result:
+            await query.message.reply_text("Статистика ещё не рассчитана.")
+        else:
+            text = last_result["combo"]["text"]
+            await query.message.reply_text(text)
+        await show_action_menu(update, context)
+    elif data == "example_stats":
+        example_text = (
+            "📊 Пример статистики души\n\n"
+            "Пример фрагмента реального разбора:\n"
+            "Егор Малеев\n"
+            "16.07.2000\n\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "ФИЗИЧЕСКОЕ ТЕЛО\n"
+            "━━━━━━━━━━━━━━━━━━\n\n"
+            "Планета: Сатурн\n\n"
+            "Сильные стороны организма:\n"
+            "• крепкая костная система\n"
+            "• выносливость организма\n"
+            "• способность выдерживать длительные нагрузки\n"
+            "• устойчивость к стрессовым ситуациям\n\n"
+            "Возможные зоны внимания:\n"
+            "• пищеварительная система\n"
+            "• желудок и пищевод\n"
+            "• баланс жидкостей в организме\n"
+            "• вегетативная нервная система\n\n"
+            "Психосоматические проявления:\n"
+            "При внутреннем напряжении или подавленных эмоциях\n"
+            "могут возникать ощущения тяжести,\n"
+            "перегрузки или хронической усталости.\n\n"
+            "Рекомендации для гармонизации энергии:\n"
+            "• соблюдать режим сна и отдыха\n"
+            "• поддерживать регулярную физическую активность\n"
+            "• уделять внимание эмоциональному состоянию\n"
+            "• избегать длительных стрессовых перегрузок\n\n"
+            "Этот блок является лишь частью полной статистики души.\n"
+            "Полный расчет включает 8 энергетических сфер человека.\n\n"
+            "Чтобы получить свой разбор,\n"
+            "нажмите кнопку «Получить статистику»."
+        )
+
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔮 Получить свою статистику", callback_data="get_stats")],
+            [InlineKeyboardButton("🎁 Послание души", callback_data="soul_message")],
+            [InlineKeyboardButton("🌌 Сонастройка с Высшим Я", callback_data="consult_higher_self")],
+            [InlineKeyboardButton("💝 Поддержать проект", callback_data="support_project")],
+            [InlineKeyboardButton("📢 Поделиться ботом", callback_data="share_bot")],
+            [InlineKeyboardButton("⬅️ Назад", callback_data="back_menu")]
+        ])
+
+        await query.message.reply_text(
+            example_text,
+            reply_markup=keyboard
+        )
+    elif data == "support_project":
+        text = (
+            "💝 Поддержать проект\n\n"
+            "Если статистика была для вас полезна,\n"
+            "вы можете поддержать развитие проекта.\n\n"
+            "Реквизиты для доната:\n\n"
+            "Банк: Т-Банк\n"
+            "Карта: 2200 7008 8290 3809\n"
+            "Получатель: Кристина Г\n\n"
+            "Вы можете скопировать номер карты\n"
+            "или сделать перевод вручную.\n\n"
+            "После перевода нажмите кнопку 'Я оплатил'."
+        )
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "📋 Скопировать номер карты",
+                    switch_inline_query="2200700882903809",
+                )
+            ],
+            [InlineKeyboardButton("💝 Я оплатил", callback_data="donate_paid")],
+            [InlineKeyboardButton("⬅️ Назад", callback_data="back_menu")],
+        ])
+
+        await query.message.reply_text(
+            text,
+            reply_markup=keyboard,
+        )
+    elif data == "consult_higher_self":
+        text = (
+            "🌌 Сонастройка с Высшим Я\n\n"
+            "Это онлайн-встреча с мастером-проводником,\n"
+            "которая помогает установить контакт\n"
+            "с вашим Высшим Я.\n\n"
+            "Во время встречи вы сможете:\n"
+            "• глубже понять свою статистику души\n"
+            "• задать важные вопросы\n"
+            "• получить направление для своего пути\n\n"
+            "Для записи на встречу напишите мастеру 👇"
+        )
+
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Написать мастеру", url="https://t.me/octaviachi")],
+            [InlineKeyboardButton("⬅️ Назад", callback_data="back_menu")]
+        ])
+
+        await query.message.reply_text(
+            text,
+            reply_markup=keyboard
+        )
+        await show_action_menu(update, context)
+    elif data == "donate_paid":
+        await query.message.reply_text("Спасибо за поддержку проекта 🙏")
+        await show_action_menu(update, context)
+    elif data == "back_menu":
+        await show_action_menu(update, context)
+    elif data == "soul_message":
+        messages = [
+            "Твоя душа пришла в этот мир с уникальной задачей. Доверяй своему внутреннему голосу.",
+            "Иногда путь души раскрывается постепенно. Позволь событиям вести тебя.",
+            "Ты не случайно оказался на этом этапе жизни. В каждом опыте есть смысл.",
+            "Твоя сила раскрывается через осознанность и понимание своего пути.",
+            "Даже трудности на пути души являются частью роста и раскрытия внутренней силы.",
+            "Твоя душа ищет гармонию между внутренним миром и внешними действиями.",
+            "В каждом выборе есть возможность приблизиться к своей истинной природе.",
+            "Твоя энергия способна вдохновлять людей вокруг тебя.",
+            "Чем глубже ты понимаешь себя, тем яснее становится твой жизненный путь.",
+            "Слушай интуицию — это язык твоей души.",
+            "Иногда тишина и пауза дают больше ответов, чем активные действия.",
+            "Твоя душа развивается через опыт, встречи и осознания."
+        ]
+        message = random.choice(messages)
+        await query.message.reply_text(
+            "🎁 Послание души\n\n" + message
+        )
+        await show_action_menu(update, context)
+    elif data == "share_bot":
+        username = context.bot.username
+        if not username:
+            await query.message.reply_text(
+                "Не удалось получить ссылку на бота. Попробуйте позже."
+            )
+            await show_action_menu(update, context)
+            return
+
+        bot_link = f"https://t.me/{username}"
+
+        share_text = (
+            "✨ Будет круто, если вы поделитесь этим ботом\n"
+            "с тем, кому это может быть важно сейчас.\n\n"
+            "Иногда именно такие инструменты\n"
+            "помогают людям лучше понять себя."
+        )
+
+        share_url = f"https://t.me/share/url?url={bot_link}&text={quote(share_text, safe='')}"
+
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📢 Отправить другу", url=share_url)],
+        ])
+
+        await query.message.reply_text(
+            "Поделитесь ботом с друзьями 👇",
+            reply_markup=keyboard,
+        )
+        await show_action_menu(update, context)
+
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         text = update.message.text.strip()
-        pattern = r"^[А-Яа-яЁё\s]+,\s\d{2}\.\d{2}\.\d{4}$"
+        step = context.user_data.get("step")
 
-        if not re.match(pattern, text):
-            await update.message.reply_text("❌ Неверный формат.")
+        if step == "last_name":
+            context.user_data["last_name"] = text
+            await update.message.reply_text("Введите ваше имя")
+            context.user_data["step"] = "first_name"
             return
 
-        fio_part, date_part = text.split(",")
-        fio = fio_part.strip()
-        date_str = date_part.strip()
+        if step == "first_name":
+            context.user_data["first_name"] = text
+            await update.message.reply_text("Введите ваше отчество")
+            context.user_data["step"] = "middle_name"
+            return
 
-        birth = datetime.strptime(date_str, "%d.%m.%Y")
-        day, month, year = birth.day, birth.month, birth.year
+        if step == "middle_name":
+            context.user_data["middle_name"] = text
+            await update.message.reply_text("Введите дату рождения в формате ДД.ММ.ГГГГ")
+            context.user_data["step"] = "birth_date"
+            return
 
-        surname, name, patronymic = fio.split()
+        if step == "birth_date":
+            birth_date = text
+            if not re.match(r"\d{2}\.\d{2}\.\d{4}", birth_date):
+                await update.message.reply_text(
+                    "Дата должна быть в формате ДД.ММ.ГГГГ\n\nПример:\nИванов Иван Иванович 12.05.1991"
+                )
+                return
+            fio = f"{context.user_data['last_name']} {context.user_data['first_name']} {context.user_data['middle_name']}"
+            date_str = birth_date
+            surname = context.user_data["last_name"]
+            name = context.user_data["first_name"]
+            patronymic = context.user_data["middle_name"]
+            context.user_data["step"] = None
+            birth = datetime.strptime(date_str, "%d.%m.%Y")
+            day, month, year = birth.day, birth.month, birth.year
+        else:
+            parts = text.split()
+            if len(parts) < 4:
+                await update.message.reply_text(
+                    "❌ Неверный формат.\n\nВведите данные так:\nФамилия Имя Отчество 12.05.1991"
+                )
+                return
+
+            fio = " ".join(parts[:3])
+            birth_date = parts[3]
+
+            if not re.match(r"\d{2}\.\d{2}\.\d{4}", birth_date):
+                await update.message.reply_text(
+                    "Дата должна быть в формате ДД.ММ.ГГГГ\n\nПример:\nИванов Иван Иванович 12.05.1991"
+                )
+                return
+
+            date_str = birth_date
+            birth = datetime.strptime(date_str, "%d.%m.%Y")
+            day, month, year = birth.day, birth.month, birth.year
+            surname, name, patronymic = fio.split()
 
         fio_sum = letters_sum(surname) + letters_sum(name) + letters_sum(patronymic)
 
@@ -1189,78 +1458,101 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parts = []
         
         # Заголовок
-        header = f"👤 {fio}\n🎂 {date_str}\n\n"
+        birth_date = date_str
+        header = (
+            "🌳 ДРЕВО ЖИЗНИ\n\n"
+            f"👤 {fio}\n"
+            f"📅 {birth_date}\n\n"
+            "Ваши параметры:\n\n"
+        )
         
         # Собираем все блоки с их размерами
         blocks = []
         try:
             blocks = [
-                f"1️⃣ Физическое тело — {PLANETS[physical]}\n{block_description(physical, PHYSICAL_BODY)}",
-                f"2️⃣ Астральное тело — {PLANETS[astral]}\n{block_description(astral, ASTRAL_BODY)}",
-                f"3️⃣ Ментальное тело — {PLANETS[mental]}\n{block_description(mental, MENTAL_BODY)}",
-                f"4️⃣ Жизненная задача — {PLANETS[life_task]}\n{block_description(life_task, LIFE_TASK_BODY)}",
-                f"5️⃣ Родовой эгрегор — {PLANETS[ancestral_egregor]}\n{block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)}",
-                f"6️⃣ Высшее Я — {PLANETS[higher_self]}\n{block_description(higher_self, HIGHER_SELF_BODY)}",
-                f"7️⃣ Родовая программа — {PLANETS[ancestral_program]}\n{block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)}",
-                f"8️⃣ Социальная задача — {PLANETS[social_task]}\n{block_description(social_task, SOCIAL_TASK_BODY)}",
-                f"9️⃣ Сочетание жизненной и социальной задач — {PLANETS[task_combo]}\n{block_description(task_combo, TASK_COMBO_BODY)}",
+                f"1️⃣ Физическое тело\nПланета: {PLANETS[physical]}\n{block_description(physical, PHYSICAL_BODY)}",
+                f"2️⃣ Астральное тело\nПланета: {PLANETS[astral]}\n{block_description(astral, ASTRAL_BODY)}",
+                f"3️⃣ Ментальное тело\nПланета: {PLANETS[mental]}\n{block_description(mental, MENTAL_BODY)}",
+                f"4️⃣ Жизненная задача\nПланета: {PLANETS[life_task]}\n{block_description(life_task, LIFE_TASK_BODY)}",
+                f"5️⃣ Родовой эгрегор\nПланета: {PLANETS[ancestral_egregor]}\n{block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)}",
+                f"6️⃣ Высшее Я\nПланета: {PLANETS[higher_self]}\n{block_description(higher_self, HIGHER_SELF_BODY)}",
+                f"7️⃣ Родовая программа\nПланета: {PLANETS[ancestral_program]}\n{block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)}",
+                f"8️⃣ Социальная задача\nПланета: {PLANETS[social_task]}\n{block_description(social_task, SOCIAL_TASK_BODY)}",
+                f"9️⃣ Сочетание жизненной и социальной задач\nПланета: {PLANETS[task_combo]}\n{block_description(task_combo, TASK_COMBO_BODY)}",
                 f"🔄 Текущий 7-летний цикл ({cycle_number}-й, возраст {cycle_start_age}-{cycle_end_age} лет) — {PLANETS[cycle_energy]}\n{cycle_description(cycle_energy, CYCLE_BODY)}",
             ]
             
             # Формируем структуру результата для сохранения
-            telegram_id = str(update.message.from_user.id)
+            telegram_id = str(update.effective_user.id).strip()
+            
+            # Формируем полное имя для приветствия
+            full_name = f"{name} {surname}"
             
             user_result = {
+                "greeting": {
+                    "title": f"Здравствуйте уважаемый(ая) {full_name} !",
+                    "text": """Вы заказали расчет параметров Вашего Древа Жизни.
+
+Древо Жизни — это структура, описывающая через астролого-нумерологическую символику
+энергетические вибрации духа и его цели на момент воплощения
+(по свидетельству о рождении) или в настоящий момент
+(по паспорту за последние 7 лет).
+
+Это отличный инструмент для познания и совершенствования себя
+по всем параметрам структуры, при условии его разумного применения
+и согласования со своим Высшим Я."""
+                },
                 "physical": {
-                    "title": f"Физическое тело — {PLANETS[physical]}",
-                    "text": block_description(physical, PHYSICAL_BODY)
+                    "title": "Физическое тело. Качества, формирующие здоровье физического тела.",
+                    "text": f"Планета: {PLANETS[physical]}\n\n{block_description(physical, PHYSICAL_BODY)}"
                 },
                 "astral": {
-                    "title": f"Астральное тело — {PLANETS[astral]}",
-                    "text": block_description(astral, ASTRAL_BODY)
+                    "title": "Астральное тело. Качества, из которых формируются чувства и эмоции.",
+                    "text": f"Планета: {PLANETS[astral]}\n\n{block_description(astral, ASTRAL_BODY)}"
                 },
                 "mental": {
-                    "title": f"Ментальное тело — {PLANETS[mental]}",
-                    "text": block_description(mental, MENTAL_BODY)
+                    "title": "Ментальное тело. Качества, из которых формируются представления об окружающем мире, разумные мысли и интуитивные представления.",
+                    "text": f"Планета: {PLANETS[mental]}\n\n{block_description(mental, MENTAL_BODY)}"
                 },
                 "life": {
-                    "title": f"Жизненная задача — {PLANETS[life_task]}",
-                    "text": block_description(life_task, LIFE_TASK_BODY)
+                    "title": "Жизненная задача воплощённого духа, качества, которые он должен приобрести во время воплощения.",
+                    "text": f"Планета: {PLANETS[life_task]}\n\n{block_description(life_task, LIFE_TASK_BODY)}"
                 },
                 "egregor": {
-                    "title": f"Родовой эгрегор — {PLANETS[ancestral_egregor]}",
-                    "text": block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)
+                    "title": "Вибрации родового эгрегора. Настрой на вибрации родового эгрегора помогает в достижении жизненных задач воплощённого духа.",
+                    "text": f"Планета: {PLANETS[ancestral_egregor]}\n\n{block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)}"
                 },
                 "higher": {
-                    "title": f"Высшее Я — {PLANETS[higher_self]}",
-                    "text": block_description(higher_self, HIGHER_SELF_BODY)
+                    "title": "Вибрация духовной сущности – Высшего Я. Качества, наработанные в прошлых воплощениях. Энергетика Высшего Я.",
+                    "text": f"Планета: {PLANETS[higher_self]}\n\n{block_description(higher_self, HIGHER_SELF_BODY)}"
                 },
                 "program": {
-                    "title": f"Родовая программа — {PLANETS[ancestral_program]}",
-                    "text": block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)
+                    "title": "Родовая программа. Задача рода, выполнение которой будет возмещением энергозатрат на воплощение через родовой эгрегор.",
+                    "text": f"Планета: {PLANETS[ancestral_program]}\n\n{block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)}"
                 },
                 "social": {
-                    "title": f"Социальная задача — {PLANETS[social_task]}",
-                    "text": block_description(social_task, SOCIAL_TASK_BODY)
+                    "title": "Социальная задача. Это ожидания эгрегоров Земли при воплощении духа.",
+                    "text": f"Планета: {PLANETS[social_task]}\n\n{block_description(social_task, SOCIAL_TASK_BODY)}"
                 },
                 "combo": {
-                    "title": f"Сочетание жизненной и социальной задач — {PLANETS[task_combo]}",
-                    "text": block_description(task_combo, TASK_COMBO_BODY)
+                    "title": "Сочетание жизненной и социальной задач – вибрация, на которую нужно обратить особое внимание.",
+                    "text": f"Планета: {PLANETS[task_combo]}\n\n{block_description(task_combo, TASK_COMBO_BODY)}"
                 }
             }
 
-            results[telegram_id] = user_result
-            # Сохраняем результат в SQLite
-            print(f"🔹 SAVE: telegram_id={telegram_id}, type={type(telegram_id).__name__}")
-            save_user_result_to_db(telegram_id, user_result)
+            context.user_data["result"] = user_result
+            context.user_data["last_result"] = user_result
 
-            # Сохраняем весь словарь results в content.json
-            save_results_to_json(results)
+            results[telegram_id] = user_result
             
         except Exception as e:
             await update.message.reply_text(f"❌ Ошибка при формировании блоков: {str(e)}")
             print(f"Ошибка формирования блоков: {e}")
             return
+        
+        # Формируем итоговый текст
+        result_text = "\n\n".join(blocks)
+        final_text = header + result_text
         
         # Вычисляем размеры блоков (с учётом разделителей "\n\n")
         block_sizes = [len(block) + 2 for block in blocks]  # +2 для "\n\n"
@@ -1272,16 +1564,80 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Если всё помещается в одно сообщение
         if total_size <= max_message_size:
-            reply = header + "\n\n".join(blocks)
             try:
-                # Создаём клавиатуру с кнопкой Web App
-                keyboard = InlineKeyboardMarkup([[
-                    InlineKeyboardButton(
-                        "✨ Открыть мой разбор",
-                        web_app=WebAppInfo(url=f"https://capable-paletas-47ac1b.netlify.app/?user={update.message.from_user.id}")
-                    )
-                ]])
-                await update.message.reply_text(reply, reply_markup=keyboard)
+                # Отправляем полный текст статистики одним сообщением
+                await update.message.reply_text(final_text)
+
+                # Предложение доната после расчёта
+                donate_text = (
+                    "💝 Если статистика была для вас полезна,\n"
+                    "вы можете поддержать развитие проекта.\n\n"
+                    "Этот инструмент создается для помощи людям\n"
+                    "лучше понимать свою душу и путь.\n\n"
+                    "Спасибо за вашу добросердечную поддержку 🙏"
+                )
+                keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💝 Поддержать проект", callback_data="support_project")],
+                    [InlineKeyboardButton("📢 Поделиться ботом", callback_data="share_bot")],
+                ])
+                await update.message.reply_text(
+                    donate_text,
+                    reply_markup=keyboard,
+                )
+
+                # Интерактивное меню просмотра статистики
+                menu_text = (
+                    "🌳 ДРЕВО ЖИЗНИ\n\n"
+                    "Выберите раздел статистики:"
+                )
+
+                menu_keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🧍 Физическое тело", callback_data="view_physical")],
+                    [InlineKeyboardButton("🌙 Астральное тело", callback_data="view_astral")],
+                    [InlineKeyboardButton("🧠 Ментальное тело", callback_data="view_mental")],
+                    [InlineKeyboardButton("🎯 Жизненная задача", callback_data="view_life")],
+                    [InlineKeyboardButton("🌳 Родовой эгрегор", callback_data="view_egregor")],
+                    [InlineKeyboardButton("✨ Высшее Я", callback_data="view_higher")],
+                    [InlineKeyboardButton("🧬 Родовая программа", callback_data="view_program")],
+                    [InlineKeyboardButton("🌍 Социальная задача", callback_data="view_social")],
+                    [InlineKeyboardButton("♾ Сочетание задач", callback_data="view_combo")],
+                ])
+
+                await update.message.reply_text(
+                    menu_text,
+                    reply_markup=menu_keyboard,
+                )
+
+                result = context.user_data.get("result")
+
+                if not result:
+                    await update.message.reply_text("Ошибка: результат не найден")
+                    return
+
+                # ⚠️ Сжимаем данные, иначе Telegram не пропустит
+                compact_result = {
+                    "spheres": result.get("spheres"),
+                    "summary": result.get("summary")
+                }
+
+                result_json = json.dumps(compact_result, ensure_ascii=False)
+
+                keyboard = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "🔮 Открыть разбор",
+                            web_app=WebAppInfo(
+                                url="https://telegram-analysis-bot.onrender.com/?data=" + result_json
+                            )
+                        )
+                    ]
+                ])
+
+                await update.message.reply_text(
+                    "Твой разбор готов 👇",
+                    reply_markup=keyboard
+                )
+                await show_action_menu(update, context)
             except Exception as e:
                 print(f"Ошибка отправки единого сообщения: {e}")
                 await update.message.reply_text(f"❌ Ошибка отправки: {str(e)}")
@@ -1318,32 +1674,91 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     # Проверяем, это последнее сообщение
                     is_last = i == len(parts) - 1
                     
-                    # Создаём клавиатуру с кнопкой Web App только для последнего сообщения
-                    keyboard = None
-                    if is_last:
-                        keyboard = InlineKeyboardMarkup([[
-                            InlineKeyboardButton(
-                                "✨ Открыть мой разбор",
-                                web_app=WebAppInfo(url=f"https://capable-paletas-47ac1b.netlify.app/?user={update.message.from_user.id}")
-                            )
-                        ]])
-                    
                     # Проверяем длину части перед отправкой
                     if len(part) > 4096:
                         # Если часть всё ещё слишком длинная, разбиваем её на более мелкие
                         chunk_size = 4000
                         chunks = [part[j:j+chunk_size] for j in range(0, len(part), chunk_size)]
                         for chunk_idx, chunk in enumerate(chunks):
-                            # Кнопку добавляем только к последнему чанку последнего сообщения
-                            chunk_keyboard = keyboard if (is_last and chunk_idx == len(chunks) - 1) else None
-                            await update.message.reply_text(chunk, reply_markup=chunk_keyboard)
+                            await update.message.reply_text(chunk)
                             if chunk != chunks[-1]:
                                 await asyncio.sleep(0.3)
                     else:
-                        await update.message.reply_text(part, reply_markup=keyboard)
+                        await update.message.reply_text(part)
                     
                     if i < len(parts) - 1:  # Не делаем задержку после последнего сообщения
                         await asyncio.sleep(0.5)  # Небольшая задержка между сообщениями
+                    else:
+                        # Предложение доната после расчёта
+                        donate_text = (
+                            "💝 Если статистика была для вас полезна,\n"
+                            "вы можете поддержать развитие проекта.\n\n"
+                            "Этот инструмент создается для помощи людям\n"
+                            "лучше понимать свою душу и путь.\n\n"
+                            "Спасибо за вашу добросердечную поддержку 🙏"
+                        )
+                        keyboard = InlineKeyboardMarkup([
+                            [InlineKeyboardButton("💝 Поддержать проект", callback_data="support_project")],
+                            [InlineKeyboardButton("📢 Поделиться ботом", callback_data="share_bot")],
+                        ])
+                        await update.message.reply_text(
+                            donate_text,
+                            reply_markup=keyboard,
+                        )
+
+                        # После последнего сообщения отправляем кнопку
+                        result = context.user_data.get("result")
+
+                        if not result:
+                            await update.message.reply_text("Ошибка: результат не найден")
+                            return
+
+                        # ⚠️ Сжимаем данные, иначе Telegram не пропустит
+                        compact_result = {
+                            "spheres": result.get("spheres"),
+                            "summary": result.get("summary")
+                        }
+
+                        result_json = json.dumps(compact_result, ensure_ascii=False)
+
+                        keyboard = InlineKeyboardMarkup([
+                            [
+                                InlineKeyboardButton(
+                                    "🔮 Открыть разбор",
+                                    web_app=WebAppInfo(
+                                        url="https://telegram-analysis-bot.onrender.com/?data=" + result_json
+                                    )
+                                )
+                            ]
+                        ])
+
+                        await update.message.reply_text(
+                            "Твой разбор готов 👇",
+                            reply_markup=keyboard
+                        )
+                        # Интерактивное меню просмотра статистики
+                        menu_text = (
+                            "🌳 ДРЕВО ЖИЗНИ\n\n"
+                            "Выберите раздел статистики:"
+                        )
+
+                        menu_keyboard = InlineKeyboardMarkup([
+                            [InlineKeyboardButton("🧍 Физическое тело", callback_data="view_physical")],
+                            [InlineKeyboardButton("🌙 Астральное тело", callback_data="view_astral")],
+                            [InlineKeyboardButton("🧠 Ментальное тело", callback_data="view_mental")],
+                            [InlineKeyboardButton("🎯 Жизненная задача", callback_data="view_life")],
+                            [InlineKeyboardButton("🌳 Родовой эгрегор", callback_data="view_egregor")],
+                            [InlineKeyboardButton("✨ Высшее Я", callback_data="view_higher")],
+                            [InlineKeyboardButton("🧬 Родовая программа", callback_data="view_program")],
+                            [InlineKeyboardButton("🌍 Социальная задача", callback_data="view_social")],
+                            [InlineKeyboardButton("♾ Сочетание задач", callback_data="view_combo")],
+                        ])
+
+                        await update.message.reply_text(
+                            menu_text,
+                            reply_markup=menu_keyboard,
+                        )
+                        await show_action_menu(update, context)
                 except Exception as e:
                     print(f"Ошибка отправки части {i+1}/{len(parts)}: {e}")
                     print(f"Длина части: {len(part)}")
@@ -1361,6 +1776,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(main_menu_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     print("🤖 Бот запущен")
     app.run_polling()

@@ -11,48 +11,17 @@ const backBtn = document.getElementById("back-btn");
 // 🔹 Состояние приложения
 // ===============================
 let contentData = null;
-let currentUserId = null;
-let isLoading = false;
-let dataLoaded = false;
-
-// ===============================
-// 🔹 Получение Telegram user ID
-// ===============================
-function getTelegramUserId() {
-  // Приоритет 1: Telegram WebApp
-  if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
-    return String(window.Telegram.WebApp.initDataUnsafe.user.id).trim();
-  }
-
-  // Приоритет 2: Fallback из URL параметра ?user=
-  const params = new URLSearchParams(window.location.search);
-  const urlUser = params.get("user");
-  if (urlUser) {
-    return String(urlUser).trim();
-  }
-
-  return null;
-}
 
 // ===============================
 // 🔹 Инициализация Telegram WebApp
 // ===============================
-function initTelegramWebApp() {
-  if (window.Telegram?.WebApp) {
-    try {
-      window.Telegram.WebApp.ready();
-      if (window.Telegram.WebApp.expand) {
-        window.Telegram.WebApp.expand();
-      }
-      console.log("✅ Telegram WebApp initialized");
-    } catch (e) {
-      console.warn("⚠️ Telegram WebApp init error:", e);
-    }
-  }
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
 }
 
 // ===============================
-// 🔹 Показ ошибки («Разбор недоступен»)
+// 🔹 Показ ошибки
 // ===============================
 function showError(text) {
   titleEl.textContent = "Разбор недоступен";
@@ -62,106 +31,60 @@ function showError(text) {
 }
 
 // ===============================
-// 🔹 Информационное сообщение (без «Разбор недоступен»)
+// 🔹 Получение данных из URL
 // ===============================
-function showInfo(title, text) {
-  titleEl.textContent = title || "";
-  textEl.textContent = text || "";
-  menuScreen.classList.add("hidden");
-  contentScreen.classList.remove("hidden");
+const params = new URLSearchParams(window.location.search);
+const data = params.get("data");
+
+if (!data) {
+  showError("Нет данных от Telegram");
+} else {
+  try {
+    contentData = JSON.parse(decodeURIComponent(data));
+    console.log("✅ Данные получены из URL:", contentData);
+  } catch (error) {
+    console.error("❌ Ошибка парсинга данных:", error);
+    showError("Ошибка формата данных");
+  }
 }
 
 // ===============================
-// 🔹 Загрузка данных пользователя
-//    fetch('/result?user=<telegram_id>')
+// 🔹 Отрисовка результата
 // ===============================
-async function loadUserData() {
-  if (!currentUserId) {
-    showError("Не удалось определить ID пользователя. Открой приложение из Telegram.");
+function renderResult(result) {
+  if (!result || typeof result !== "object") {
+    showError("Данные разбора пусты");
     return;
   }
 
-  isLoading = true;
-  dataLoaded = false;
-
-  try {
-    const url = `/result?user=${encodeURIComponent(currentUserId)}`;
-    console.log("🔹 WEBAPP FETCH:", url);
-    const response = await fetch(url);
-    console.log("🔹 WEBAPP RESPONSE:", response.status, response.statusText);
-
-    // 404 = данных реально нет в базе
-    if (response.status === 404) {
-      console.log("❌ WEBAPP: 404 - данные не найдены для ID:", currentUserId);
-      showError("Для этого пользователя пока нет сохранённого разбора.");
-      return;
-    }
-
-    // Любая другая ошибка HTTP
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    // Парсим JSON
-    const data = await response.json();
-
-    // Проверяем что данные есть и это объект
-    if (!data || typeof data !== "object") {
-      showError("Ответ сервера пустой или в неверном формате.");
-      return;
-    }
-
-    // Успешно загружено
-    contentData = data;
-    dataLoaded = true;
-    console.log("✅ Данные пользователя загружены:", data);
-
-  } catch (error) {
-    console.error("❌ Ошибка при загрузке данных:", error);
-    showError("Не удалось загрузить данные. Попробуй позже.");
-  } finally {
-    isLoading = false;
-  }
+  contentData = result;
+  console.log("✅ Данные готовы к отображению");
 }
 
 // ===============================
 // 🔹 Обработка клика по сфере
 // ===============================
 function handleSphereClick(card) {
-  // Если данные ещё загружаются — показываем мягкое сообщение БЕЗ «Разбор недоступен»
-  if (isLoading && !dataLoaded) {
-    showInfo(
-      "Данные ещё загружаются…",
-      "Подожди пару секунд и попробуй выбрать сферу ещё раз."
-    );
-    return;
-  }
-
-  // Если данные не загружены — ошибка
-  if (!dataLoaded) {
+  if (!contentData) {
     showError("Данные для разбора не найдены.");
     return;
   }
 
-  // Получаем ключ сферы из data-sphere
   const sphereKey = card.dataset.sphere;
   if (!sphereKey) {
     showError("Не указана сфера для отображения.");
     return;
   }
 
-  // Проверяем что данные для этой сферы есть
-  if (!contentData || !contentData[sphereKey]) {
+  if (!contentData[sphereKey]) {
     showError("Разбор по этой сфере не найден.");
     return;
   }
 
-  // Подставляем title и text из ответа сервера
   const sphereData = contentData[sphereKey];
   titleEl.textContent = sphereData.title || "";
   textEl.textContent = sphereData.text || "";
 
-  // Переключаем экраны
   menuScreen.classList.add("hidden");
   contentScreen.classList.remove("hidden");
 }
@@ -170,20 +93,9 @@ function handleSphereClick(card) {
 // 🔹 Инициализация приложения
 // ===============================
 function init() {
-  // Инициализируем Telegram WebApp
-  initTelegramWebApp();
-
-  // Получаем user ID
-  currentUserId = getTelegramUserId();
-  console.log("🔹 WEBAPP ID:", currentUserId, "type:", typeof currentUserId);
-
-  if (!currentUserId) {
-    showError("Открой приложение из Telegram.");
-    return;
+  if (contentData) {
+    renderResult(contentData);
   }
-
-  // Загружаем данные пользователя
-  loadUserData();
 
   // Навешиваем обработчики на карточки сфер
   document.querySelectorAll(".card").forEach(card => {
