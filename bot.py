@@ -4,9 +4,31 @@ import re
 import random
 import asyncio
 import os
+import sys
 from datetime import datetime
 import json
+import tempfile
 from urllib.parse import quote
+
+VENDOR_DIR = os.path.join(os.path.dirname(__file__), ".vendor")
+if VENDOR_DIR not in sys.path:
+    sys.path.insert(0, VENDOR_DIR)
+
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.utils import ImageReader
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, PageBreak, Table, TableStyle
+    REPORTLAB_AVAILABLE = True
+except Exception:
+    REPORTLAB_AVAILABLE = False
+
+COVER_IMAGE_PATH = "/Users/mac/.cursor/projects/Users-mac-Desktop-bot/assets/image-04abbe3f-dd87-4576-a56b-9fb20d506b2e.png"
+AFTER_COVER_BG_PATH = "/Users/mac/.cursor/projects/Users-mac-Desktop-bot/assets/image-68eae44b-8100-415e-9092-cb36dd18569d.png"
 
 TOKEN = "8516228631:AAHKrA0rYf2fMhAApgpip6m40g21D1cN9RA"
 
@@ -1036,6 +1058,430 @@ def reduce_number(n: int) -> int:
 def letters_sum(text: str) -> int:
     return sum(LETTER_MAP.get(ch.upper(), 0) for ch in text if ch.upper() in LETTER_MAP)
 
+
+def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | None:
+    if not REPORTLAB_AVAILABLE:
+        return None
+
+    def _is_valid_font_file(path: str) -> bool:
+        if not os.path.exists(path):
+            return False
+        try:
+            with open(path, "rb") as f:
+                head = f.read(4)
+            # TrueType: 00010000, OpenType: OTTO, TTC: ttcf
+            return head in (b"\x00\x01\x00\x00", b"OTTO", b"ttcf")
+        except Exception:
+            return False
+
+    playfair_regular_path = os.path.join(os.path.dirname(__file__), "fonts", "PlayfairDisplay-Regular.ttf")
+    playfair_bold_path = os.path.join(os.path.dirname(__file__), "fonts", "PlayfairDisplay-Bold.ttf")
+    fallback_font_path = "/System/Library/Fonts/Supplemental/Arial Unicode.ttf"
+
+    font_name = "Helvetica"
+    try:
+        if _is_valid_font_file(playfair_regular_path) and _is_valid_font_file(playfair_bold_path):
+            registered = set(pdfmetrics.getRegisteredFontNames())
+            if "SoulFont" not in registered:
+                pdfmetrics.registerFont(TTFont("SoulFont", playfair_regular_path))
+            if "SoulFont-Bold" not in registered:
+                pdfmetrics.registerFont(TTFont("SoulFont-Bold", playfair_bold_path))
+            pdfmetrics.registerFontFamily("SoulFont", normal="SoulFont", bold="SoulFont-Bold")
+            font_name = "SoulFont"
+        elif _is_valid_font_file(fallback_font_path):
+            if "SoulFont" not in set(pdfmetrics.getRegisteredFontNames()):
+                pdfmetrics.registerFont(TTFont("SoulFont", fallback_font_path))
+            font_name = "SoulFont"
+    except Exception:
+        # Не валим генерацию PDF из-за проблем с файлом шрифта.
+        font_name = "Helvetica"
+
+    fd, pdf_path = tempfile.mkstemp(prefix="soul_report_", suffix=".pdf")
+    os.close(fd)
+
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=A4,
+        rightMargin=1.8 * cm,
+        leftMargin=1.8 * cm,
+        topMargin=5.0 * cm,
+        bottomMargin=1.6 * cm,
+    )
+
+    base_styles = getSampleStyleSheet()
+    gold_heading = colors.HexColor("#D8A64A")
+    gold_frame = colors.HexColor("#D8A64A")
+    gold_highlight = colors.HexColor("#D8A64A")
+    cover_title = ParagraphStyle(
+        "CoverTitle",
+        parent=base_styles["Title"],
+        fontName=font_name,
+        fontSize=34,
+        leading=43,
+        alignment=1,
+        textColor=gold_heading,
+    )
+    cover_subtitle = ParagraphStyle(
+        "CoverSubTitle",
+        parent=base_styles["BodyText"],
+        fontName=font_name,
+        fontSize=12,
+        leading=18.5,
+        alignment=1,
+        textColor=colors.HexColor("#FFF8E0"),
+    )
+    intro_title = ParagraphStyle(
+        "IntroTitle",
+        parent=base_styles["Heading1"],
+        fontName=font_name,
+        fontSize=26,
+        leading=33,
+        alignment=1,
+        textColor=gold_heading,
+    )
+    intro_sub = ParagraphStyle(
+        "IntroSub",
+        parent=base_styles["BodyText"],
+        fontName=font_name,
+        fontSize=13,
+        leading=20.5,
+        alignment=1,
+        textColor=colors.white,
+    )
+    intro_sub_on_dark = ParagraphStyle(
+        "IntroSubOnDark",
+        parent=intro_sub,
+        textColor=colors.HexColor("#FFF5DE"),
+    )
+    page_title = ParagraphStyle(
+        "PageTitle",
+        parent=base_styles["Heading2"],
+        fontName=font_name,
+        fontSize=18,
+        leading=25,
+        alignment=1,
+        textColor=gold_heading,
+    )
+    body_style = ParagraphStyle(
+        "Body",
+        parent=base_styles["BodyText"],
+        fontName=font_name,
+        fontSize=10.6,
+        leading=15.8,
+        alignment=1,
+        textColor=colors.white,
+    )
+    center_body = ParagraphStyle(
+        "CenterBody",
+        parent=body_style,
+        alignment=1,
+    )
+    section_header = ParagraphStyle(
+        "SectionHeader",
+        parent=base_styles["Heading2"],
+        fontName=font_name,
+        fontSize=17,
+        leading=24,
+        textColor=colors.white,
+        backColor=gold_highlight,
+        alignment=1,
+        spaceAfter=8,
+        leftIndent=8,
+        rightIndent=8,
+    )
+    planet_style = ParagraphStyle(
+        "PlanetStyle",
+        parent=base_styles["BodyText"],
+        fontName=font_name,
+        fontSize=13,
+        leading=17,
+        textColor=colors.white,
+        backColor=gold_highlight,
+        alignment=1,
+        leftIndent=4.0 * cm,
+        rightIndent=4.0 * cm,
+        spaceBefore=2,
+        spaceAfter=4,
+    )
+    block_title_style = ParagraphStyle(
+        "BlockTitle",
+        parent=base_styles["BodyText"],
+        fontName=font_name,
+        fontSize=10.2,
+        leading=15.2,
+        alignment=1,
+        textColor=colors.white,
+        backColor=gold_highlight,
+        leftIndent=6,
+        rightIndent=6,
+        spaceBefore=4,
+        spaceAfter=4,
+    )
+    block_body_style = ParagraphStyle(
+        "BlockBody",
+        parent=base_styles["BodyText"],
+        fontName=font_name,
+        fontSize=10.0,
+        leading=14.8,
+        alignment=1,
+        textColor=colors.white,
+        firstLineIndent=0,
+        spaceBefore=2,
+        spaceAfter=6,
+    )
+    accent_hint = ParagraphStyle(
+        "AccentHint",
+        parent=base_styles["BodyText"],
+        fontName=font_name,
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor("#F8E8C6"),
+        alignment=1,
+    )
+
+    def _split_section_text(raw_text: str) -> list[tuple[str, str]]:
+        markers = [
+            ("🔹 Как проявляется:", "ПРОЯВЛЕННОСТЬ"),
+            ("🎯 Фокус периода:", "ФОКУС ПЕРИОДА"),
+            ("⚠️ Риски:", "РИСКИ"),
+            ("✅ Рекомендации:", "РЕКОМЕНДАЦИИ"),
+        ]
+        prepared = raw_text
+        for source, label in markers:
+            prepared = prepared.replace(source, f"##{label}##")
+
+        pieces = []
+        for chunk in prepared.split("##"):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            is_label = any(chunk == label for _, label in markers)
+            if is_label:
+                pieces.append((chunk, ""))
+            else:
+                if pieces and pieces[-1][1] == "":
+                    title, _ = pieces[-1]
+                    pieces[-1] = (title, chunk)
+                else:
+                    pieces.append(("ОПИСАНИЕ", chunk))
+        return pieces
+
+    def _planet_label_with_emoji(planet_name: str) -> str:
+        emoji_map = {
+            "Солнце": "☉",
+            "Луна": "☽",
+            "Меркурий": "☿",
+            "Венера": "♀",
+            "Марс": "♂",
+            "Юпитер": "♃",
+            "Сатурн": "♄",
+            "Уран": "♅",
+            "Нептун": "♆",
+            "Плутон": "♇",
+        }
+        base_name = planet_name.replace(" (мастер)", "").strip()
+        emoji = emoji_map.get(base_name, "🪐")
+        return f"{emoji} {planet_name.upper()}"
+
+    story = []
+
+    # Стр.1 — Титул на фоне (текст рисуем через canvas с absolute positioning)
+    story.extend([
+        PageBreak(),
+    ])
+
+    # Стр.2 — PROLOGUE + RESULT
+    story.extend([
+        Spacer(1, 8.0 * cm),
+        Paragraph("PROLOGUE", intro_title),
+        Spacer(1, 0.55 * cm),
+        Paragraph(
+            "ЗДРАВСТВУЙ, ДРУГ!<br/>это статистика души. расчет матрицы сознания "
+            "по имени и дате рождения.<br/><br/>"
+            "она показывает, как проявляются в жизни разные уровни личности человека.<br/><br/>"
+            "ПЕРСОНАЛЬНЫЙ РАЗБОР СФЕР ЖИЗНИ",
+            intro_sub_on_dark,
+        ),
+        PageBreak(),
+    ])
+
+    # Стр.3 — WHAT'S INSIDE
+    story.append(Spacer(1, 2.0 * cm))
+    story.append(Paragraph("WHAT'S INSIDE?", page_title))
+    story.append(Spacer(1, 0.25 * cm))
+    for idx, s in enumerate(sections, start=1):
+        story.append(Paragraph(f"{idx}. {s['title']}", center_body))
+    story.append(PageBreak())
+
+    # Стр.4 — данные человека
+    story.append(Spacer(1, 2.5 * cm))
+    fio_lines = fio.split()
+    for line in fio_lines:
+        story.append(Paragraph(f"<b>{line.upper()}</b>", page_title))
+    story.append(Spacer(1, 0.2 * cm))
+    story.append(Paragraph(birth_date, center_body))
+    story.append(PageBreak())
+
+    # Стр.5 — сводная матрица (Сфера -> Планета)
+    story.append(Spacer(1, 2.5 * cm))
+    story.append(Paragraph("ПЕРСОНАЛЬНАЯ МАТРИЦА", page_title))
+    story.append(Spacer(1, 0.2 * cm))
+    summary_rows = [["СФЕРА", "ПЛАНЕТА"]]
+    for s in sections:
+        summary_rows.append([s["title"].upper(), _planet_label_with_emoji(s["planet"])])
+    summary_table = Table(summary_rows, colWidths=[10.8 * cm, 5.0 * cm])
+    summary_table.setStyle(TableStyle([
+        ("FONT", (0, 0), (-1, -1), font_name, 9.4),
+        ("BACKGROUND", (0, 0), (-1, 0), gold_highlight),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("GRID", (0, 0), (-1, -1), 0.55, gold_frame),
+        ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#FFF8E5")),
+        ("BACKGROUND", (1, 1), (1, -1), gold_highlight),
+        ("TEXTCOLOR", (1, 1), (1, -1), colors.white),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 7),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(summary_table)
+    story.append(PageBreak())
+
+    # Стр.8+ — по одной сфере на страницу (как в референсе)
+    for idx, section in enumerate(sections, start=1):
+        if idx == 1:
+            story.append(Spacer(1, 2.5 * cm))
+        elif idx in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11):
+            story.append(Spacer(1, 2.0 * cm))
+        story.append(Paragraph(_planet_label_with_emoji(section["planet"]), planet_style))
+        story.append(Paragraph(section["title"].upper(), section_header))
+        story.append(Spacer(1, 0.08 * cm))
+
+        for part_title, part_text in _split_section_text(section["text"]):
+            story.append(Paragraph(part_title, block_title_style))
+            if part_text:
+                text_paragraphs = [p.strip() for p in part_text.split("\n\n") if p.strip()]
+                if not text_paragraphs:
+                    text_paragraphs = [part_text.strip()]
+
+                for p in text_paragraphs:
+                    story.append(Paragraph(p.replace("\n", "<br/>"), block_body_style))
+                    story.append(Spacer(1, 0.12 * cm))
+
+                story.append(Spacer(1, 0.28 * cm))
+
+        if idx < len(sections):
+            story.append(PageBreak())
+
+    # Финальная CTA-страница (как в референсе)
+    story.extend([
+        PageBreak(),
+        Spacer(1, 2.8 * cm),
+        Paragraph("Если тебе откликнулся этот разбор", intro_title),
+        Spacer(1, 0.4 * cm),
+        Paragraph(
+            "отправьте контакт человеку, которому сейчас важно лучше понять себя.<br/><br/>"
+            "CONTACT<br/><b>@GodStatistics_bot</b><br/><br/>"
+            "<b>СТАТИСТИКА ДУШИ</b>",
+            intro_sub,
+        ),
+    ])
+
+    def _draw_page_decor(canvas, doc_obj):
+        width, height = A4
+
+        canvas.saveState()
+        if os.path.exists(AFTER_COVER_BG_PATH):
+            try:
+                img = ImageReader(AFTER_COVER_BG_PATH)
+                iw, ih = img.getSize()
+                scale = max(width / iw, height / ih)
+                draw_w = iw * scale
+                draw_h = ih * scale
+                x = (width - draw_w) / 2
+                y = (height - draw_h) / 2
+                canvas.drawImage(img, x, y, width=draw_w, height=draw_h, preserveAspectRatio=True, mask="auto")
+                canvas.setFillColor(colors.Color(0, 0, 0, alpha=0.22))
+                canvas.rect(0, 0, width, height, stroke=0, fill=1)
+            except Exception:
+                canvas.setFillColor(colors.HexColor("#FFF6D9"))
+                canvas.rect(0, height - 1.5 * cm, width, 1.5 * cm, stroke=0, fill=1)
+                canvas.setFillColor(colors.HexColor("#F5D77A"))
+                canvas.rect(0, height - 0.5 * cm, width, 0.5 * cm, stroke=0, fill=1)
+        else:
+            # Фолбэк, если фоновое изображение недоступно
+            canvas.setFillColor(colors.HexColor("#FFF6D9"))
+            canvas.rect(0, height - 1.5 * cm, width, 1.5 * cm, stroke=0, fill=1)
+            canvas.setFillColor(colors.HexColor("#F5D77A"))
+            canvas.rect(0, height - 0.5 * cm, width, 0.5 * cm, stroke=0, fill=1)
+
+        # Нижний бар и номер страницы
+        canvas.setFillColor(colors.HexColor("#FFF9EA"))
+        canvas.rect(0, 0, width, 1.2 * cm, stroke=0, fill=1)
+        canvas.setFont(font_name, 8.5)
+        canvas.setFillColor(colors.HexColor("#8F6500"))
+        canvas.drawString(1.8 * cm, 0.45 * cm, "Статистика Души")
+        canvas.drawRightString(width - 1.8 * cm, 0.45 * cm, f"Стр. {doc_obj.page}")
+        canvas.restoreState()
+
+    def _draw_cover_page(canvas, doc_obj):
+        width, height = A4
+        canvas.saveState()
+
+        if os.path.exists(COVER_IMAGE_PATH):
+            try:
+                img = ImageReader(COVER_IMAGE_PATH)
+                iw, ih = img.getSize()
+                scale = max(width / iw, height / ih)
+                draw_w = iw * scale
+                draw_h = ih * scale
+                x = (width - draw_w) / 2
+                y = (height - draw_h) / 2
+                canvas.drawImage(img, x, y, width=draw_w, height=draw_h, preserveAspectRatio=True, mask="auto")
+            except Exception:
+                canvas.setFillColor(colors.HexColor("#2C230D"))
+                canvas.rect(0, 0, width, height, stroke=0, fill=1)
+        else:
+            canvas.setFillColor(colors.HexColor("#2C230D"))
+            canvas.rect(0, 0, width, height, stroke=0, fill=1)
+
+        # На фоне уже есть дизайн титула, сверху рисуем только динамические данные.
+        canvas.setFillColor(colors.HexColor("#FFF8E0"))
+        canvas.setFont(font_name, 12)
+        canvas.drawCentredString(width / 2, height * 0.47, fio.lower())
+        canvas.drawCentredString(width / 2, height * 0.44, birth_date)
+
+        # Нижний футер обложки
+        canvas.setFillColor(colors.HexColor("#FFF9EA"))
+        canvas.rect(0, 0, width, 1.2 * cm, stroke=0, fill=1)
+        canvas.setFont(font_name, 8.5)
+        canvas.setFillColor(colors.HexColor("#8F6500"))
+        canvas.drawString(1.8 * cm, 0.45 * cm, "Статистика Души")
+        canvas.drawRightString(width - 1.8 * cm, 0.45 * cm, f"Стр. {doc_obj.page}")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=_draw_cover_page, onLaterPages=_draw_page_decor)
+    return pdf_path
+
+
+async def send_pdf_report(update: Update, fio: str, birth_date: str, sections: list[dict]):
+    pdf_path = build_pdf_report(fio, birth_date, sections)
+    if not pdf_path:
+        return
+
+    try:
+        with open(pdf_path, "rb") as pdf_file:
+            await update.message.reply_document(
+                document=pdf_file,
+                filename=f"Статистика_Души_{fio.replace(' ', '_')}.pdf",
+                caption="Ваш персональный PDF-разбор готов.",
+            )
+    finally:
+        try:
+            os.remove(pdf_path)
+        except OSError:
+            pass
+
 def block_description(num: int, block: dict) -> str:
     # Если это мастер-число, сначала проверяем наличие специального описания
     if num in MASTER_NUMBERS:
@@ -1136,8 +1582,20 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     data = query.data
 
     if data == "get_stats":
-        context.user_data["step"] = "last_name"
-        await query.message.reply_text("Введите вашу фамилию")
+        context.user_data["step"] = "fio_birth_line"
+        await query.message.reply_text(
+            "Введите данные одной строкой:\n"
+            "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
+            "Пример:\nИванов Иван Иванович 12.05.1991"
+        )
+    elif data == "restart_calc":
+        context.user_data.clear()
+        context.user_data["step"] = "fio_birth_line"
+        await query.message.reply_text(
+            "Введите данные одной строкой:\n"
+            "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
+            "Пример:\nИванов Иван Иванович 12.05.1991"
+        )
     elif data == "view_physical":
         last_result = context.user_data.get("last_result")
         if not last_result:
@@ -1371,60 +1829,38 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = update.message.text.strip()
         step = context.user_data.get("step")
 
-        if step == "last_name":
-            context.user_data["last_name"] = text
-            await update.message.reply_text("Введите ваше имя")
-            context.user_data["step"] = "first_name"
+        # Используем единый ввод: Фамилия Имя Отчество ДД.ММ.ГГГГ
+        if step in {"last_name", "first_name", "middle_name", "birth_date"}:
+            context.user_data["step"] = "fio_birth_line"
+            await update.message.reply_text(
+                "Теперь ввод в одну строку:\n"
+                "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
+                "Пример:\nИванов Иван Иванович 12.05.1991"
+            )
             return
 
-        if step == "first_name":
-            context.user_data["first_name"] = text
-            await update.message.reply_text("Введите ваше отчество")
-            context.user_data["step"] = "middle_name"
+        parts = text.split()
+        if len(parts) != 4:
+            await update.message.reply_text(
+                "❌ Неверный формат.\n\nВведите данные одной строкой:\n"
+                "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
+                "Пример:\nИванов Иван Иванович 12.05.1991"
+            )
             return
 
-        if step == "middle_name":
-            context.user_data["middle_name"] = text
-            await update.message.reply_text("Введите дату рождения в формате ДД.ММ.ГГГГ")
-            context.user_data["step"] = "birth_date"
+        surname, name, patronymic, birth_date = parts
+        if not re.match(r"^\d{2}\.\d{2}\.\d{4}$", birth_date):
+            await update.message.reply_text(
+                "Дата должна быть в формате ДД.ММ.ГГГГ\n\n"
+                "Пример:\nИванов Иван Иванович 12.05.1991"
+            )
             return
 
-        if step == "birth_date":
-            birth_date = text
-            if not re.match(r"\d{2}\.\d{2}\.\d{4}", birth_date):
-                await update.message.reply_text(
-                    "Дата должна быть в формате ДД.ММ.ГГГГ\n\nПример:\nИванов Иван Иванович 12.05.1991"
-                )
-                return
-            fio = f"{context.user_data['last_name']} {context.user_data['first_name']} {context.user_data['middle_name']}"
-            date_str = birth_date
-            surname = context.user_data["last_name"]
-            name = context.user_data["first_name"]
-            patronymic = context.user_data["middle_name"]
-            context.user_data["step"] = None
-            birth = datetime.strptime(date_str, "%d.%m.%Y")
-            day, month, year = birth.day, birth.month, birth.year
-        else:
-            parts = text.split()
-            if len(parts) < 4:
-                await update.message.reply_text(
-                    "❌ Неверный формат.\n\nВведите данные так:\nФамилия Имя Отчество 12.05.1991"
-                )
-                return
-
-            fio = " ".join(parts[:3])
-            birth_date = parts[3]
-
-            if not re.match(r"\d{2}\.\d{2}\.\d{4}", birth_date):
-                await update.message.reply_text(
-                    "Дата должна быть в формате ДД.ММ.ГГГГ\n\nПример:\nИванов Иван Иванович 12.05.1991"
-                )
-                return
-
-            date_str = birth_date
-            birth = datetime.strptime(date_str, "%d.%m.%Y")
-            day, month, year = birth.day, birth.month, birth.year
-            surname, name, patronymic = fio.split()
+        fio = f"{surname} {name} {patronymic}"
+        date_str = birth_date
+        context.user_data["step"] = None
+        birth = datetime.strptime(date_str, "%d.%m.%Y")
+        day, month, year = birth.day, birth.month, birth.year
 
         fio_sum = letters_sum(surname) + letters_sum(name) + letters_sum(patronymic)
 
@@ -1461,6 +1897,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Собираем все блоки с их размерами
         blocks = []
+        pdf_sections = []
         try:
             blocks = [
                 f"1️⃣ Физическое тело\nПланета: {PLANETS[physical]}\n{block_description(physical, PHYSICAL_BODY)}",
@@ -1537,6 +1974,19 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data["last_result"] = user_result
 
             results[telegram_id] = user_result
+
+            pdf_sections = [
+                {"title": "Физическое тело", "planet": PLANETS[physical], "text": block_description(physical, PHYSICAL_BODY)},
+                {"title": "Астральное тело", "planet": PLANETS[astral], "text": block_description(astral, ASTRAL_BODY)},
+                {"title": "Ментальное тело", "planet": PLANETS[mental], "text": block_description(mental, MENTAL_BODY)},
+                {"title": "Жизненная задача", "planet": PLANETS[life_task], "text": block_description(life_task, LIFE_TASK_BODY)},
+                {"title": "Родовой эгрегор", "planet": PLANETS[ancestral_egregor], "text": block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)},
+                {"title": "Высшее Я", "planet": PLANETS[higher_self], "text": block_description(higher_self, HIGHER_SELF_BODY)},
+                {"title": "Родовая программа", "planet": PLANETS[ancestral_program], "text": block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)},
+                {"title": "Социальная задача", "planet": PLANETS[social_task], "text": block_description(social_task, SOCIAL_TASK_BODY)},
+                {"title": "Сочетание задач", "planet": PLANETS[task_combo], "text": block_description(task_combo, TASK_COMBO_BODY)},
+                {"title": f"Текущий 7-летний цикл ({cycle_number}-й)", "planet": PLANETS[cycle_energy], "text": cycle_description(cycle_energy, CYCLE_BODY)},
+            ]
             
         except Exception as e:
             await update.message.reply_text(f"❌ Ошибка при формировании блоков: {str(e)}")
@@ -1546,6 +1996,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Формируем итоговый текст
         result_text = "\n\n".join(blocks)
         final_text = header + result_text
+
+        # Отправляем полный разбор только в PDF
+        await update.message.reply_text("Ваш полный разбор сформирован в PDF 👇")
+        await send_pdf_report(update, fio, birth_date, pdf_sections)
+        await show_action_menu(update, context)
+        return
         
         # Вычисляем размеры блоков (с учётом разделителей "\n\n")
         block_sizes = [len(block) + 2 for block in blocks]  # +2 для "\n\n"
@@ -1639,12 +2095,14 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "Егор и Кристина."
                 )
                 keyboard = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("✨ Подписаться на канал Высшего Я", url="https://t.me/CHANNEL_LINK")]
+                    [InlineKeyboardButton("✨ Подписаться на канал Высшего Я", url="https://t.me/CHANNEL_LINK")],
+                    [InlineKeyboardButton("🔁 Сделать новый расчёт", callback_data="restart_calc")],
                 ])
                 await update.message.reply_text(
                     closing_text,
                     reply_markup=keyboard
                 )
+                await send_pdf_report(update, fio, birth_date, pdf_sections)
                 await show_action_menu(update, context)
             except Exception as e:
                 print(f"Ошибка отправки единого сообщения: {e}")
@@ -1753,12 +2211,14 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             "Егор и Кристина."
                         )
                         keyboard = InlineKeyboardMarkup([
-                            [InlineKeyboardButton("✨ Подписаться на канал Высшего Я", url="https://t.me/CHANNEL_LINK")]
+                            [InlineKeyboardButton("✨ Подписаться на канал Высшего Я", url="https://t.me/CHANNEL_LINK")],
+                            [InlineKeyboardButton("🔁 Сделать новый расчёт", callback_data="restart_calc")],
                         ])
                         await update.message.reply_text(
                             closing_text,
                             reply_markup=keyboard
                         )
+                        await send_pdf_report(update, fio, birth_date, pdf_sections)
                         # Интерактивное меню просмотра статистики
                         menu_text = (
                             "🌳 ДРЕВО ЖИЗНИ\n\n"
@@ -1797,6 +2257,22 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"Ошибка: {e}")
 
 def main():
+    # В некоторых окружениях IDE выставляет локальные прокси, из-за чего
+    # Telegram API отвечает 403 на bootstrap (httpx.ProxyError).
+    for proxy_var in (
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+        "SOCKS_PROXY",
+        "SOCKS5_PROXY",
+        "socks_proxy",
+        "socks5_proxy",
+    ):
+        os.environ.pop(proxy_var, None)
+
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(main_menu_callback))
