@@ -16,6 +16,10 @@ TOKEN = os.getenv("TOKEN")
 
 app = Flask(__name__)
 
+# 🔥 создаём ОДИН loop
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
 tg_app = ApplicationBuilder().token(TOKEN).build()
 
 # handlers
@@ -24,21 +28,19 @@ tg_app.add_handler(CallbackQueryHandler(main_menu_callback))
 tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
 
-# 🔥 правильная обработка webhook
-async def process(update):
-    await tg_app.initialize()
-    await tg_app.process_update(update)
+# 🔥 инициализация ОДИН раз
+loop.run_until_complete(tg_app.initialize())
 
 
 @app.route("/", methods=["POST"])
 def webhook():
     try:
         data = request.get_json(force=True)
-        print("🔥 GOT UPDATE:", data)
+        print("🔥 GOT UPDATE")
 
         update = Update.de_json(data, tg_app.bot)
 
-        asyncio.run(process(update))
+        loop.run_until_complete(tg_app.process_update(update))
 
         return "ok", 200
 
