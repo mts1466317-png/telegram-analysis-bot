@@ -1,42 +1,83 @@
 from flask import Flask, request
+
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-import os
+
+from telegram.ext import (
+
+    ApplicationBuilder,
+
+    CommandHandler,
+
+    MessageHandler,
+
+    CallbackQueryHandler,
+
+    filters,
+
+)
+
 import asyncio
 
-app = Flask(__name__)
+import os
+
+from bot import start, handle_text, main_menu_callback
 
 TOKEN = os.getenv("TOKEN")
 
-application = ApplicationBuilder().token(TOKEN).build()
+app = Flask(__name__)
 
-# ===== ЛОГИКА БОТА =====
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("🔥 /start received")
-    await update.message.reply_text("Бот работает через webhook 🚀")
+# создаём Telegram приложение
 
-application.add_handler(CommandHandler("start", start))
+tg_app = ApplicationBuilder().token(TOKEN).build()
 
-# ===== WEBHOOK =====
+# регистрируем обработчики
+
+tg_app.add_handler(CommandHandler("start", start))
+
+tg_app.add_handler(CallbackQueryHandler(main_menu_callback))
+
+tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+
+# 🔥 Webhook endpoint (Telegram шлёт сюда)
+
 @app.route("/", methods=["POST"])
+
 def webhook():
-    data = request.get_json()
 
-    update = Update.de_json(data, application.bot)
+    try:
 
-    asyncio.run(process(update))
+        data = request.get_json(force=True)
 
-    return "ok"
+        if not data:
 
-async def process(update):
-    await application.initialize()
-    await application.process_update(update)
+            return "no data", 400
 
-# ===== ПРОВЕРКА =====
+        update = Update.de_json(data, tg_app.bot)
+
+        # безопасный запуск async
+
+        asyncio.run(tg_app.process_update(update))
+
+        return "ok", 200
+
+    except Exception as e:
+
+        print("❌ Webhook error:", e)
+
+        return "error", 500
+
+# 👉 чтобы Railway видел, что сервер жив
+
 @app.route("/", methods=["GET"])
-def index():
-    return "Bot is running"
 
-# ===== ЗАПУСК =====
+def health():
+
+    return "Bot is running 🚀", 200
+
+# 🔥 КРИТИЧЕСКИ ВАЖНО
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+
+    port = int(os.environ.get("PORT", 8000))
+
+    app.run(host="0.0.0.0", port=port)
