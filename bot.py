@@ -1465,22 +1465,71 @@ def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | N
 
 
 async def send_pdf_report(update: Update, fio: str, birth_date: str, sections: list[dict]):
-    pdf_path = build_pdf_report(fio, birth_date, sections)
-    if not pdf_path:
+    chat = update.effective_chat
+    if not chat:
+        print("❌ Нет chat для отправки PDF")
         return
 
+    status_msg = await chat.send_message("⏳ Генерирую PDF...")
+
+    pdf_path = None
+
     try:
+        # 🔹 Генерация PDF
+        pdf_path = build_pdf_report(fio, birth_date, sections)
+
+        if not pdf_path or not os.path.exists(pdf_path):
+            await status_msg.edit_text("❌ Не удалось создать PDF")
+            return
+
+        # 🔹 Проверка размера (Telegram лимит)
+        file_size = os.path.getsize(pdf_path)
+        if file_size > 50 * 1024 * 1024:
+            await status_msg.edit_text("❌ PDF слишком большой")
+            return
+
+        # 🔹 Безопасное имя файла
+        safe_fio = re.sub(r'[^a-zA-Zа-яА-Я0-9_]', '', fio.replace(" ", "_")) or "report"
+
+        # 🔹 Отправка
         with open(pdf_path, "rb") as pdf_file:
-            await update.message.reply_document(
+            await chat.send_document(
                 document=pdf_file,
-                filename=f"Статистика_Души_{fio.replace(' ', '_')}.pdf",
-                caption="Ваш персональный PDF-разбор готов.",
+                filename=f"Статистика_Души_{safe_fio}.pdf",
+                caption=(
+                    "✨ <b>Ваш персональный разбор готов</b>\n\n"
+                    "Сохраните PDF, чтобы возвращаться к нему."
+                ),
+                parse_mode="HTML"
             )
-    finally:
+
+        # 🔹 Обновляем статус
+        await status_msg.edit_text("✅ PDF готов")
+
+        # 🔹 Дальнейшее взаимодействие (очень важно)
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔮 Новый разбор", callback_data="get_stats")],
+            [InlineKeyboardButton("💝 Поддержать проект", callback_data="support_project")],
+        ])
+
+        await chat.send_message(
+            "Хочешь разобрать ещё или пойти глубже?",
+            reply_markup=keyboard
+        )
+
+    except Exception as e:
+        print(f"PDF ERROR: {e}")
         try:
-            os.remove(pdf_path)
-        except OSError:
+            await status_msg.edit_text(f"❌ Ошибка при создании PDF:\n{e}")
+        except:
             pass
+
+    finally:
+        if pdf_path and os.path.exists(pdf_path):
+            try:
+                os.remove(pdf_path)
+            except Exception as cleanup_error:
+                print(f"Ошибка удаления PDF: {cleanup_error}")
 
 def block_description(num: int, block: dict) -> str:
     # Если это мастер-число, сначала проверяем наличие специального описания
