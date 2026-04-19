@@ -6,6 +6,7 @@ import asyncio
 import os
 import sys
 from datetime import datetime
+import html
 import json
 import tempfile
 from urllib.parse import quote
@@ -1072,7 +1073,20 @@ def letters_sum(text: str) -> int:
     return sum(LETTER_MAP.get(ch.upper(), 0) for ch in text if ch.upper() in LETTER_MAP)
 
 
-def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | None:
+def _pdf_flowable_text(raw: object) -> str:
+    """Текст для ReportLab Paragraph: экранируем &, <, >; переносы строк → <br/>."""
+    if raw is None:
+        return ""
+    t = html.escape(str(raw), quote=False)
+    return t.replace("\n", "<br/>")
+
+
+def build_pdf_report(
+    fio: str,
+    birth_date: str,
+    sections: list[dict],
+    calc_snapshot: dict | None = None,
+) -> str | None:
     if not REPORTLAB_AVAILABLE:
         print("ReportLab недоступен (REPORTLAB_AVAILABLE=False), PDF не создаётся")
         return None
@@ -1254,6 +1268,16 @@ def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | N
         textColor=colors.HexColor("#F8E8C6"),
         alignment=1,
     )
+    calc_body_style = ParagraphStyle(
+        "CalcBody",
+        parent=base_styles["BodyText"],
+        fontName=font_name,
+        fontSize=9.0,
+        leading=13.5,
+        alignment=0,
+        textColor=colors.HexColor("#FFF8E8"),
+        spaceAfter=10,
+    )
 
     def _split_section_text(raw_text: str) -> list[tuple[str, str]]:
         markers = [
@@ -1326,34 +1350,81 @@ def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | N
     story.append(Paragraph("WHAT'S INSIDE?", page_title))
     story.append(Spacer(1, 0.25 * cm))
     for idx, s in enumerate(sections, start=1):
-        story.append(Paragraph(f"{idx}. {s['title']}", center_body))
+        story.append(
+            Paragraph(_pdf_flowable_text(f"{idx}. {s['title']}"), center_body),
+        )
     story.append(PageBreak())
 
     # Стр.4 — данные человека
     story.append(Spacer(1, 2.5 * cm))
     fio_lines = fio.split()
     for line in fio_lines:
-        story.append(Paragraph(f"<b>{line.upper()}</b>", page_title))
+        eu = html.escape(line.upper(), quote=False)
+        story.append(Paragraph(f"<b>{eu}</b>", page_title))
     story.append(Spacer(1, 0.2 * cm))
-    story.append(Paragraph(birth_date, center_body))
+    story.append(Paragraph(_pdf_flowable_text(birth_date), center_body))
     story.append(PageBreak())
 
-    # Стр.5 — сводная матрица (Сфера -> Планета)
+    # Стр.4б — полная схема расчётов (формулы и промежуточные суммы)
+    if calc_snapshot:
+        cs = calc_snapshot
+        story.append(Spacer(1, 1.2 * cm))
+        story.append(Paragraph("НУМЕРОЛОГИЧЕСКАЯ СХЕМА РАСЧЁТА", page_title))
+        story.append(Spacer(1, 0.35 * cm))
+        scheme_lines = [
+            "Буквы русского алфавита суммируются по таблице Пифагора (как в боте). Число сводится "
+            "(reduce): если больше 9 и не мастер (11, 22, …), суммируются цифры результата.",
+            "",
+            "━━ ИСХОДНЫЕ ДАННЫЕ ━━",
+            f"Фамилия «{cs['surname']}»: Σ букв = {cs['letters_surname']}",
+            f"Имя «{cs['name']}»: Σ букв = {cs['letters_name']}",
+            f"Отчество «{cs['patronymic']}»: Σ букв = {cs['letters_patronymic']}",
+            f"Σ букв всего ФИО = {cs['fio_sum']}",
+            f"Дата: день D = {cs['day']}, месяц M = {cs['month']}, год Y = {cs['year']}",
+            f"Сумма всех цифр даты записи = {cs['date_digits_sum']}",
+            "",
+            "━━ ДЕРЕВО ЖИЗНИ (ключевые формулы) ━━",
+            f"1. Физическое тело — reduce(ΣФИО + D) = reduce({cs['fio_sum']} + {cs['day']}) → {cs['physical']} ({cs['planet_physical']})",
+            f"2. Астральное тело — reduce(Σ имени + M) = reduce({cs['letters_name']} + {cs['month']}) → {cs['astral']} ({cs['planet_astral']})",
+            f"3. Ментальное тело — reduce(Σ фамилии + Y) = reduce({cs['letters_surname']} + {cs['year']}) → {cs['mental']} ({cs['planet_mental']})",
+            f"4. Жизненная задача — reduce(D + M + Y) = reduce({cs['day']} + {cs['month']} + {cs['year']}) → {cs['life_task']} ({cs['planet_life']})",
+            f"5. Родовой эгрегор — reduce(ΣФИО) → {cs['ancestral_egregor']} ({cs['planet_egregor']})",
+            f"6. Высшее Я — reduce(ΣФИО + сумма цифр даты) = reduce({cs['fio_sum']} + {cs['date_digits_sum']}) → {cs['higher_self']} ({cs['planet_higher']})",
+            f"7. Родовая программа — reduce(ментальное + родовой эгрегор) = reduce({cs['mental']} + {cs['ancestral_egregor']}) → {cs['ancestral_program']} ({cs['planet_program']})",
+            f"8. Социальная задача — reduce(астральное + жизненная задача) = reduce({cs['astral']} + {cs['life_task']}) → {cs['social_task']} ({cs['planet_social']})",
+            f"9. Сочетание задач — reduce(социальная + жизненная) = reduce({cs['social_task']} + {cs['life_task']}) → {cs['task_combo']} ({cs['planet_combo']})",
+            "",
+            "━━ ТЕКУЩИЙ 7-ЛЕТНИЙ ЦИКЛ ━━",
+            f"Возраст на дату расчёта = {cs['age']} лет (полных лет)",
+            f"Номер цикла N = ({cs['age']} ÷ 7) + 1 = {cs['cycle_number']} (возрастная полоса {cs['cycle_start_age']}–{cs['cycle_end_age']} лет)",
+            f"Энергия цикла — reduce(жизненная задача + N) = reduce({cs['life_task']} + {cs['cycle_number']}) → {cs['cycle_energy']} ({cs['planet_cycle']})",
+        ]
+        story.append(Paragraph(_pdf_flowable_text("\n".join(scheme_lines)), calc_body_style))
+        story.append(PageBreak())
+
+    # Стр.5 — сводная матрица (Сфера — вибрация — Планета)
     story.append(Spacer(1, 2.5 * cm))
     story.append(Paragraph("ПЕРСОНАЛЬНАЯ МАТРИЦА", page_title))
     story.append(Spacer(1, 0.2 * cm))
-    summary_rows = [["СФЕРА", "ПЛАНЕТА"]]
+    summary_rows = [["СФЕРА", "ВИБР.", "ПЛАНЕТА"]]
     for s in sections:
-        summary_rows.append([s["title"].upper(), _planet_label_with_emoji(s["planet"])])
-    summary_table = Table(summary_rows, colWidths=[10.8 * cm, 5.0 * cm])
+        vib = s.get("vibration", "")
+        summary_rows.append(
+            [
+                s["title"].upper(),
+                str(vib),
+                _planet_label_with_emoji(s["planet"]),
+            ]
+        )
+    summary_table = Table(summary_rows, colWidths=[8.8 * cm, 2.0 * cm, 5.2 * cm])
     summary_table.setStyle(TableStyle([
         ("FONT", (0, 0), (-1, -1), font_name, 9.4),
         ("BACKGROUND", (0, 0), (-1, 0), gold_highlight),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("GRID", (0, 0), (-1, -1), 0.55, gold_frame),
         ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#FFF8E5")),
-        ("BACKGROUND", (1, 1), (1, -1), gold_highlight),
-        ("TEXTCOLOR", (1, 1), (1, -1), colors.white),
+        ("BACKGROUND", (2, 1), (2, -1), gold_highlight),
+        ("TEXTCOLOR", (2, 1), (2, -1), colors.white),
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("LEFTPADDING", (0, 0), (-1, -1), 7),
         ("RIGHTPADDING", (0, 0), (-1, -1), 7),
@@ -1369,19 +1440,29 @@ def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | N
             story.append(Spacer(1, 2.5 * cm))
         elif idx in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11):
             story.append(Spacer(1, 2.0 * cm))
-        story.append(Paragraph(_planet_label_with_emoji(section["planet"]), planet_style))
-        story.append(Paragraph(section["title"].upper(), section_header))
+        story.append(
+            Paragraph(_pdf_flowable_text(_planet_label_with_emoji(section["planet"])), planet_style),
+        )
+        story.append(Paragraph(_pdf_flowable_text(section["title"].upper()), section_header))
+        if section.get("vibration") is not None:
+            story.append(
+                Paragraph(
+                    _pdf_flowable_text(f"Вибрация сферы: {section['vibration']}"),
+                    accent_hint,
+                )
+            )
+            story.append(Spacer(1, 0.06 * cm))
         story.append(Spacer(1, 0.08 * cm))
 
         for part_title, part_text in _split_section_text(section["text"]):
-            story.append(Paragraph(part_title, block_title_style))
+            story.append(Paragraph(_pdf_flowable_text(part_title), block_title_style))
             if part_text:
                 text_paragraphs = [p.strip() for p in part_text.split("\n\n") if p.strip()]
                 if not text_paragraphs:
                     text_paragraphs = [part_text.strip()]
 
                 for p in text_paragraphs:
-                    story.append(Paragraph(p.replace("\n", "<br/>"), block_body_style))
+                    story.append(Paragraph(_pdf_flowable_text(p), block_body_style))
                     story.append(Spacer(1, 0.12 * cm))
 
                 story.append(Spacer(1, 0.28 * cm))
@@ -1491,7 +1572,13 @@ def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | N
     return pdf_path
 
 
-async def send_pdf_report(update: Update, fio: str, birth_date: str, sections: list[dict]):
+async def send_pdf_report(
+    update: Update,
+    fio: str,
+    birth_date: str,
+    sections: list[dict],
+    calc_snapshot: dict | None = None,
+):
     if not update.effective_chat:
         print("❌ Нет chat для отправки PDF")
         return
@@ -1502,7 +1589,7 @@ async def send_pdf_report(update: Update, fio: str, birth_date: str, sections: l
 
     try:
         print("📄 Начинаю генерацию PDF...")
-        pdf_path = await asyncio.to_thread(build_pdf_report, fio, birth_date, sections)
+        pdf_path = await asyncio.to_thread(build_pdf_report, fio, birth_date, sections, calc_snapshot)
 
         if not pdf_path:
             print("❌ build_pdf_report вернул None")
@@ -2055,17 +2142,55 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             results[telegram_id] = user_result
 
+            calc_snapshot = {
+                "surname": surname,
+                "name": name,
+                "patronymic": patronymic,
+                "letters_surname": letters_sum(surname),
+                "letters_name": letters_sum(name),
+                "letters_patronymic": letters_sum(patronymic),
+                "fio_sum": fio_sum,
+                "day": day,
+                "month": month,
+                "year": year,
+                "date_digits_sum": date_digits_sum,
+                "physical": physical,
+                "planet_physical": PLANETS[physical],
+                "astral": astral,
+                "planet_astral": PLANETS[astral],
+                "mental": mental,
+                "planet_mental": PLANETS[mental],
+                "life_task": life_task,
+                "planet_life": PLANETS[life_task],
+                "ancestral_egregor": ancestral_egregor,
+                "planet_egregor": PLANETS[ancestral_egregor],
+                "higher_self": higher_self,
+                "planet_higher": PLANETS[higher_self],
+                "ancestral_program": ancestral_program,
+                "planet_program": PLANETS[ancestral_program],
+                "social_task": social_task,
+                "planet_social": PLANETS[social_task],
+                "task_combo": task_combo,
+                "planet_combo": PLANETS[task_combo],
+                "age": age,
+                "cycle_number": cycle_number,
+                "cycle_start_age": cycle_start_age,
+                "cycle_end_age": cycle_end_age,
+                "cycle_energy": cycle_energy,
+                "planet_cycle": PLANETS[cycle_energy],
+            }
+
             pdf_sections = [
-                {"title": "Физическое тело", "planet": PLANETS[physical], "text": block_description(physical, PHYSICAL_BODY)},
-                {"title": "Астральное тело", "planet": PLANETS[astral], "text": block_description(astral, ASTRAL_BODY)},
-                {"title": "Ментальное тело", "planet": PLANETS[mental], "text": block_description(mental, MENTAL_BODY)},
-                {"title": "Жизненная задача", "planet": PLANETS[life_task], "text": block_description(life_task, LIFE_TASK_BODY)},
-                {"title": "Родовой эгрегор", "planet": PLANETS[ancestral_egregor], "text": block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)},
-                {"title": "Высшее Я", "planet": PLANETS[higher_self], "text": block_description(higher_self, HIGHER_SELF_BODY)},
-                {"title": "Родовая программа", "planet": PLANETS[ancestral_program], "text": block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)},
-                {"title": "Социальная задача", "planet": PLANETS[social_task], "text": block_description(social_task, SOCIAL_TASK_BODY)},
-                {"title": "Сочетание задач", "planet": PLANETS[task_combo], "text": block_description(task_combo, TASK_COMBO_BODY)},
-                {"title": f"Текущий 7-летний цикл ({cycle_number}-й)", "planet": PLANETS[cycle_energy], "text": cycle_description(cycle_energy, CYCLE_BODY)},
+                {"title": "Физическое тело", "vibration": physical, "planet": PLANETS[physical], "text": block_description(physical, PHYSICAL_BODY)},
+                {"title": "Астральное тело", "vibration": astral, "planet": PLANETS[astral], "text": block_description(astral, ASTRAL_BODY)},
+                {"title": "Ментальное тело", "vibration": mental, "planet": PLANETS[mental], "text": block_description(mental, MENTAL_BODY)},
+                {"title": "Жизненная задача", "vibration": life_task, "planet": PLANETS[life_task], "text": block_description(life_task, LIFE_TASK_BODY)},
+                {"title": "Родовой эгрегор", "vibration": ancestral_egregor, "planet": PLANETS[ancestral_egregor], "text": block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)},
+                {"title": "Высшее Я", "vibration": higher_self, "planet": PLANETS[higher_self], "text": block_description(higher_self, HIGHER_SELF_BODY)},
+                {"title": "Родовая программа", "vibration": ancestral_program, "planet": PLANETS[ancestral_program], "text": block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)},
+                {"title": "Социальная задача", "vibration": social_task, "planet": PLANETS[social_task], "text": block_description(social_task, SOCIAL_TASK_BODY)},
+                {"title": "Сочетание задач", "vibration": task_combo, "planet": PLANETS[task_combo], "text": block_description(task_combo, TASK_COMBO_BODY)},
+                {"title": f"Текущий 7-летний цикл ({cycle_number}-й)", "vibration": cycle_energy, "planet": PLANETS[cycle_energy], "text": cycle_description(cycle_energy, CYCLE_BODY)},
             ]
             
         except Exception as e:
@@ -2079,7 +2204,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Отправляем полный разбор только в PDF
         await update.message.reply_text("Ваш полный разбор сформирован в PDF 👇")
-        await send_pdf_report(update, fio, birth_date, pdf_sections)
+        await send_pdf_report(update, fio, birth_date, pdf_sections, calc_snapshot)
         await show_action_menu(update, context)
         return
         
