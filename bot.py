@@ -1,4 +1,4 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram import InputFile, Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, CallbackQueryHandler, filters
 import re
 import random
@@ -9,6 +9,8 @@ from datetime import datetime
 import json
 import tempfile
 from urllib.parse import quote
+
+from env_token import resolve_bot_token
 
 VENDOR_DIR = os.path.join(os.path.dirname(__file__), ".vendor")
 if VENDOR_DIR not in sys.path:
@@ -24,13 +26,22 @@ try:
     from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, PageBreak, Table, TableStyle
     REPORTLAB_AVAILABLE = True
-except Exception:
+except Exception as e:
+    print("ERROR:", e)
     REPORTLAB_AVAILABLE = False
 
-COVER_IMAGE_PATH = "/Users/mac/.cursor/projects/Users-mac-Desktop-bot/assets/image-04abbe3f-dd87-4576-a56b-9fb20d506b2e.png"
-AFTER_COVER_BG_PATH = "/Users/mac/.cursor/projects/Users-mac-Desktop-bot/assets/image-68eae44b-8100-415e-9092-cb36dd18569d.png"
+BASE_DIR = os.path.dirname(__file__)
+ASSETS_DIR = os.path.join(BASE_DIR, "assets")
+COVER_IMAGE_PATH = os.path.join(ASSETS_DIR, "cover.png")
+AFTER_COVER_BG_PATH = os.path.join(ASSETS_DIR, "after_cover.png")
 
-TOKEN = "8516228631:AAHKrA0rYf2fMhAApgpip6m40g21D1cN9RA"
+if not os.path.isfile(COVER_IMAGE_PATH):
+    print(f"⚠️ нет assets/cover.png — продолжаем без изображения: {COVER_IMAGE_PATH}")
+if not os.path.isfile(AFTER_COVER_BG_PATH):
+    print(f"⚠️ нет assets/after_cover.png — продолжаем без изображения: {AFTER_COVER_BG_PATH}")
+
+TOKEN = resolve_bot_token()
+print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕТ'}")
 
 # Хранилище результатов расчётов пользователей (в памяти)
 results = {}
@@ -1061,6 +1072,7 @@ def letters_sum(text: str) -> int:
 
 def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | None:
     if not REPORTLAB_AVAILABLE:
+        print("ReportLab недоступен (REPORTLAB_AVAILABLE=False), PDF не создаётся")
         return None
 
     def _is_valid_font_file(path: str) -> bool:
@@ -1071,12 +1083,13 @@ def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | N
                 head = f.read(4)
             # TrueType: 00010000, OpenType: OTTO, TTC: ttcf
             return head in (b"\x00\x01\x00\x00", b"OTTO", b"ttcf")
-        except Exception:
+        except Exception as e:
+            print("ERROR:", e)
             return False
 
-    playfair_regular_path = os.path.join(os.path.dirname(__file__), "fonts", "PlayfairDisplay-Regular.ttf")
-    playfair_bold_path = os.path.join(os.path.dirname(__file__), "fonts", "PlayfairDisplay-Bold.ttf")
-    fallback_font_path = "/System/Library/Fonts/Supplemental/Arial Unicode.ttf"
+    playfair_regular_path = os.path.join(BASE_DIR, "fonts", "PlayfairDisplay-Regular.ttf")
+    playfair_bold_path = os.path.join(BASE_DIR, "fonts", "PlayfairDisplay-Bold.ttf")
+    fallback_font_path = os.path.join(BASE_DIR, "fonts", "ArialUnicode.ttf")
 
     font_name = "Helvetica"
     try:
@@ -1092,7 +1105,8 @@ def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | N
             if "SoulFont" not in set(pdfmetrics.getRegisteredFontNames()):
                 pdfmetrics.registerFont(TTFont("SoulFont", fallback_font_path))
             font_name = "SoulFont"
-    except Exception:
+    except Exception as e:
+        print("ERROR:", e)
         # Не валим генерацию PDF из-за проблем с файлом шрифта.
         font_name = "Helvetica"
 
@@ -1403,7 +1417,8 @@ def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | N
                 canvas.drawImage(img, x, y, width=draw_w, height=draw_h, preserveAspectRatio=True, mask="auto")
                 canvas.setFillColor(colors.Color(0, 0, 0, alpha=0.22))
                 canvas.rect(0, 0, width, height, stroke=0, fill=1)
-            except Exception:
+            except Exception as e:
+                print("ERROR:", e)
                 canvas.setFillColor(colors.HexColor("#FFF6D9"))
                 canvas.rect(0, height - 1.5 * cm, width, 1.5 * cm, stroke=0, fill=1)
                 canvas.setFillColor(colors.HexColor("#F5D77A"))
@@ -1438,7 +1453,8 @@ def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | N
                 x = (width - draw_w) / 2
                 y = (height - draw_h) / 2
                 canvas.drawImage(img, x, y, width=draw_w, height=draw_h, preserveAspectRatio=True, mask="auto")
-            except Exception:
+            except Exception as e:
+                print("ERROR:", e)
                 canvas.setFillColor(colors.HexColor("#2C230D"))
                 canvas.rect(0, 0, width, height, stroke=0, fill=1)
         else:
@@ -1460,76 +1476,89 @@ def build_pdf_report(fio: str, birth_date: str, sections: list[dict]) -> str | N
         canvas.drawRightString(width - 1.8 * cm, 0.45 * cm, f"Стр. {doc_obj.page}")
         canvas.restoreState()
 
-    doc.build(story, onFirstPage=_draw_cover_page, onLaterPages=_draw_page_decor)
+    try:
+        doc.build(story, onFirstPage=_draw_cover_page, onLaterPages=_draw_page_decor)
+    except Exception as e:
+        print("ERROR:", e)
+        try:
+            if pdf_path and os.path.exists(pdf_path):
+                os.remove(pdf_path)
+        except Exception as err:
+            print("ERROR:", err)
+        return None
     return pdf_path
 
 
 async def send_pdf_report(update: Update, fio: str, birth_date: str, sections: list[dict]):
-    chat = update.effective_chat
-    if not chat:
+    if not update.effective_chat:
         print("❌ Нет chat для отправки PDF")
         return
 
-    status_msg = await chat.send_message("⏳ Генерирую PDF...")
+    status_msg = await update.effective_chat.send_message("⏳ Генерирую PDF...")
 
     pdf_path = None
 
     try:
-        # 🔹 Генерация PDF
-        pdf_path = build_pdf_report(fio, birth_date, sections)
+        print("📄 Начинаю генерацию PDF...")
+        pdf_path = await asyncio.to_thread(build_pdf_report, fio, birth_date, sections)
 
-        if not pdf_path or not os.path.exists(pdf_path):
+        if not pdf_path:
+            print("❌ build_pdf_report вернул None")
             await status_msg.edit_text("❌ Не удалось создать PDF")
             return
 
-        # 🔹 Проверка размера (Telegram лимит)
+        if not os.path.exists(pdf_path):
+            print(f"❌ Файл не найден: {pdf_path}")
+            await status_msg.edit_text("❌ PDF не найден после генерации")
+            return
+
         file_size = os.path.getsize(pdf_path)
+        print(f"📦 Размер PDF: {file_size}")
+
+        if file_size == 0:
+            await status_msg.edit_text("❌ PDF пустой")
+            return
+
         if file_size > 50 * 1024 * 1024:
             await status_msg.edit_text("❌ PDF слишком большой")
             return
 
-        # 🔹 Безопасное имя файла
-        safe_fio = re.sub(r'[^a-zA-Zа-яА-Я0-9_]', '', fio.replace(" ", "_")) or "report"
+        # ASCII-имя файла — кириллица в multipart filename часто ломает клиенты/API
+        pdf_filename = f"SoulReport_{birth_date.replace('.', '')}.pdf"
 
-        # 🔹 Отправка
+        print("📤 Отправка PDF...")
+
         with open(pdf_path, "rb") as pdf_file:
-            await chat.send_document(
-                document=pdf_file,
-                filename=f"Статистика_Души_{safe_fio}.pdf",
-                caption=(
-                    "✨ <b>Ваш персональный разбор готов</b>\n\n"
-                    "Сохраните PDF, чтобы возвращаться к нему."
-                ),
-                parse_mode="HTML"
-            )
+            pdf_bytes = pdf_file.read()
 
-        # 🔹 Обновляем статус
+        await update.effective_chat.send_document(
+            document=InputFile(pdf_bytes, filename=pdf_filename),
+            caption="Ваш персональный PDF-разбор готов.",
+        )
+
         await status_msg.edit_text("✅ PDF готов")
 
-        # 🔹 Дальнейшее взаимодействие (очень важно)
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🔮 Новый разбор", callback_data="get_stats")],
             [InlineKeyboardButton("💝 Поддержать проект", callback_data="support_project")],
         ])
 
-        await chat.send_message(
+        await update.effective_chat.send_message(
             "Хочешь разобрать ещё или пойти глубже?",
             reply_markup=keyboard
         )
 
     except Exception as e:
-        print(f"PDF ERROR: {e}")
-        try:
-            await status_msg.edit_text(f"❌ Ошибка при создании PDF:\n{e}")
-        except:
-            pass
+        print("ERROR:", e)
+        await status_msg.edit_text(f"❌ Ошибка:\n{e}")
 
     finally:
         if pdf_path and os.path.exists(pdf_path):
             try:
                 os.remove(pdf_path)
-            except Exception as cleanup_error:
-                print(f"Ошибка удаления PDF: {cleanup_error}")
+                print("🧹 PDF удалён")
+            except Exception as e:
+                print("ERROR:", e)
 
 def block_description(num: int, block: dict) -> str:
     # Если это мастер-число, сначала проверяем наличие специального описания
@@ -2038,8 +2067,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             
         except Exception as e:
+            print("ERROR:", e)
             await update.message.reply_text(f"❌ Ошибка при формировании блоков: {str(e)}")
-            print(f"Ошибка формирования блоков: {e}")
             return
         
         # Формируем итоговый текст
@@ -2154,7 +2183,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_pdf_report(update, fio, birth_date, pdf_sections)
                 await show_action_menu(update, context)
             except Exception as e:
-                print(f"Ошибка отправки единого сообщения: {e}")
+                print("ERROR:", e)
                 await update.message.reply_text(f"❌ Ошибка отправки: {str(e)}")
         else:
             # Распределяем блоки по сообщениям
@@ -2292,18 +2321,18 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         )
                         await show_action_menu(update, context)
                 except Exception as e:
-                    print(f"Ошибка отправки части {i+1}/{len(parts)}: {e}")
+                    print("ERROR:", e)
                     print(f"Длина части: {len(part)}")
                     # Пытаемся отправить хотя бы информацию об ошибке
                     if i == 0:
                         try:
                             await update.message.reply_text(f"❌ Ошибка отправки сообщения. Часть {i+1} из {len(parts)}. Ошибка: {str(e)[:200]}")
-                        except:
-                            pass
+                        except Exception as e:
+                            print("ERROR:", e)
                 
     except Exception as e:
+        print("ERROR:", e)
         await update.message.reply_text(f"❌ Ошибка при расчёте: {str(e)}")
-        print(f"Ошибка: {e}")
 
 def main():
     # В некоторых окружениях IDE выставляет локальные прокси, из-за чего
@@ -2322,10 +2351,15 @@ def main():
     ):
         os.environ.pop(proxy_var, None)
 
+    if not TOKEN:
+        raise RuntimeError(
+            "Токен бота не задан. Установите переменную BOT_TOKEN (или TOKEN) с токеном от @BotFather."
+        )
+
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(main_menu_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     print("🤖 Бот запущен")
-    
+    app.run_polling()
 

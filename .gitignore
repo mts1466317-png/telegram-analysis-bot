@@ -3,3 +3,5 @@ __pycache__/
 .DS_Store
 database.db
 new window
+.bot_token
+bot_token.txt
