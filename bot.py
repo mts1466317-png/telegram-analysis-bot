@@ -12,9 +12,11 @@ from urllib.parse import quote
 
 from env_token import resolve_bot_token
 
+# Не использовать insert(0): в .vendor лежит частичная копия PIL без бинарного _imaging —
+# она перекрывает Pillow из pip и ломает ReportLab (Railway).
 VENDOR_DIR = os.path.join(os.path.dirname(__file__), ".vendor")
-if VENDOR_DIR not in sys.path:
-    sys.path.insert(0, VENDOR_DIR)
+if os.path.isdir(VENDOR_DIR) and VENDOR_DIR not in sys.path:
+    sys.path.append(VENDOR_DIR)
 
 try:
     from reportlab.lib import colors
