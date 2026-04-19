@@ -1081,6 +1081,85 @@ def _pdf_flowable_text(raw: object) -> str:
     return t.replace("\n", "<br/>")
 
 
+def _pdf_split_section_blocks(raw_text: str) -> list[tuple[str, str]]:
+    markers = [
+        ("🔹 Как проявляется:", "ПРОЯВЛЕННОСТЬ"),
+        ("🎯 Фокус периода:", "ФОКУС ПЕРИОДА"),
+        ("⚠️ Риски:", "РИСКИ"),
+        ("✅ Рекомендации:", "РЕКОМЕНДАЦИИ"),
+    ]
+    prepared = raw_text
+    for source, label in markers:
+        prepared = prepared.replace(source, f"##{label}##")
+
+    pieces: list[tuple[str, str]] = []
+    for chunk in prepared.split("##"):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        is_label = any(chunk == lab for _, lab in markers)
+        if is_label:
+            pieces.append((chunk, ""))
+        else:
+            if pieces and pieces[-1][1] == "":
+                title, _ = pieces[-1]
+                pieces[-1] = (title, chunk)
+            else:
+                pieces.append(("ОПИСАНИЕ", chunk))
+    return pieces
+
+
+def _pdf_planet_label_with_emoji(planet_name: str) -> str:
+    emoji_map = {
+        "Солнце": "☉",
+        "Луна": "☽",
+        "Меркурий": "☿",
+        "Венера": "♀",
+        "Марс": "♂",
+        "Юпитер": "♃",
+        "Сатурн": "♄",
+        "Уран": "♅",
+        "Нептун": "♆",
+        "Плутон": "♇",
+    }
+    base_name = planet_name.replace(" (мастер)", "").strip()
+    emoji = emoji_map.get(base_name, "🪐")
+    return f"{emoji} {planet_name.upper()}"
+
+
+def _pdf_build_calc_scheme_paragraphs(cs: dict) -> str:
+    """Тот же контент формул, что и раньше (бизнес-логика без изменений)."""
+    lines = [
+        "Буквы русского алфавита суммируются по таблице Пифагора (как в боте). Число сводится "
+        "(reduce): если больше 9 и не мастер (11, 22, …), суммируются цифры результата.",
+        "",
+        "━━ Исходные данные ━━",
+        f"Фамилия «{cs['surname']}»: Σ букв = {cs['letters_surname']}",
+        f"Имя «{cs['name']}»: Σ букв = {cs['letters_name']}",
+        f"Отчество «{cs['patronymic']}»: Σ букв = {cs['letters_patronymic']}",
+        f"Σ букв всего ФИО = {cs['fio_sum']}",
+        f"Дата: день D = {cs['day']}, месяц M = {cs['month']}, год Y = {cs['year']}",
+        f"Сумма всех цифр даты записи = {cs['date_digits_sum']}",
+        "",
+        "━━ Дерево жизни (ключевые формулы) ━━",
+        f"1. Физическое тело — reduce(ΣФИО + D) = reduce({cs['fio_sum']} + {cs['day']}) → {cs['physical']} ({cs['planet_physical']})",
+        f"2. Астральное тело — reduce(Σ имени + M) = reduce({cs['letters_name']} + {cs['month']}) → {cs['astral']} ({cs['planet_astral']})",
+        f"3. Ментальное тело — reduce(Σ фамилии + Y) = reduce({cs['letters_surname']} + {cs['year']}) → {cs['mental']} ({cs['planet_mental']})",
+        f"4. Жизненная задача — reduce(D + M + Y) = reduce({cs['day']} + {cs['month']} + {cs['year']}) → {cs['life_task']} ({cs['planet_life']})",
+        f"5. Родовой эгрегор — reduce(ΣФИО) → {cs['ancestral_egregor']} ({cs['planet_egregor']})",
+        f"6. Высшее Я — reduce(ΣФИО + сумма цифр даты) = reduce({cs['fio_sum']} + {cs['date_digits_sum']}) → {cs['higher_self']} ({cs['planet_higher']})",
+        f"7. Родовая программа — reduce(ментальное + родовой эгрегор) = reduce({cs['mental']} + {cs['ancestral_egregor']}) → {cs['ancestral_program']} ({cs['planet_program']})",
+        f"8. Социальная задача — reduce(астральное + жизненная задача) = reduce({cs['astral']} + {cs['life_task']}) → {cs['social_task']} ({cs['planet_social']})",
+        f"9. Сочетание задач — reduce(социальная + жизненная) = reduce({cs['social_task']} + {cs['life_task']}) → {cs['task_combo']} ({cs['planet_combo']})",
+        "",
+        "━━ Текущий 7-летний цикл ━━",
+        f"Возраст на дату расчёта = {cs['age']} лет (полных лет)",
+        f"Номер цикла N = ({cs['age']} ÷ 7) + 1 = {cs['cycle_number']} (возрастная полоса {cs['cycle_start_age']}–{cs['cycle_end_age']} лет)",
+        f"Энергия цикла — reduce(жизненная задача + N) = reduce({cs['life_task']} + {cs['cycle_number']}) → {cs['cycle_energy']} ({cs['planet_cycle']})",
+    ]
+    return "\n".join(lines)
+
+
 def build_pdf_report(
     fio: str,
     birth_date: str,
@@ -1126,437 +1205,365 @@ def build_pdf_report(
         # Не валим генерацию PDF из-за проблем с файлом шрифта.
         font_name = "Helvetica"
 
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
+
     fd, pdf_path = tempfile.mkstemp(prefix="soul_report_", suffix=".pdf")
     os.close(fd)
+
+    C_TEXT = colors.HexColor("#000000")
+    C_HEAD = colors.HexColor("#222222")
+    C_MUTED = colors.HexColor("#555555")
+    C_BORDER = colors.HexColor("#DDDDDD")
+    C_HEADER_BG = colors.HexColor("#222222")
+    C_ZEBRA_A = colors.HexColor("#FFFFFF")
+    C_ZEBRA_B = colors.HexColor("#F4F5F7")
+    C_FOOTER_BG = colors.HexColor("#EEEEEE")
+    C_FOOTER_TXT = colors.HexColor("#333333")
+    C_PAPER = colors.HexColor("#FAFAFA")
+    OVERLAY_WHITE = colors.Color(1, 1, 1, alpha=0.88)
 
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=A4,
-        rightMargin=1.8 * cm,
-        leftMargin=1.8 * cm,
-        topMargin=5.0 * cm,
-        bottomMargin=1.6 * cm,
+        leftMargin=2.0 * cm,
+        rightMargin=2.0 * cm,
+        topMargin=2.2 * cm,
+        bottomMargin=2.0 * cm,
     )
 
     base_styles = getSampleStyleSheet()
-    gold_heading = colors.HexColor("#D8A64A")
-    gold_frame = colors.HexColor("#D8A64A")
-    gold_highlight = colors.HexColor("#D8A64A")
-    cover_title = ParagraphStyle(
-        "CoverTitle",
+
+    title_style = ParagraphStyle(
+        "PdfTitleStyle",
         parent=base_styles["Title"],
         fontName=font_name,
-        fontSize=34,
-        leading=43,
-        alignment=1,
-        textColor=gold_heading,
-    )
-    cover_subtitle = ParagraphStyle(
-        "CoverSubTitle",
-        parent=base_styles["BodyText"],
-        fontName=font_name,
-        fontSize=12,
-        leading=18.5,
-        alignment=1,
-        textColor=colors.HexColor("#FFF8E0"),
-    )
-    intro_title = ParagraphStyle(
-        "IntroTitle",
-        parent=base_styles["Heading1"],
-        fontName=font_name,
-        fontSize=26,
-        leading=33,
-        alignment=1,
-        textColor=gold_heading,
-    )
-    intro_sub = ParagraphStyle(
-        "IntroSub",
-        parent=base_styles["BodyText"],
-        fontName=font_name,
-        fontSize=13,
-        leading=20.5,
-        alignment=1,
-        textColor=colors.white,
-    )
-    intro_sub_on_dark = ParagraphStyle(
-        "IntroSubOnDark",
-        parent=intro_sub,
-        textColor=colors.HexColor("#FFF5DE"),
-    )
-    page_title = ParagraphStyle(
-        "PageTitle",
-        parent=base_styles["Heading2"],
-        fontName=font_name,
-        fontSize=18,
-        leading=25,
-        alignment=1,
-        textColor=gold_heading,
-    )
-    body_style = ParagraphStyle(
-        "Body",
-        parent=base_styles["BodyText"],
-        fontName=font_name,
-        fontSize=10.6,
-        leading=15.8,
-        alignment=1,
-        textColor=colors.white,
-    )
-    center_body = ParagraphStyle(
-        "CenterBody",
-        parent=body_style,
-        alignment=1,
-    )
-    section_header = ParagraphStyle(
-        "SectionHeader",
-        parent=base_styles["Heading2"],
-        fontName=font_name,
-        fontSize=17,
-        leading=24,
-        textColor=colors.white,
-        backColor=gold_highlight,
-        alignment=1,
-        spaceAfter=8,
-        leftIndent=8,
-        rightIndent=8,
-    )
-    planet_style = ParagraphStyle(
-        "PlanetStyle",
-        parent=base_styles["BodyText"],
-        fontName=font_name,
-        fontSize=13,
-        leading=17,
-        textColor=colors.white,
-        backColor=gold_highlight,
-        alignment=1,
-        leftIndent=4.0 * cm,
-        rightIndent=4.0 * cm,
-        spaceBefore=2,
-        spaceAfter=4,
-    )
-    block_title_style = ParagraphStyle(
-        "BlockTitle",
-        parent=base_styles["BodyText"],
-        fontName=font_name,
-        fontSize=10.2,
-        leading=15.2,
-        alignment=1,
-        textColor=colors.white,
-        backColor=gold_highlight,
-        leftIndent=6,
-        rightIndent=6,
-        spaceBefore=4,
-        spaceAfter=4,
-    )
-    block_body_style = ParagraphStyle(
-        "BlockBody",
-        parent=base_styles["BodyText"],
-        fontName=font_name,
-        fontSize=10.0,
-        leading=14.8,
-        alignment=1,
-        textColor=colors.white,
-        firstLineIndent=0,
-        spaceBefore=2,
+        fontSize=22,
+        leading=28,
+        alignment=TA_CENTER,
+        textColor=C_HEAD,
         spaceAfter=6,
     )
-    accent_hint = ParagraphStyle(
-        "AccentHint",
-        parent=base_styles["BodyText"],
+    subtitle_style = ParagraphStyle(
+        "PdfSubtitle",
+        parent=base_styles["Normal"],
         fontName=font_name,
-        fontSize=9,
-        leading=12,
-        textColor=colors.HexColor("#F8E8C6"),
-        alignment=1,
+        fontSize=11,
+        leading=15,
+        alignment=TA_CENTER,
+        textColor=C_MUTED,
+        spaceAfter=18,
     )
-    calc_body_style = ParagraphStyle(
-        "CalcBody",
-        parent=base_styles["BodyText"],
+    fio_title_style = ParagraphStyle(
+        "PdfFioTitle",
+        parent=base_styles["Normal"],
         fontName=font_name,
-        fontSize=9.0,
-        leading=13.5,
-        alignment=0,
-        textColor=colors.HexColor("#FFF8E8"),
+        fontSize=16,
+        leading=22,
+        alignment=TA_CENTER,
+        textColor=C_HEAD,
         spaceAfter=10,
     )
+    section_style = ParagraphStyle(
+        "PdfSectionTitle",
+        parent=base_styles["Heading2"],
+        fontName=font_name,
+        fontSize=15,
+        leading=21,
+        alignment=TA_LEFT,
+        textColor=C_HEAD,
+        spaceBefore=14,
+        spaceAfter=10,
+    )
+    body_style = ParagraphStyle(
+        "PdfBodyText",
+        parent=base_styles["BodyText"],
+        fontName=font_name,
+        fontSize=10.5,
+        leading=15.5,
+        alignment=TA_JUSTIFY,
+        textColor=C_TEXT,
+        spaceAfter=8,
+    )
+    body_center_style = ParagraphStyle(
+        "PdfBodyCenter",
+        parent=body_style,
+        alignment=TA_CENTER,
+        textColor=C_MUTED,
+    )
+    highlight_style = ParagraphStyle(
+        "PdfHighlight",
+        parent=body_style,
+        fontName=font_name,
+        fontSize=11,
+        leading=15,
+        textColor=C_HEAD,
+        spaceBefore=4,
+        spaceAfter=12,
+    )
+    planet_kicker_style = ParagraphStyle(
+        "PdfPlanetKicker",
+        parent=base_styles["Normal"],
+        fontName=font_name,
+        fontSize=11,
+        leading=14,
+        alignment=TA_LEFT,
+        textColor=C_MUTED,
+        spaceAfter=4,
+    )
+    block_heading_style = ParagraphStyle(
+        "PdfBlockHeading",
+        parent=base_styles["Normal"],
+        fontName=font_name,
+        fontSize=11,
+        leading=14,
+        alignment=TA_LEFT,
+        textColor=C_HEAD,
+        spaceBefore=10,
+        spaceAfter=6,
+    )
+    calc_style = ParagraphStyle(
+        "PdfCalcBody",
+        parent=base_styles["BodyText"],
+        fontName=font_name,
+        fontSize=9.5,
+        leading=14,
+        alignment=TA_LEFT,
+        textColor=C_TEXT,
+        spaceAfter=12,
+    )
+    tbl_head = ParagraphStyle(
+        "PdfTableHead",
+        parent=base_styles["Normal"],
+        fontName=font_name,
+        fontSize=10,
+        leading=13,
+        alignment=TA_CENTER,
+        textColor=colors.white,
+    )
+    tbl_cell_l = ParagraphStyle(
+        "PdfTableCellL",
+        parent=base_styles["Normal"],
+        fontName=font_name,
+        fontSize=9.5,
+        leading=13,
+        alignment=TA_LEFT,
+        textColor=C_TEXT,
+    )
+    tbl_cell_c = ParagraphStyle(
+        "PdfTableCellC",
+        parent=tbl_cell_l,
+        alignment=TA_CENTER,
+    )
 
-    def _split_section_text(raw_text: str) -> list[tuple[str, str]]:
-        markers = [
-            ("🔹 Как проявляется:", "ПРОЯВЛЕННОСТЬ"),
-            ("🎯 Фокус периода:", "ФОКУС ПЕРИОДА"),
-            ("⚠️ Риски:", "РИСКИ"),
-            ("✅ Рекомендации:", "РЕКОМЕНДАЦИИ"),
-        ]
-        prepared = raw_text
-        for source, label in markers:
-            prepared = prepared.replace(source, f"##{label}##")
+    def _safe_cell(val: object) -> str:
+        return html.escape(str(val), quote=False)
 
-        pieces = []
-        for chunk in prepared.split("##"):
-            chunk = chunk.strip()
-            if not chunk:
-                continue
-            is_label = any(chunk == label for _, label in markers)
-            if is_label:
-                pieces.append((chunk, ""))
-            else:
-                if pieces and pieces[-1][1] == "":
-                    title, _ = pieces[-1]
-                    pieces[-1] = (title, chunk)
-                else:
-                    pieces.append(("ОПИСАНИЕ", chunk))
-        return pieces
+    def _draw_full_bleed_bg(canvas, image_path: str, width: float, height: float) -> bool:
+        if not os.path.exists(image_path):
+            return False
+        try:
+            img = ImageReader(image_path)
+            iw, ih = img.getSize()
+            scale = max(width / iw, height / ih)
+            draw_w = iw * scale
+            draw_h = ih * scale
+            x = (width - draw_w) / 2
+            y = (height - draw_h) / 2
+            canvas.drawImage(img, x, y, width=draw_w, height=draw_h, preserveAspectRatio=True, mask="auto")
+            return True
+        except Exception as e:
+            print("ERROR:", e)
+            return False
 
-    def _planet_label_with_emoji(planet_name: str) -> str:
-        emoji_map = {
-            "Солнце": "☉",
-            "Луна": "☽",
-            "Меркурий": "☿",
-            "Венера": "♀",
-            "Марс": "♂",
-            "Юпитер": "♃",
-            "Сатурн": "♄",
-            "Уран": "♅",
-            "Нептун": "♆",
-            "Плутон": "♇",
-        }
-        base_name = planet_name.replace(" (мастер)", "").strip()
-        emoji = emoji_map.get(base_name, "🪐")
-        return f"{emoji} {planet_name.upper()}"
+    story: list = []
 
-    story = []
-
-    # Стр.1 — Титул на фоне (текст рисуем через canvas с absolute positioning)
-    story.extend([
-        PageBreak(),
-    ])
-
-    # Стр.2 — PROLOGUE + RESULT
-    story.extend([
-        Spacer(1, 8.0 * cm),
-        Paragraph("PROLOGUE", intro_title),
-        Spacer(1, 0.55 * cm),
+    # Титульная страница
+    story.append(Spacer(1, 3.2 * cm))
+    story.append(Paragraph(_pdf_flowable_text("Статистика Души"), title_style))
+    story.append(
         Paragraph(
-            "ЗДРАВСТВУЙ, ДРУГ!<br/>это статистика души. расчет матрицы сознания "
-            "по имени и дате рождения.<br/><br/>"
-            "она показывает, как проявляются в жизни разные уровни личности человека.<br/><br/>"
-            "ПЕРСОНАЛЬНЫЙ РАЗБОР СФЕР ЖИЗНИ",
-            intro_sub_on_dark,
-        ),
-        PageBreak(),
-    ])
-
-    # Стр.3 — WHAT'S INSIDE
-    story.append(Spacer(1, 2.0 * cm))
-    story.append(Paragraph("WHAT'S INSIDE?", page_title))
-    story.append(Spacer(1, 0.25 * cm))
-    for idx, s in enumerate(sections, start=1):
-        story.append(
-            Paragraph(_pdf_flowable_text(f"{idx}. {s['title']}"), center_body),
+            _pdf_flowable_text("Персональный нумерологический отчёт"),
+            subtitle_style,
         )
+    )
+    story.append(Spacer(1, 1.4 * cm))
+    story.append(Paragraph(f"<b>{html.escape(fio, quote=False)}</b>", fio_title_style))
+    story.append(
+        Paragraph(_pdf_flowable_text(f"Дата рождения: {birth_date}"), body_center_style)
+    )
+    story.append(Spacer(1, 1.2 * cm))
+    story.append(
+        Paragraph(
+            _pdf_flowable_text(
+                "Документ сформирован на основе расчёта «Древа жизни» по ФИО и дате рождения. "
+                "Ниже приведены схема вычислений, сводная матрица сфер и развёрнутый текстовый разбор."
+            ),
+            body_style,
+        )
+    )
     story.append(PageBreak())
 
-    # Стр.4 — данные человека
-    story.append(Spacer(1, 2.5 * cm))
-    fio_lines = fio.split()
-    for line in fio_lines:
-        eu = html.escape(line.upper(), quote=False)
-        story.append(Paragraph(f"<b>{eu}</b>", page_title))
-    story.append(Spacer(1, 0.2 * cm))
-    story.append(Paragraph(_pdf_flowable_text(birth_date), center_body))
+    # Данные пользователя
+    story.append(Paragraph(_pdf_flowable_text("Данные для расчёта"), section_style))
+    story.append(Paragraph(_pdf_flowable_text(f"ФИО: {fio}"), body_style))
+    story.append(Paragraph(_pdf_flowable_text(f"Дата рождения: {birth_date}"), body_style))
     story.append(PageBreak())
 
-    # Стр.4б — полная схема расчётов (формулы и промежуточные суммы)
+    # Нумерологическая схема расчёта (тот же текст, что в _pdf_build_calc_scheme_paragraphs)
     if calc_snapshot:
-        cs = calc_snapshot
-        story.append(Spacer(1, 1.2 * cm))
-        story.append(Paragraph("НУМЕРОЛОГИЧЕСКАЯ СХЕМА РАСЧЁТА", page_title))
-        story.append(Spacer(1, 0.35 * cm))
-        scheme_lines = [
-            "Буквы русского алфавита суммируются по таблице Пифагора (как в боте). Число сводится "
-            "(reduce): если больше 9 и не мастер (11, 22, …), суммируются цифры результата.",
-            "",
-            "━━ ИСХОДНЫЕ ДАННЫЕ ━━",
-            f"Фамилия «{cs['surname']}»: Σ букв = {cs['letters_surname']}",
-            f"Имя «{cs['name']}»: Σ букв = {cs['letters_name']}",
-            f"Отчество «{cs['patronymic']}»: Σ букв = {cs['letters_patronymic']}",
-            f"Σ букв всего ФИО = {cs['fio_sum']}",
-            f"Дата: день D = {cs['day']}, месяц M = {cs['month']}, год Y = {cs['year']}",
-            f"Сумма всех цифр даты записи = {cs['date_digits_sum']}",
-            "",
-            "━━ ДЕРЕВО ЖИЗНИ (ключевые формулы) ━━",
-            f"1. Физическое тело — reduce(ΣФИО + D) = reduce({cs['fio_sum']} + {cs['day']}) → {cs['physical']} ({cs['planet_physical']})",
-            f"2. Астральное тело — reduce(Σ имени + M) = reduce({cs['letters_name']} + {cs['month']}) → {cs['astral']} ({cs['planet_astral']})",
-            f"3. Ментальное тело — reduce(Σ фамилии + Y) = reduce({cs['letters_surname']} + {cs['year']}) → {cs['mental']} ({cs['planet_mental']})",
-            f"4. Жизненная задача — reduce(D + M + Y) = reduce({cs['day']} + {cs['month']} + {cs['year']}) → {cs['life_task']} ({cs['planet_life']})",
-            f"5. Родовой эгрегор — reduce(ΣФИО) → {cs['ancestral_egregor']} ({cs['planet_egregor']})",
-            f"6. Высшее Я — reduce(ΣФИО + сумма цифр даты) = reduce({cs['fio_sum']} + {cs['date_digits_sum']}) → {cs['higher_self']} ({cs['planet_higher']})",
-            f"7. Родовая программа — reduce(ментальное + родовой эгрегор) = reduce({cs['mental']} + {cs['ancestral_egregor']}) → {cs['ancestral_program']} ({cs['planet_program']})",
-            f"8. Социальная задача — reduce(астральное + жизненная задача) = reduce({cs['astral']} + {cs['life_task']}) → {cs['social_task']} ({cs['planet_social']})",
-            f"9. Сочетание задач — reduce(социальная + жизненная) = reduce({cs['social_task']} + {cs['life_task']}) → {cs['task_combo']} ({cs['planet_combo']})",
-            "",
-            "━━ ТЕКУЩИЙ 7-ЛЕТНИЙ ЦИКЛ ━━",
-            f"Возраст на дату расчёта = {cs['age']} лет (полных лет)",
-            f"Номер цикла N = ({cs['age']} ÷ 7) + 1 = {cs['cycle_number']} (возрастная полоса {cs['cycle_start_age']}–{cs['cycle_end_age']} лет)",
-            f"Энергия цикла — reduce(жизненная задача + N) = reduce({cs['life_task']} + {cs['cycle_number']}) → {cs['cycle_energy']} ({cs['planet_cycle']})",
-        ]
-        story.append(Paragraph(_pdf_flowable_text("\n".join(scheme_lines)), calc_body_style))
+        story.append(
+            Paragraph(_pdf_flowable_text("Нумерологическая схема расчёта"), section_style)
+        )
+        story.append(Spacer(1, 0.15 * cm))
+        story.append(
+            Paragraph(
+                _pdf_flowable_text(_pdf_build_calc_scheme_paragraphs(calc_snapshot)),
+                calc_style,
+            )
+        )
         story.append(PageBreak())
 
-    # Стр.5 — сводная матрица (Сфера — вибрация — Планета)
-    story.append(Spacer(1, 2.5 * cm))
-    story.append(Paragraph("ПЕРСОНАЛЬНАЯ МАТРИЦА", page_title))
-    story.append(Spacer(1, 0.2 * cm))
-    summary_rows = [["СФЕРА", "ВИБР.", "ПЛАНЕТА"]]
+    # Персональная матрица
+    story.append(Paragraph(_pdf_flowable_text("Персональная матрица"), section_style))
+    story.append(Spacer(1, 0.25 * cm))
+    summary_rows = [
+        [
+            Paragraph("<b>СФЕРА</b>", tbl_head),
+            Paragraph("<b>ВИБРАЦИЯ</b>", tbl_head),
+            Paragraph("<b>ПЛАНЕТА</b>", tbl_head),
+        ],
+    ]
     for s in sections:
-        vib = s.get("vibration", "")
         summary_rows.append(
             [
-                s["title"].upper(),
-                str(vib),
-                _planet_label_with_emoji(s["planet"]),
+                Paragraph(_safe_cell(s["title"].upper()), tbl_cell_l),
+                Paragraph(_safe_cell(s.get("vibration", "")), tbl_cell_c),
+                Paragraph(_safe_cell(_pdf_planet_label_with_emoji(s["planet"])), tbl_cell_c),
             ]
         )
-    summary_table = Table(summary_rows, colWidths=[8.8 * cm, 2.0 * cm, 5.2 * cm])
-    summary_table.setStyle(TableStyle([
-        ("FONT", (0, 0), (-1, -1), font_name, 9.4),
-        ("BACKGROUND", (0, 0), (-1, 0), gold_highlight),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("GRID", (0, 0), (-1, -1), 0.55, gold_frame),
-        ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#FFF8E5")),
-        ("BACKGROUND", (2, 1), (2, -1), gold_highlight),
-        ("TEXTCOLOR", (2, 1), (2, -1), colors.white),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 7),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 7),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-    ]))
+    table_w = A4[0] - doc.leftMargin - doc.rightMargin
+    col_a = table_w * 0.46
+    col_b = table_w * 0.18
+    col_c = table_w * 0.36
+    summary_table = Table(summary_rows, colWidths=[col_a, col_b, col_c], repeatRows=1)
+    n_data = len(sections)
+    zebra_cmds: list[tuple] = []
+    if n_data:
+        zebra_cmds.append(("ROWBACKGROUNDS", (0, 1), (-1, -1), [C_ZEBRA_A, C_ZEBRA_B]))
+    summary_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), C_HEADER_BG),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("GRID", (0, 0), (-1, -1), 0.4, C_BORDER),
+                ("LINEBELOW", (0, 0), (-1, 0), 0.8, C_HEADER_BG),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ]
+            + zebra_cmds
+        )
+    )
     story.append(summary_table)
     story.append(PageBreak())
 
-    # Стр.8+ — по одной сфере на страницу (как в референсе)
-    for idx, section in enumerate(sections, start=1):
-        if idx == 1:
-            story.append(Spacer(1, 2.5 * cm))
-        elif idx in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11):
-            story.append(Spacer(1, 2.0 * cm))
+    # Разбор сфер
+    for idx, section in enumerate(sections):
+        if idx:
+            story.append(PageBreak())
         story.append(
-            Paragraph(_pdf_flowable_text(_planet_label_with_emoji(section["planet"])), planet_style),
+            Paragraph(
+                _pdf_flowable_text(_pdf_planet_label_with_emoji(section["planet"])),
+                planet_kicker_style,
+            )
         )
-        story.append(Paragraph(_pdf_flowable_text(section["title"].upper()), section_header))
+        story.append(Paragraph(_pdf_flowable_text(section["title"]), section_style))
         if section.get("vibration") is not None:
             story.append(
                 Paragraph(
-                    _pdf_flowable_text(f"Вибрация сферы: {section['vibration']}"),
-                    accent_hint,
+                    f"<b>Вибрация:</b> {html.escape(str(section['vibration']), quote=False)}",
+                    highlight_style,
                 )
             )
-            story.append(Spacer(1, 0.06 * cm))
-        story.append(Spacer(1, 0.08 * cm))
-
-        for part_title, part_text in _split_section_text(section["text"]):
-            story.append(Paragraph(_pdf_flowable_text(part_title), block_title_style))
+        for part_title, part_text in _pdf_split_section_blocks(section["text"]):
+            story.append(Paragraph(_pdf_flowable_text(part_title), block_heading_style))
             if part_text:
                 text_paragraphs = [p.strip() for p in part_text.split("\n\n") if p.strip()]
                 if not text_paragraphs:
                     text_paragraphs = [part_text.strip()]
-
                 for p in text_paragraphs:
-                    story.append(Paragraph(_pdf_flowable_text(p), block_body_style))
+                    story.append(Paragraph(_pdf_flowable_text(p), body_style))
                     story.append(Spacer(1, 0.12 * cm))
+            story.append(Spacer(1, 0.18 * cm))
 
-                story.append(Spacer(1, 0.28 * cm))
-
-        if idx < len(sections):
-            story.append(PageBreak())
-
-    # Финальная CTA-страница (как в референсе)
-    story.extend([
-        PageBreak(),
-        Spacer(1, 2.8 * cm),
-        Paragraph("Если тебе откликнулся этот разбор", intro_title),
-        Spacer(1, 0.4 * cm),
+    # Итоговый профиль
+    story.append(PageBreak())
+    story.append(Paragraph(_pdf_flowable_text("Итоговый профиль"), section_style))
+    profile_lines: list[str] = []
+    for s in sections:
+        v = s.get("vibration")
+        if v is not None and str(v).strip() != "":
+            profile_lines.append(f"• {s['title']} — вибрация {v} ({s.get('planet', '')})")
+        else:
+            profile_lines.append(f"• {s['title']} ({s.get('planet', '')})")
+    brief = (
+        "Краткая карта вашего профиля по ключевым сферам и числовым акцентам:\n\n"
+        + "\n".join(profile_lines)
+    )
+    if calc_snapshot:
+        cs = calc_snapshot
+        brief += (
+            f"\n\nТекущий расчётный возраст: {cs['age']} полных лет. "
+            f"Номер 7-летнего цикла: {cs['cycle_number']} "
+            f"(полоса {cs['cycle_start_age']}–{cs['cycle_end_age']} лет); "
+            f"энергия цикла — {cs['cycle_energy']} ({cs['planet_cycle']})."
+        )
+    story.append(Paragraph(_pdf_flowable_text(brief), body_style))
+    story.append(Spacer(1, 0.6 * cm))
+    story.append(
         Paragraph(
-            "отправьте контакт человеку, которому сейчас важно лучше понять себя.<br/><br/>"
-            "CONTACT<br/><b>@GodStatistics_bot</b><br/><br/>"
-            "<b>СТАТИСТИКА ДУШИ</b>",
-            intro_sub,
-        ),
-    ])
+            _pdf_flowable_text(
+                "Если разбор откликается, вы можете поделиться им с тем, кому сейчас важно "
+                "лучше понять себя.\n\n"
+                "Контакт: @GodStatistics_bot\n"
+                "Статистика Души"
+            ),
+            body_center_style,
+        )
+    )
 
     def _draw_page_decor(canvas, doc_obj):
         width, height = A4
-
         canvas.saveState()
-        if os.path.exists(AFTER_COVER_BG_PATH):
-            try:
-                img = ImageReader(AFTER_COVER_BG_PATH)
-                iw, ih = img.getSize()
-                scale = max(width / iw, height / ih)
-                draw_w = iw * scale
-                draw_h = ih * scale
-                x = (width - draw_w) / 2
-                y = (height - draw_h) / 2
-                canvas.drawImage(img, x, y, width=draw_w, height=draw_h, preserveAspectRatio=True, mask="auto")
-                canvas.setFillColor(colors.Color(0, 0, 0, alpha=0.22))
-                canvas.rect(0, 0, width, height, stroke=0, fill=1)
-            except Exception as e:
-                print("ERROR:", e)
-                canvas.setFillColor(colors.HexColor("#FFF6D9"))
-                canvas.rect(0, height - 1.5 * cm, width, 1.5 * cm, stroke=0, fill=1)
-                canvas.setFillColor(colors.HexColor("#F5D77A"))
-                canvas.rect(0, height - 0.5 * cm, width, 0.5 * cm, stroke=0, fill=1)
-        else:
-            # Фолбэк, если фоновое изображение недоступно
-            canvas.setFillColor(colors.HexColor("#FFF6D9"))
-            canvas.rect(0, height - 1.5 * cm, width, 1.5 * cm, stroke=0, fill=1)
-            canvas.setFillColor(colors.HexColor("#F5D77A"))
-            canvas.rect(0, height - 0.5 * cm, width, 0.5 * cm, stroke=0, fill=1)
-
-        # Нижний бар и номер страницы
-        canvas.setFillColor(colors.HexColor("#FFF9EA"))
-        canvas.rect(0, 0, width, 1.2 * cm, stroke=0, fill=1)
-        canvas.setFont(font_name, 8.5)
-        canvas.setFillColor(colors.HexColor("#8F6500"))
-        canvas.drawString(1.8 * cm, 0.45 * cm, "Статистика Души")
-        canvas.drawRightString(width - 1.8 * cm, 0.45 * cm, f"Стр. {doc_obj.page}")
+        if not _draw_full_bleed_bg(canvas, AFTER_COVER_BG_PATH, width, height):
+            canvas.setFillColor(C_PAPER)
+            canvas.rect(0, 0, width, height, stroke=0, fill=1)
+        canvas.setFillColor(OVERLAY_WHITE)
+        canvas.rect(0, 0, width, height, stroke=0, fill=1)
+        canvas.setFillColor(C_FOOTER_BG)
+        canvas.rect(0, 0, width, 1.05 * cm, stroke=0, fill=1)
+        canvas.setFont(font_name, 8)
+        canvas.setFillColor(C_FOOTER_TXT)
+        canvas.drawString(1.6 * cm, 0.32 * cm, "Статистика Души")
+        canvas.drawRightString(width - 1.6 * cm, 0.32 * cm, f"Стр. {doc_obj.page}")
         canvas.restoreState()
 
     def _draw_cover_page(canvas, doc_obj):
         width, height = A4
         canvas.saveState()
-
-        if os.path.exists(COVER_IMAGE_PATH):
-            try:
-                img = ImageReader(COVER_IMAGE_PATH)
-                iw, ih = img.getSize()
-                scale = max(width / iw, height / ih)
-                draw_w = iw * scale
-                draw_h = ih * scale
-                x = (width - draw_w) / 2
-                y = (height - draw_h) / 2
-                canvas.drawImage(img, x, y, width=draw_w, height=draw_h, preserveAspectRatio=True, mask="auto")
-            except Exception as e:
-                print("ERROR:", e)
-                canvas.setFillColor(colors.HexColor("#2C230D"))
-                canvas.rect(0, 0, width, height, stroke=0, fill=1)
-        else:
-            canvas.setFillColor(colors.HexColor("#2C230D"))
+        if not _draw_full_bleed_bg(canvas, COVER_IMAGE_PATH, width, height):
+            canvas.setFillColor(C_PAPER)
             canvas.rect(0, 0, width, height, stroke=0, fill=1)
-
-        # На фоне уже есть дизайн титула, сверху рисуем только динамические данные.
-        canvas.setFillColor(colors.HexColor("#FFF8E0"))
-        canvas.setFont(font_name, 12)
-        canvas.drawCentredString(width / 2, height * 0.47, fio.lower())
-        canvas.drawCentredString(width / 2, height * 0.44, birth_date)
-
-        # Нижний футер обложки
-        canvas.setFillColor(colors.HexColor("#FFF9EA"))
-        canvas.rect(0, 0, width, 1.2 * cm, stroke=0, fill=1)
-        canvas.setFont(font_name, 8.5)
-        canvas.setFillColor(colors.HexColor("#8F6500"))
-        canvas.drawString(1.8 * cm, 0.45 * cm, "Статистика Души")
-        canvas.drawRightString(width - 1.8 * cm, 0.45 * cm, f"Стр. {doc_obj.page}")
+        canvas.setFillColor(OVERLAY_WHITE)
+        canvas.rect(0, 0, width, height, stroke=0, fill=1)
+        canvas.setFillColor(C_FOOTER_BG)
+        canvas.rect(0, 0, width, 1.05 * cm, stroke=0, fill=1)
+        canvas.setFont(font_name, 8)
+        canvas.setFillColor(C_FOOTER_TXT)
+        canvas.drawString(1.6 * cm, 0.32 * cm, "Статистика Души")
+        canvas.drawRightString(width - 1.6 * cm, 0.32 * cm, f"Стр. {doc_obj.page}")
         canvas.restoreState()
 
     try:
