@@ -1863,6 +1863,9 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if not query:
         return
 
+    if query.data.startswith("approve_") or query.data.startswith("reject_"):
+        return
+
     await query.answer()
 
     data = query.data
@@ -2168,6 +2171,7 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     if not query:
         return
+    print("🔥 ADMIN CLICK:", query.data)
     await query.answer()
 
     action, user_id_str = query.data.split("_", 1)

@@ -37,7 +37,7 @@ if not TOKEN:
 
 os.environ["BOT_TOKEN"] = TOKEN
 
-from bot import start, handle_text, main_menu_callback
+from bot import start, handle_text, main_menu_callback, admin_payment_callback
 
 # Один event loop в отдельном потоке (Flask воркеры в разных потоках).
 _app_loop: Optional[asyncio.AbstractEventLoop] = None
@@ -61,6 +61,7 @@ if _app_loop is None:
 
 tg_app = ApplicationBuilder().token(TOKEN).build()
 tg_app.add_handler(CommandHandler("start", start))
+tg_app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
 tg_app.add_handler(CallbackQueryHandler(main_menu_callback))
 tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
