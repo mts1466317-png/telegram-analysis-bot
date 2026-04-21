@@ -54,6 +54,9 @@ results = {}
 # Ожидающие подтверждения оплаты: user_id_str → {fio, birth_date, sections, calc_snapshot, chat_id}
 _payment_pending: dict[str, dict] = {}
 
+# Надёжное хранилище последних расчётных данных каждого пользователя (int user_id → dict)
+user_storage: dict[int, dict] = {}
+
 
 # =========================
 # Таблица букв (ЭТАЛОН)
@@ -2175,59 +2178,75 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
     await query.answer()
 
     action, user_id_str = query.data.split("_", 1)
-    pending = _payment_pending.get(user_id_str)
+    user_id = int(user_id_str)
+
+    # user_storage — основной источник; _payment_pending — фолбэк
+    data = user_storage.get(user_id) or _payment_pending.get(user_id_str)
 
     if action == "approve":
-        if pending:
+        if not data:
+            print(f"⚠️ user_storage miss for {user_id}")
             await context.bot.send_message(
-                chat_id=int(user_id_str),
-                text="✅ Платёж подтверждён! Отправляю PDF...",
+                chat_id=user_id,
+                text="❌ Данные расчёта не найдены. Пожалуйста, сделай расчёт заново.",
             )
             try:
-                pdf_path = await asyncio.to_thread(
-                    build_pdf_report,
-                    pending["fio"],
-                    pending["birth_date"],
-                    pending["sections"],
-                    pending.get("calc_snapshot"),
-                )
-                if pdf_path and os.path.exists(pdf_path):
-                    pdf_filename = f"SoulReport_{pending['birth_date'].replace('.', '')}.pdf"
-                    with open(pdf_path, "rb") as f:
-                        await context.bot.send_document(
-                            chat_id=int(user_id_str),
-                            document=f,
-                            filename=pdf_filename,
-                        )
-                    try:
-                        os.remove(pdf_path)
-                    except Exception:
-                        pass
-                else:
-                    await context.bot.send_message(
-                        chat_id=int(user_id_str),
-                        text="❌ Не удалось создать PDF. Обратитесь в поддержку.",
-                    )
-            except Exception as e:
-                print("ERROR in admin_payment_callback (approve):", e)
-                await context.bot.send_message(
-                    chat_id=int(user_id_str),
-                    text="❌ Ошибка при генерации PDF. Обратитесь в поддержку.",
-                )
-            _payment_pending.pop(user_id_str, None)
+                await query.edit_message_text("❌ Данные не найдены")
+            except Exception:
+                pass
+            return
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="✅ Оплата подтверждена! Формирую твой полный разбор...",
+        )
+        print(f"📄 SEND PDF TO: {user_id}")
         try:
-            await query.edit_message_text("✅ Подтверждено")
+            pdf_path = await asyncio.to_thread(
+                build_pdf_report,
+                data["fio"],
+                data["birth_date"],
+                data["sections"],
+                data.get("calc_snapshot"),
+            )
+            if pdf_path and os.path.exists(pdf_path):
+                pdf_filename = f"SoulReport_{data['birth_date'].replace('.', '')}.pdf"
+                with open(pdf_path, "rb") as f:
+                    await context.bot.send_document(
+                        chat_id=user_id,
+                        document=f,
+                        filename=pdf_filename,
+                    )
+                try:
+                    os.remove(pdf_path)
+                except Exception:
+                    pass
+            else:
+                await context.bot.send_message(
+                    chat_id=user_id,
+                    text="❌ Не удалось создать PDF. Обратитесь в поддержку.",
+                )
+        except Exception as e:
+            print("ERROR in admin_payment_callback (approve):", e)
+            await context.bot.send_message(
+                chat_id=user_id,
+                text="❌ Ошибка при генерации PDF. Обратитесь в поддержку.",
+            )
+
+        _payment_pending.pop(user_id_str, None)
+        try:
+            await query.edit_message_text("✅ Платёж подтверждён")
         except Exception:
             pass
 
     elif action == "reject":
         await context.bot.send_message(
-            chat_id=int(user_id_str),
-            text="❌ Платёж не найден. Проверь перевод.",
+            chat_id=user_id,
+            text="❌ Платёж не подтверждён. Проверь перевод и попробуй снова.",
         )
         _payment_pending.pop(user_id_str, None)
         try:
-            await query.edit_message_text("❌ Отклонено")
+            await query.edit_message_text("❌ Платёж отклонён")
         except Exception:
             pass
 
@@ -2442,6 +2461,15 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Формируем итоговый текст
         result_text = "\n\n".join(blocks)
         final_text = header + result_text
+
+        # Надёжное хранилище — на случай, если context.user_data окажется недоступен
+        _uid = update.effective_user.id
+        user_storage[_uid] = {
+            "fio": fio,
+            "birth_date": birth_date,
+            "sections": pdf_sections,
+            "calc_snapshot": calc_snapshot,
+        }
 
         # Сохраняем данные для передачи PDF после подтверждения доната
         context.user_data["pending_pdf"] = {
