@@ -2022,6 +2022,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
 
         keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 Скопировать номер карты", callback_data="copy_card")],
             [InlineKeyboardButton("💝 Я оплатил", callback_data="donate_paid")],
             [InlineKeyboardButton("⬅️ Назад", callback_data="back_menu")],
         ])
@@ -2071,10 +2072,19 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "После перевода нажми «Я оплатил» — и сразу получишь PDF."
         )
         keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 Скопировать номер карты", callback_data="copy_card")],
             [InlineKeyboardButton("✅ Я оплатил", callback_data="donate_paid")],
             [InlineKeyboardButton("⬅️ Назад", callback_data="back_menu")],
         ])
         await query.message.reply_text(text, reply_markup=keyboard, parse_mode="HTML")
+
+    elif data == "copy_card":
+        await query.message.reply_text(
+            "📋 Скопируй номер карты:\n\n"
+            "<code>2200700882903809</code>\n\n"
+            "Нажми на номер, чтобы скопировать 👆",
+            parse_mode="HTML",
+        )
 
     elif data == "donate_paid":
         pending = context.user_data.pop("pending_pdf", None)
