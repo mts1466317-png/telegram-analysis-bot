@@ -46,8 +46,13 @@ if not os.path.isfile(AFTER_COVER_BG_PATH):
 TOKEN = resolve_bot_token()
 print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕТ'}")
 
+ADMIN_ID = 7471303897
+
 # Хранилище результатов расчётов пользователей (в памяти)
 results = {}
+
+# Ожидающие подтверждения оплаты: user_id_str → {fio, birth_date, sections, calc_snapshot, chat_id}
+_payment_pending: dict[str, dict] = {}
 
 
 # =========================
@@ -2077,20 +2082,35 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.message.reply_text(text, reply_markup=keyboard)
 
     elif data == "donate_paid":
-        pending = context.user_data.get("pending_pdf")
+        pending = context.user_data.pop("pending_pdf", None)
+        user = query.from_user
+        user_id_str = str(user.id)
+        username_display = f"@{user.username}" if user.username else "без username"
+
         if pending:
-            await query.message.reply_text("Спасибо за поддержку! Генерирую твой PDF... 🙏")
-            await send_pdf_report(
-                update,
-                pending["fio"],
-                pending["birth_date"],
-                pending["sections"],
-                pending.get("calc_snapshot"),
-            )
-            context.user_data.pop("pending_pdf", None)
-        else:
-            await query.message.reply_text("Спасибо за поддержку проекта 🙏")
-        await show_action_menu(update, context)
+            _payment_pending[user_id_str] = {
+                **pending,
+                "chat_id": query.message.chat_id,
+            }
+
+        await query.message.reply_text("⏳ Проверяем оплату, это займёт до 1–2 минут")
+
+        admin_keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("✅ Подтвердить", callback_data=f"approve_{user_id_str}"),
+                InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_{user_id_str}"),
+            ]
+        ])
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                f"💸 Новый платёж\n\n"
+                f"Имя: {user.full_name}\n"
+                f"Username: {username_display}\n"
+                f"ID: {user.id}"
+            ),
+            reply_markup=admin_keyboard,
+        )
     elif data == "back_menu":
         await show_action_menu(update, context)
     elif data == "soul_message":
@@ -2142,6 +2162,70 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             reply_markup=keyboard,
         )
         await show_action_menu(update, context)
+
+
+async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+    await query.answer()
+
+    action, user_id_str = query.data.split("_", 1)
+    pending = _payment_pending.get(user_id_str)
+
+    if action == "approve":
+        if pending:
+            await context.bot.send_message(
+                chat_id=int(user_id_str),
+                text="✅ Платёж подтверждён! Отправляю PDF...",
+            )
+            try:
+                pdf_path = await asyncio.to_thread(
+                    build_pdf_report,
+                    pending["fio"],
+                    pending["birth_date"],
+                    pending["sections"],
+                    pending.get("calc_snapshot"),
+                )
+                if pdf_path and os.path.exists(pdf_path):
+                    pdf_filename = f"SoulReport_{pending['birth_date'].replace('.', '')}.pdf"
+                    with open(pdf_path, "rb") as f:
+                        await context.bot.send_document(
+                            chat_id=int(user_id_str),
+                            document=f,
+                            filename=pdf_filename,
+                        )
+                    try:
+                        os.remove(pdf_path)
+                    except Exception:
+                        pass
+                else:
+                    await context.bot.send_message(
+                        chat_id=int(user_id_str),
+                        text="❌ Не удалось создать PDF. Обратитесь в поддержку.",
+                    )
+            except Exception as e:
+                print("ERROR in admin_payment_callback (approve):", e)
+                await context.bot.send_message(
+                    chat_id=int(user_id_str),
+                    text="❌ Ошибка при генерации PDF. Обратитесь в поддержку.",
+                )
+            _payment_pending.pop(user_id_str, None)
+        try:
+            await query.edit_message_text("✅ Подтверждено")
+        except Exception:
+            pass
+
+    elif action == "reject":
+        await context.bot.send_message(
+            chat_id=int(user_id_str),
+            text="❌ Платёж не найден. Проверь перевод.",
+        )
+        _payment_pending.pop(user_id_str, None)
+        try:
+            await query.edit_message_text("❌ Отклонено")
+        except Exception:
+            pass
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2656,6 +2740,7 @@ def main():
 
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
     app.add_handler(CallbackQueryHandler(main_menu_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     print("🤖 Бот запущен")
