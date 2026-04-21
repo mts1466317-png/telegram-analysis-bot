@@ -2015,20 +2015,13 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "вы можете поддержать развитие проекта.\n\n"
             "Реквизиты для доната:\n\n"
             "Банк: Т-Банк\n"
-            "Карта: 2200 7008 8290 3809\n"
+            "Карта: <code>2200 7008 8290 3809</code>\n"
+            "Нажми на номер карты, чтобы скопировать 👆\n"
             "Получатель: Кристина Г\n\n"
-            "Вы можете скопировать номер карты\n"
-            "или сделать перевод вручную.\n\n"
-            "После перевода нажмите кнопку 'Я оплатил'."
+            "После перевода нажмите кнопку «Я оплатил»."
         )
 
         keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "📋 Скопировать номер карты",
-                    switch_inline_query="2200700882903809",
-                )
-            ],
             [InlineKeyboardButton("💝 Я оплатил", callback_data="donate_paid")],
             [InlineKeyboardButton("⬅️ Назад", callback_data="back_menu")],
         ])
@@ -2036,6 +2029,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.message.reply_text(
             text,
             reply_markup=keyboard,
+            parse_mode="HTML",
         )
     elif data == "consult_higher_self":
         text = (
@@ -2070,22 +2064,17 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "— итоговым профилем\n\n"
             "Реквизиты:\n"
             "Банк: Т-Банк\n"
-            "Карта: 2200 7008 8290 3809\n"
+            "Карта: <code>2200 7008 8290 3809</code>\n"
+            "Нажми на номер карты, чтобы скопировать 👆\n"
             "Получатель: Кристина Г\n\n"
             "Минимальный донат — 111 ₽.\n"
             "После перевода нажми «Я оплатил» — и сразу получишь PDF."
         )
         keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "📋 Скопировать номер карты",
-                    switch_inline_query="2200700882903809",
-                )
-            ],
             [InlineKeyboardButton("✅ Я оплатил", callback_data="donate_paid")],
             [InlineKeyboardButton("⬅️ Назад", callback_data="back_menu")],
         ])
-        await query.message.reply_text(text, reply_markup=keyboard)
+        await query.message.reply_text(text, reply_markup=keyboard, parse_mode="HTML")
 
     elif data == "donate_paid":
         pending = context.user_data.pop("pending_pdf", None)
