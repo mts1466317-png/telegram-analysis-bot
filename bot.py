@@ -1160,6 +1160,113 @@ def _pdf_build_calc_scheme_paragraphs(cs: dict) -> str:
     return "\n".join(lines)
 
 
+def generate_compiled_insight(calc_snapshot: dict, sections: list[dict]) -> str:
+    """
+    Собирает живой инсайт-пересказ из уже рассчитанных данных.
+    Ничего не вычисляет — только сжимает и переформулирует.
+    """
+
+    def _first_sentence(text: str, max_len: int = 130) -> str:
+        text = text.strip()
+        dot = text.find(". ")
+        sentence = text[: dot + 1] if 0 < dot < max_len else text[:max_len]
+        return sentence.rstrip(" .")
+
+    def _extract_block(text: str, marker: str) -> str:
+        idx = text.find(marker)
+        if idx == -1:
+            return ""
+        start = idx + len(marker)
+        end = text.find("\n\n", start)
+        chunk = text[start:end].strip() if end != -1 else text[start:].strip()
+        return chunk
+
+    def _manifestation(s: dict) -> str:
+        raw = _extract_block(s.get("text", ""), "🔹 Как проявляется:\n")
+        return _first_sentence(raw) if raw else ""
+
+    def _risks(s: dict) -> str:
+        raw = _extract_block(s.get("text", ""), "⚠️ Риски:\n")
+        return _first_sentence(raw, 90) if raw else ""
+
+    def _focus(s: dict) -> str:
+        raw = _extract_block(s.get("text", ""), "🎯 Фокус периода:\n")
+        return _first_sentence(raw) if raw else ""
+
+    def _lc(s: str) -> str:
+        return s[:1].lower() + s[1:] if s else ""
+
+    by_title = {s["title"]: s for s in sections}
+    phys    = by_title.get("Физическое тело")   or (sections[0] if sections else None)
+    mental  = by_title.get("Ментальное тело")    or (sections[2] if len(sections) > 2 else None)
+    life    = by_title.get("Жизненная задача")   or (sections[3] if len(sections) > 3 else None)
+    higher  = by_title.get("Высшее Я")           or (sections[5] if len(sections) > 5 else None)
+    cycle_s = next((s for s in sections if "цикл" in s["title"].lower()), None)
+
+    cs = calc_snapshot or {}
+    blocks: list[str] = []
+
+    blocks.append("Я посмотрел твою карту — там очень интересная картина.")
+
+    if phys:
+        m = _manifestation(phys)
+        line = (
+            f"По физическому уровню у тебя вибрация {phys.get('vibration', '')} "
+            f"({phys.get('planet', '')})"
+        )
+        if m:
+            line += f" — {_lc(m)}"
+        blocks.append(line + ".")
+
+    if mental:
+        m = _manifestation(mental)
+        r = _risks(mental)
+        line = f"По ментальному полю — {_lc(m) if m else '...'}"
+        if r:
+            line += f". Из-за этого нередко появляется {_lc(r)}"
+        blocks.append(line + ".")
+
+    if life:
+        m = _manifestation(life)
+        r = _risks(life)
+        line = f"Жизненная задача у тебя — {_lc(m) if m else '...'}"
+        if r:
+            line += f". И одновременно с этим — риск: {_lc(r)}"
+        blocks.append(line + ".")
+
+    if higher:
+        m = _manifestation(higher)
+        blocks.append(
+            f"По более глубоким уровням — Высшее Я у тебя "
+            + (f"{_lc(m)}" if m else "несёт особый архетип")
+            + f" ({higher.get('planet', '')})."
+        )
+
+    if cycle_s and cs:
+        f_text = _focus(cycle_s) or _manifestation(cycle_s)
+        line = (
+            f"Сейчас ты в {cs.get('cycle_number', '?')}-м жизненном цикле "
+            f"(возраст {cs.get('cycle_start_age', '?')}–{cs.get('cycle_end_age', '?')} лет), "
+            f"планета — {cycle_s.get('planet', '')}"
+        )
+        if f_text:
+            line += f". Фокус: {_lc(f_text)}"
+        blocks.append(line + ".")
+
+    blocks.append("\nИ это только верхний слой. Там дальше намного глубже.")
+
+    blocks.append(
+        "\nЯ сейчас вижу полную картину по тебе:\n"
+        "— сильные стороны\n"
+        "— где деньги\n"
+        "— где блоки\n"
+        "— как у тебя идут жизненные циклы\n\n"
+        "Но это уже разворачивается в полном разборе."
+    )
+
+    return "\n".join(blocks)
+
+
 def build_pdf_report(
     fio: str,
     birth_date: str,
@@ -1942,8 +2049,47 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             reply_markup=keyboard
         )
         await show_action_menu(update, context)
+    elif data == "unlock_full_report":
+        text = (
+            "📖 Полный разбор — PDF\n\n"
+            "После доната ты получишь PDF с:\n"
+            "— полной схемой расчётов\n"
+            "— матрицей сфер и вибраций\n"
+            "— детальным разбором каждой сферы\n"
+            "— итоговым профилем\n\n"
+            "Реквизиты:\n"
+            "Банк: Т-Банк\n"
+            "Карта: 2200 7008 8290 3809\n"
+            "Получатель: Кристина Г\n\n"
+            "Минимальный донат — 111 ₽.\n"
+            "После перевода нажми «Я оплатил» — и сразу получишь PDF."
+        )
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "📋 Скопировать номер карты",
+                    switch_inline_query="2200700882903809",
+                )
+            ],
+            [InlineKeyboardButton("✅ Я оплатил", callback_data="donate_paid")],
+            [InlineKeyboardButton("⬅️ Назад", callback_data="back_menu")],
+        ])
+        await query.message.reply_text(text, reply_markup=keyboard)
+
     elif data == "donate_paid":
-        await query.message.reply_text("Спасибо за поддержку проекта 🙏")
+        pending = context.user_data.get("pending_pdf")
+        if pending:
+            await query.message.reply_text("Спасибо за поддержку! Генерирую твой PDF... 🙏")
+            await send_pdf_report(
+                update,
+                pending["fio"],
+                pending["birth_date"],
+                pending["sections"],
+                pending.get("calc_snapshot"),
+            )
+            context.user_data.pop("pending_pdf", None)
+        else:
+            await query.message.reply_text("Спасибо за поддержку проекта 🙏")
         await show_action_menu(update, context)
     elif data == "back_menu":
         await show_action_menu(update, context)
@@ -2209,9 +2355,27 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         result_text = "\n\n".join(blocks)
         final_text = header + result_text
 
-        # Отправляем полный разбор только в PDF
-        await update.message.reply_text("Ваш полный разбор сформирован в PDF 👇")
-        await send_pdf_report(update, fio, birth_date, pdf_sections, calc_snapshot)
+        # Сохраняем данные для передачи PDF после подтверждения доната
+        context.user_data["pending_pdf"] = {
+            "fio": fio,
+            "birth_date": birth_date,
+            "sections": pdf_sections,
+            "calc_snapshot": calc_snapshot,
+        }
+
+        # Отправляем живой инсайт-тизер
+        insight = generate_compiled_insight(calc_snapshot, pdf_sections)
+        await update.message.reply_text(insight)
+
+        # CTA с кнопкой доступа к полному разбору
+        cta_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📖 Хочу полный разбор (от 111 ₽)", callback_data="unlock_full_report")],
+        ])
+        await update.message.reply_text(
+            "Хочешь полный разбор — открой доступ (донат от 111 ₽).\n"
+            "Там детализация по каждой сфере, расчётная схема и матрица вибраций.",
+            reply_markup=cta_keyboard,
+        )
         await show_action_menu(update, context)
         return
         
