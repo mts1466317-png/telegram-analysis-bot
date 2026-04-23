@@ -92,6 +92,34 @@ PORTAL_TEXTS = {
     ),
 }
 
+CONTENT_LIBRARY = {
+    "rod": {
+        "title": "🌳 Род",
+        "summary": "Материалы о родовом эгрегоре и родовой программе: как видеть повторяющиеся сценарии и работать с ними осознанно.",
+        "cta": "Начни с наблюдения за родовыми паттернами в текущем цикле.",
+    },
+    "cycles": {
+        "title": "🔄 Циклы",
+        "summary": "Раздел о 7-летних периодах: как читать фокус текущего цикла и принимать решения в резонансе с ним.",
+        "cta": "Сверь свои текущие задачи с фокусом периода.",
+    },
+    "higher_self": {
+        "title": "✨ Высшее Я",
+        "summary": "Материалы про глубинный вектор и внутренний ориентир, на который можно опираться в выборе направления.",
+        "cta": "Выбери один шаг, который усиливает контакт с внутренним ориентиром.",
+    },
+    "life_task": {
+        "title": "🎯 Задача жизни",
+        "summary": "Разбор смыслов жизненной задачи: как переводить понимание в конкретные действия и решения.",
+        "cta": "Определи действие недели, которое укрепляет твою жизненную задачу.",
+    },
+    "practices": {
+        "title": "🕯 Практики",
+        "summary": "База коротких практик для стабилизации фокуса, внимания и внутреннего состояния в текущем периоде.",
+        "cta": "Выбери одну простую практику на ближайшие 3 дня.",
+    },
+}
+
 
 # =========================
 # Таблица букв (ЭТАЛОН)
@@ -1887,6 +1915,8 @@ def get_or_init_journey(user_id: int) -> dict:
             "level": 1,
             "last_action": "start",
             "next_step": "portal_new_calc",
+            "last_insight": None,
+            "roadmap": {},
             "access_flags": {
                 "is_supporter": False,
                 "inner_circle": False,
@@ -1934,6 +1964,113 @@ async def show_stub_section(query, text: str):
     await query.message.reply_text(text, reply_markup=keyboard)
 
 
+def _extract_marker_text(raw: str, marker: str) -> str:
+    if not raw:
+        return ""
+    start = raw.find(marker)
+    if start == -1:
+        return ""
+    start += len(marker)
+    end = raw.find("\n\n", start)
+    chunk = raw[start:end].strip() if end != -1 else raw[start:].strip()
+    return chunk
+
+
+def pick_focus_from_sections(sections: list[dict]) -> str:
+    if not sections:
+        return ""
+
+    cycle_section = next((s for s in sections if "цикл" in s.get("title", "").lower()), None)
+    if cycle_section:
+        cycle_text = cycle_section.get("text", "")
+        focus = _extract_marker_text(cycle_text, "🎯 Фокус периода:\n")
+        if focus:
+            return focus
+        manifestation = _extract_marker_text(cycle_text, "🔹 Как проявляется:\n")
+        if manifestation:
+            return manifestation.split(".")[0].strip()
+
+    for section in sections:
+        manifestation = _extract_marker_text(section.get("text", ""), "🔹 Как проявляется:\n")
+        if manifestation:
+            return manifestation.split(".")[0].strip()
+    return ""
+
+
+def _choose_library_key(calc_snapshot: dict, sections: list[dict]) -> str:
+    title_blob = " ".join(s.get("title", "").lower() for s in sections)
+    if "род" in title_blob:
+        return "rod"
+    if "высшее" in title_blob:
+        return "higher_self"
+    if calc_snapshot.get("cycle_number") is not None:
+        return "cycles"
+    if calc_snapshot.get("life_task") is not None:
+        return "life_task"
+    return "practices"
+
+
+def build_lightweight_roadmap(calc_snapshot: dict, sections: list[dict]) -> dict:
+    library_key = _choose_library_key(calc_snapshot, sections)
+    library_item = CONTENT_LIBRARY[library_key]
+    return {
+        "step1": "✅ Шаг 1: расчёт уже пройден",
+        "step2": "➡️ Шаг 2: открыть «Карту души» и сверить текущий фокус",
+        "step2_callback": "map_open",
+        "step3": f"📚 Шаг 3: рубрика «{library_item['title']}»",
+        "step3_callback": "library_open",
+        "step4": "👥 Шаг 4: подключиться к сообществу и обсудить путь",
+        "step4_callback": "community_open",
+        "library_key": library_key,
+    }
+
+
+def _next_step_label(next_step: str) -> str:
+    labels = {
+        "portal_new_calc": "Новый расчёт",
+        "map_open": "Карта души",
+        "library_open": "Библиотека знаний",
+        "path_open": "Путь развития",
+        "community_open": "Сообщество",
+        "practice_open": "Практики",
+        "support_open": "Поддержать проект",
+    }
+    return labels.get(next_step, next_step)
+
+
+def build_soul_map_profile(state: dict, calc_snapshot: dict, sections: list[dict]) -> str:
+    cycle_number = calc_snapshot.get("cycle_number", "—")
+    cycle_energy = calc_snapshot.get("cycle_energy", "—")
+    cycle_planet = calc_snapshot.get("planet_cycle", "—")
+    focus = pick_focus_from_sections(sections) or "Фокус проявится после первого расчёта."
+    next_step = state.get("next_step", "portal_new_calc")
+    insight = state.get("last_insight") or ""
+    insight_preview = insight.split("\n")[0].strip() if insight else ""
+
+    text = (
+        "🌌 Карта души\n\n"
+        f"Сейчас у тебя {cycle_number}-й жизненный цикл.\n"
+        f"Энергия цикла: {cycle_energy} ({cycle_planet}).\n\n"
+        f"Текущий фокус пути: {focus}\n\n"
+        f"Следующий шаг: {_next_step_label(next_step)}"
+    )
+    if insight_preview:
+        text += f"\n\nПоследний инсайт: {insight_preview}"
+    return text
+
+
+def format_path_overview(state: dict) -> str:
+    roadmap = state.get("roadmap") or {}
+    return (
+        "🧭 Путь развития\n\n"
+        f"{roadmap.get('step1', '✅ Шаг 1: пройти расчёт')}\n"
+        f"{roadmap.get('step2', '➡️ Шаг 2: открыть карту души')}\n"
+        f"{roadmap.get('step3', '📚 Шаг 3: выбрать рубрику')}\n"
+        f"{roadmap.get('step4', '👥 Шаг 4: подключиться к сообществу')}\n\n"
+        f"Следующий шаг пути: {_next_step_label(state.get('next_step', 'portal_new_calc'))}"
+    )
+
+
 async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not query:
@@ -1970,22 +2107,109 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
         )
         return
 
+    if data == "portal_continue_path":
+        state = get_or_init_journey(user_id) if user_id else {"next_step": "portal_new_calc"}
+        next_step = state.get("next_step", "portal_new_calc")
+        if next_step == "map_open":
+            touch_journey(user_id, "portal_continue_path", "path_open")
+            user_data = user_storage.get(user_id) if user_id else None
+            if not user_data:
+                await show_stub_section(query, "Чтобы продолжить путь, сначала пройди «Новый расчёт».")
+                return
+            map_text = build_soul_map_profile(state, user_data.get("calc_snapshot", {}), user_data.get("sections", []))
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("⬅️ В портал", callback_data="portal_home")],
+                [InlineKeyboardButton("🧭 Путь развития", callback_data="path_open")],
+            ])
+            await query.message.reply_text(map_text, reply_markup=keyboard)
+            return
+        if next_step == "library_open":
+            touch_journey(user_id, "portal_continue_path", "practice_open")
+            library_key = (state.get("roadmap") or {}).get("library_key", "life_task")
+            item = CONTENT_LIBRARY.get(library_key, CONTENT_LIBRARY["life_task"])
+            await show_stub_section(
+                query,
+                f"📚 Библиотека знаний\n\n{item['title']}\n\n{item['summary']}\n\nРекомендация: {item['cta']}",
+            )
+            return
+        if next_step == "practice_open":
+            touch_journey(user_id, "portal_continue_path", "community_open")
+            await show_stub_section(query, PORTAL_TEXTS["practice"])
+            return
+        if next_step == "community_open":
+            touch_journey(user_id, "portal_continue_path", "support_open")
+            await show_stub_section(query, PORTAL_TEXTS["community"])
+            return
+        if next_step == "support_open":
+            touch_journey(user_id, "portal_continue_path", "support_open")
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("💎 Открыть раздел поддержки", callback_data="support_project")],
+                [InlineKeyboardButton("⬅️ В портал", callback_data="portal_home")],
+            ])
+            await query.message.reply_text(PORTAL_TEXTS["support"], reply_markup=keyboard)
+            return
+        touch_journey(user_id, "portal_continue_path", "portal_new_calc")
+        context.user_data["step"] = "fio_birth_line"
+        await query.message.reply_text(
+            "Введите данные одной строкой:\n"
+            "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
+            "Пример:\nИванов Иван Иванович 12.05.1991"
+        )
+        return
+
     if data == "map_open":
         if user_id:
-            touch_journey(user_id, "map_open", "portal_new_calc")
-        await show_stub_section(query, PORTAL_TEXTS["map"])
+            state = touch_journey(user_id, "map_open", "path_open")
+        else:
+            state = {"next_step": "portal_new_calc"}
+        user_data = user_storage.get(user_id) if user_id else None
+        if not user_data:
+            await show_stub_section(
+                query,
+                "🌌 Карта души\n\n"
+                "Чтобы открыть персональную карту, сначала пройди «Новый расчёт».",
+            )
+            return
+        map_text = build_soul_map_profile(state, user_data.get("calc_snapshot", {}), user_data.get("sections", []))
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🧭 Продолжить путь", callback_data="portal_continue_path")],
+            [InlineKeyboardButton("⬅️ В портал", callback_data="portal_home")],
+        ])
+        await query.message.reply_text(map_text, reply_markup=keyboard)
         return
 
     if data == "library_open":
         if user_id:
-            touch_journey(user_id, "library_open", "portal_new_calc")
-        await show_stub_section(query, PORTAL_TEXTS["library"])
+            state = touch_journey(user_id, "library_open", "practice_open")
+        else:
+            state = {"roadmap": {"library_key": "life_task"}}
+        library_key = (state.get("roadmap") or {}).get("library_key", "life_task")
+        item = CONTENT_LIBRARY.get(library_key, CONTENT_LIBRARY["life_task"])
+        await show_stub_section(
+            query,
+            f"📚 Библиотека знаний\n\n{item['title']}\n\n{item['summary']}\n\nРекомендация: {item['cta']}",
+        )
         return
 
     if data == "path_open":
         if user_id:
-            touch_journey(user_id, "path_open", "portal_new_calc")
-        await show_stub_section(query, PORTAL_TEXTS["path"])
+            state = touch_journey(user_id, "path_open", "library_open")
+        else:
+            state = {"next_step": "portal_new_calc", "roadmap": {}}
+        user_data = user_storage.get(user_id) if user_id else None
+        if not user_data:
+            await show_stub_section(
+                query,
+                "🧭 Путь развития\n\n"
+                "Чтобы построить персональный путь, сначала пройди «Новый расчёт».",
+            )
+            return
+        path_text = format_path_overview(state)
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🧭 Продолжить путь", callback_data="portal_continue_path")],
+            [InlineKeyboardButton("⬅️ В портал", callback_data="portal_home")],
+        ])
+        await query.message.reply_text(path_text, reply_markup=keyboard)
         return
 
     if data == "community_open":
@@ -2656,6 +2880,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Отправляем живой инсайт-тизер
         insight = generate_compiled_insight(calc_snapshot, pdf_sections)
+        journey = touch_journey(_uid, "calculation_done", "map_open")
+        journey["last_insight"] = insight
+        journey["roadmap"] = build_lightweight_roadmap(calc_snapshot, pdf_sections)
         await update.message.reply_text(insight)
 
         # CTA с кнопкой доступа к полному разбору
