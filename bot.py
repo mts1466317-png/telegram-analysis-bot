@@ -47,6 +47,8 @@ TOKEN = resolve_bot_token()
 print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕТ'}")
 
 ADMIN_ID = 7471303897
+CHANNEL_LINK = "https://t.me/CHANNEL_LINK"
+DISCUSSION_GROUP_LINK = "https://t.me/DISCUSSION_GROUP_LINK"
 
 # Хранилище результатов расчётов пользователей (в памяти)
 results = {}
@@ -1910,6 +1912,7 @@ def build_portal_menu() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("📚 Библиотека знаний", callback_data="library_open")],
         [InlineKeyboardButton("🧭 Путь развития", callback_data="path_open")],
         [InlineKeyboardButton("👥 Сообщество", callback_data="community_open")],
+        [InlineKeyboardButton("👥 Круг участников", callback_data="circle_open")],
         [InlineKeyboardButton("✨ Практики", callback_data="practice_open")],
         [InlineKeyboardButton("💎 Поддержать проект", callback_data="support_open")],
     ])
@@ -1925,6 +1928,9 @@ def get_or_init_journey(user_id: int) -> dict:
             "last_insight": None,
             "roadmap": {},
             "last_explored_module": None,
+            "member_tier": "base",
+            "circle_role": "participant",
+            "guide_reply_queue": [],
             "access_flags": {
                 "is_supporter": False,
                 "inner_circle": False,
@@ -2036,8 +2042,8 @@ def build_lightweight_roadmap(calc_snapshot: dict, sections: list[dict]) -> dict
         "step2_callback": "map_open",
         "step3": f"📚 Шаг 3: рубрика «{library_item['title']}»",
         "step3_callback": "library_open",
-        "step4": "👥 Шаг 4: подключиться к сообществу и обсудить путь",
-        "step4_callback": "community_open",
+        "step4": "👥 Шаг 4: войти в круг участников и углубить путь",
+        "step4_callback": "circle_open",
         "library_key": library_key,
     }
 
@@ -2049,6 +2055,7 @@ def _next_step_label(next_step: str) -> str:
         "library_open": "Библиотека знаний",
         "path_open": "Путь развития",
         "community_open": "Сообщество",
+        "circle_open": "Круг участников",
         "practice_open": "Практики",
         "support_open": "Поддержать проект",
     }
@@ -2172,6 +2179,25 @@ def build_channel_updates_text(state: dict) -> str:
     )
 
 
+def build_circle_open_text() -> str:
+    return (
+        "👥 Круг участников\n\n"
+        "Здесь пространство продолжается не только через личный путь,\n"
+        "но через круг участников.\n\n"
+        "Здесь вы можете войти в канал смыслов, участвовать в круге обсуждений\n"
+        "и при желании углубиться во внутренний круг поддержки."
+    )
+
+
+def build_circle_updates_text() -> str:
+    return (
+        "🌠 Сейчас в пространстве\n\n"
+        "Тема обсуждения недели: как сохранять опору в фокусе текущего периода.\n"
+        "Вопрос для размышления: какой шаг сегодня действительно ведёт ваш путь вперёд?\n"
+        "Ближайшая встреча/эфир: скоро анонс в пространстве."
+    )
+
+
 def resolve_next_callback(state: dict) -> str:
     allowed = {
         "portal_new_calc",
@@ -2179,6 +2205,7 @@ def resolve_next_callback(state: dict) -> str:
         "library_open",
         "path_open",
         "community_open",
+        "circle_open",
         "practice_open",
         "support_open",
         "guide_open",
@@ -2233,6 +2260,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
         or data.startswith("library_")
         or data.startswith("path_")
         or data.startswith("community_")
+        or data.startswith("circle_")
         or data.startswith("practice_")
         or data.startswith("support_")
         or data.startswith("daily_")
@@ -2434,8 +2462,36 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
 
     if data == "community_open":
         if user_id:
-            touch_journey(user_id, "community_open", "portal_new_calc")
-        await show_stub_section(query, PORTAL_TEXTS["community"])
+            touch_journey(user_id, "community_open", "circle_open")
+        data = "circle_open"
+
+    if data == "circle_open":
+        if user_id:
+            state = touch_journey(user_id, "circle_open", "channel_updates_open")
+            state["last_explored_module"] = "Круг участников"
+        text = build_circle_open_text()
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📡 Войти в канал", url=CHANNEL_LINK)],
+            [InlineKeyboardButton("💬 Круг обсуждений", url=DISCUSSION_GROUP_LINK)],
+            [InlineKeyboardButton("💎 Внутренний круг", callback_data="support_open")],
+            [InlineKeyboardButton("🌠 Что происходит в круге", callback_data="circle_updates_open")],
+            [InlineKeyboardButton("🧭 Продолжить путь", callback_data="portal_continue_path")],
+            [InlineKeyboardButton("⬅️ В портал", callback_data="portal_home")],
+        ])
+        await query.message.reply_text(text, reply_markup=keyboard)
+        return
+
+    if data == "circle_updates_open":
+        if user_id:
+            state = touch_journey(user_id, "circle_updates_open", "portal_continue_path")
+            state["last_explored_module"] = "Что происходит в круге"
+        text = build_circle_updates_text()
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("👥 Круг участников", callback_data="circle_open")],
+            [InlineKeyboardButton("🧭 Продолжить путь", callback_data="portal_continue_path")],
+            [InlineKeyboardButton("⬅️ В портал", callback_data="portal_home")],
+        ])
+        await query.message.reply_text(text, reply_markup=keyboard)
         return
 
     if data == "practice_open":
@@ -2481,6 +2537,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         or data.startswith("library_")
         or data.startswith("path_")
         or data.startswith("community_")
+        or data.startswith("circle_")
         or data.startswith("practice_")
         or data.startswith("support_")
         or data.startswith("daily_")
@@ -3399,7 +3456,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
-    app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|practice_|support_|daily_|guide_|channel_|continue_)"))
+    app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|circle_|practice_|support_|daily_|guide_|channel_|continue_)"))
     app.add_handler(CallbackQueryHandler(main_menu_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     print("🤖 Бот запущен")
