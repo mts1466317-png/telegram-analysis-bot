@@ -57,6 +57,41 @@ _payment_pending: dict[str, dict] = {}
 # Надёжное хранилище последних расчётных данных каждого пользователя (int user_id → dict)
 user_storage: dict[int, dict] = {}
 
+# Базовое состояние пути пользователя (Этап 1: каркас портала)
+USER_JOURNEY_STATE: dict[int, dict] = {}
+
+PORTAL_TEXTS = {
+    "map": (
+        "🌌 Карта души\n\n"
+        "Здесь будет ваша персональная карта пути: текущий уровень, активный цикл и следующий шаг.\n"
+        "Сейчас это базовый модуль, в следующем этапе добавим персонализацию."
+    ),
+    "library": (
+        "📚 Библиотека знаний\n\n"
+        "Здесь появятся рубрики, архив материалов и тематические подборки.\n"
+        "Пока доступен каркас раздела."
+    ),
+    "path": (
+        "🧭 Путь развития\n\n"
+        "Здесь будет ваш маршрут развития: пройденные шаги и рекомендуемое продолжение.\n"
+        "Пока это стартовая заглушка."
+    ),
+    "community": (
+        "👥 Сообщество\n\n"
+        "Здесь будет пространство участников: обсуждения, ответы проводников и события.\n"
+        "Пока раздел работает в режиме scaffold."
+    ),
+    "practice": (
+        "✨ Практики\n\n"
+        "Здесь появятся ежедневные и циклические практики по вашему текущему периоду.\n"
+        "Сейчас доступен только базовый каркас."
+    ),
+    "support": (
+        "💎 Поддержать проект\n\n"
+        "Раздел поддержки открыт. Можно перейти к реквизитам и кнопке подтверждения оплаты."
+    ),
+}
+
 
 # =========================
 # Таблица букв (ЭТАЛОН)
@@ -1827,24 +1862,153 @@ def cycle_description(num: int, cycle: dict) -> str:
 # =========================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    greeting_text = (
-        "Инструмент «Статистика Души» основан на нумерологических расчётах и формулах Пифагора — системе, которая лежит в основе большинства современных нумерологических практик.\n\n"
-        "Она позволяет получить доступ к данным, зашифрованным в момент вашего рождения. Эти данные отражают ваши природные качества, зоны наибольшего роста и те точки, где человек может отклоняться от своей реализации и пути своего Высшего Я.\n\n"
-        "Метод проверен на личном опыте и в практике работы с людьми. Формулы выверены и дополнены знаниями, полученными в контакте с тонкими уровнями сознания.\n\n"
-        "Чат-бот создан с уважением и любовью — чтобы передать вам знания, которые могут помочь увеличить в вашей жизни ясность, гармонию, любовь и ощущение себя счастливой личностью на своем пути."
-    )
+    if not update.effective_user:
+        return
+    get_or_init_journey(update.effective_user.id)
+    await send_portal_home(update, context)
 
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔮 Получить статистику", callback_data="get_stats")],
-        [InlineKeyboardButton("📊 Пример статистики", callback_data="example_stats")],
-        [InlineKeyboardButton("💝 Поддержать проект", callback_data="support_project")],
+
+def build_portal_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔮 Новый расчёт", callback_data="portal_new_calc")],
+        [InlineKeyboardButton("🌌 Карта души", callback_data="map_open")],
+        [InlineKeyboardButton("📚 Библиотека знаний", callback_data="library_open")],
+        [InlineKeyboardButton("🧭 Путь развития", callback_data="path_open")],
+        [InlineKeyboardButton("👥 Сообщество", callback_data="community_open")],
+        [InlineKeyboardButton("✨ Практики", callback_data="practice_open")],
+        [InlineKeyboardButton("💎 Поддержать проект", callback_data="support_open")],
     ])
 
+
+def get_or_init_journey(user_id: int) -> dict:
+    state = USER_JOURNEY_STATE.get(user_id)
+    if state is None:
+        state = {
+            "level": 1,
+            "last_action": "start",
+            "next_step": "portal_new_calc",
+            "access_flags": {
+                "is_supporter": False,
+                "inner_circle": False,
+            },
+        }
+        USER_JOURNEY_STATE[user_id] = state
+    return state
+
+
+def touch_journey(user_id: int, last_action: str, next_step: str | None = None) -> dict:
+    state = get_or_init_journey(user_id)
+    state["last_action"] = last_action
+    if next_step is not None:
+        state["next_step"] = next_step
+    return state
+
+
+async def send_portal_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id if update.effective_user else 0
+    state = get_or_init_journey(user_id) if user_id else {
+        "level": 1,
+        "next_step": "portal_new_calc",
+    }
+    text = (
+        "✨ Пространство «Статистика Души»\n\n"
+        "Это не только расчёт, а путь: от знакомства с картой до глубокой практики и сообщества.\n\n"
+        f"Ваш текущий уровень: {state['level']}\n"
+        f"Следующий шаг: {state['next_step']}\n\n"
+        "Выберите направление:"
+    )
+    keyboard = build_portal_menu()
     if update.message:
-        await update.message.reply_text(greeting_text, reply_markup=keyboard)
-    else:
-        # На случай, если /start пришёл из другого источника
-        await update.effective_chat.send_message(greeting_text, reply_markup=keyboard)
+        await update.message.reply_text(text, reply_markup=keyboard)
+    elif update.callback_query and update.callback_query.message:
+        await update.callback_query.message.reply_text(text, reply_markup=keyboard)
+    elif update.effective_chat:
+        await update.effective_chat.send_message(text, reply_markup=keyboard)
+
+
+async def show_stub_section(query, text: str):
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("⬅️ В портал", callback_data="portal_home")],
+        [InlineKeyboardButton("🔮 Новый расчёт", callback_data="portal_new_calc")],
+    ])
+    await query.message.reply_text(text, reply_markup=keyboard)
+
+
+async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+    data = query.data or ""
+    if not (
+        data.startswith("portal_")
+        or data.startswith("map_")
+        or data.startswith("library_")
+        or data.startswith("path_")
+        or data.startswith("community_")
+        or data.startswith("practice_")
+        or data.startswith("support_")
+    ):
+        return
+
+    await query.answer()
+    user_id = query.from_user.id if query.from_user else 0
+
+    if data == "portal_home":
+        if user_id:
+            touch_journey(user_id, "portal_home", "portal_new_calc")
+        await send_portal_home(update, context)
+        return
+
+    if data == "portal_new_calc":
+        if user_id:
+            touch_journey(user_id, "portal_new_calc", "fio_birth_line")
+        context.user_data["step"] = "fio_birth_line"
+        await query.message.reply_text(
+            "Введите данные одной строкой:\n"
+            "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
+            "Пример:\nИванов Иван Иванович 12.05.1991"
+        )
+        return
+
+    if data == "map_open":
+        if user_id:
+            touch_journey(user_id, "map_open", "portal_new_calc")
+        await show_stub_section(query, PORTAL_TEXTS["map"])
+        return
+
+    if data == "library_open":
+        if user_id:
+            touch_journey(user_id, "library_open", "portal_new_calc")
+        await show_stub_section(query, PORTAL_TEXTS["library"])
+        return
+
+    if data == "path_open":
+        if user_id:
+            touch_journey(user_id, "path_open", "portal_new_calc")
+        await show_stub_section(query, PORTAL_TEXTS["path"])
+        return
+
+    if data == "community_open":
+        if user_id:
+            touch_journey(user_id, "community_open", "portal_new_calc")
+        await show_stub_section(query, PORTAL_TEXTS["community"])
+        return
+
+    if data == "practice_open":
+        if user_id:
+            touch_journey(user_id, "practice_open", "portal_new_calc")
+        await show_stub_section(query, PORTAL_TEXTS["practice"])
+        return
+
+    if data == "support_open":
+        if user_id:
+            touch_journey(user_id, "support_open", "support_project")
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("💎 Открыть раздел поддержки", callback_data="support_project")],
+            [InlineKeyboardButton("⬅️ В портал", callback_data="portal_home")],
+        ])
+        await query.message.reply_text(PORTAL_TEXTS["support"], reply_markup=keyboard)
+        return
 
 
 async def show_action_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1864,6 +2028,18 @@ async def show_action_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not query:
+        return
+
+    data = query.data or ""
+    if (
+        data.startswith("portal_")
+        or data.startswith("map_")
+        or data.startswith("library_")
+        or data.startswith("path_")
+        or data.startswith("community_")
+        or data.startswith("practice_")
+        or data.startswith("support_")
+    ):
         return
 
     if query.data.startswith("approve_") or query.data.startswith("reject_"):
@@ -2772,6 +2948,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
+    app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|practice_|support_)"))
     app.add_handler(CallbackQueryHandler(main_menu_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     print("🤖 Бот запущен")
