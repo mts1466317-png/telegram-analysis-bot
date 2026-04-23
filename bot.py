@@ -1924,6 +1924,7 @@ def get_or_init_journey(user_id: int) -> dict:
             "next_step": "portal_new_calc",
             "last_insight": None,
             "roadmap": {},
+            "last_explored_module": None,
             "access_flags": {
                 "is_supporter": False,
                 "inner_circle": False,
@@ -1954,7 +1955,16 @@ async def send_portal_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Следующий шаг: {state['next_step']}\n\n"
         "Выберите направление:"
     )
-    keyboard = build_portal_menu()
+    portal_rows = build_portal_menu().inline_keyboard
+    continuity_text = build_continuity_intro(user_id) if user_id else None
+    if continuity_text:
+        text = f"{continuity_text}\n\n{text}"
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🌿 Продолжить путь", callback_data="continue_last_step")],
+            *portal_rows,
+        ])
+    else:
+        keyboard = InlineKeyboardMarkup(portal_rows)
     if update.message:
         await update.message.reply_text(text, reply_markup=keyboard)
     elif update.callback_query and update.callback_query.message:
@@ -2162,6 +2172,56 @@ def build_channel_updates_text(state: dict) -> str:
     )
 
 
+def resolve_next_callback(state: dict) -> str:
+    allowed = {
+        "portal_new_calc",
+        "map_open",
+        "library_open",
+        "path_open",
+        "community_open",
+        "practice_open",
+        "support_open",
+        "guide_open",
+        "channel_updates_open",
+    }
+    next_step = state.get("next_step")
+    if next_step in allowed:
+        return next_step
+
+    last_action = state.get("last_action", "")
+    mapping = {
+        "daily_insight_open": "map_open",
+        "guide_open": "guide_open",
+        "library_open": "library_open",
+        "path_open": "path_open",
+        "map_open": "map_open",
+    }
+    if last_action in mapping:
+        return mapping[last_action]
+
+    roadmap = state.get("roadmap") or {}
+    return roadmap.get("step2_callback", "portal_new_calc")
+
+
+def build_continuity_intro(user_id: int) -> str | None:
+    if not user_id:
+        return None
+    state = get_or_init_journey(user_id)
+    user_data = user_storage.get(user_id) or {}
+    has_progress = bool(state.get("roadmap") or state.get("last_insight") or user_data)
+    if not has_progress:
+        return None
+
+    calc_snapshot = user_data.get("calc_snapshot", {})
+    cycle_number = calc_snapshot.get("cycle_number", "—")
+    explored = state.get("last_explored_module") or "Карта души"
+    return (
+        "С возвращением.\n"
+        f"Сейчас вы проходите {cycle_number}-й цикл.\n"
+        f"В прошлый раз вам открылось исследование: {explored}."
+    )
+
+
 async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not query:
@@ -2178,6 +2238,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
         or data.startswith("daily_")
         or data.startswith("guide_")
         or data.startswith("channel_")
+        or data.startswith("continue_")
     ):
         return
 
@@ -2201,55 +2262,19 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
         )
         return
 
-    if data == "portal_continue_path":
+    if data == "portal_continue_path" or data == "continue_last_step":
         state = get_or_init_journey(user_id) if user_id else {"next_step": "portal_new_calc"}
-        next_step = state.get("next_step", "portal_new_calc")
-        if next_step == "map_open":
-            touch_journey(user_id, "portal_continue_path", "path_open")
-            user_data = user_storage.get(user_id) if user_id else None
-            if not user_data:
-                await show_stub_section(query, "Чтобы продолжить путь, сначала пройди «Новый расчёт».")
-                return
-            map_text = build_soul_map_profile(state, user_data.get("calc_snapshot", {}), user_data.get("sections", []))
-            keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("⬅️ В портал", callback_data="portal_home")],
-                [InlineKeyboardButton("🧭 Путь развития", callback_data="path_open")],
-            ])
-            await query.message.reply_text(map_text, reply_markup=keyboard)
-            return
-        if next_step == "library_open":
-            touch_journey(user_id, "portal_continue_path", "practice_open")
-            library_key = (state.get("roadmap") or {}).get("library_key", "life_task")
-            item = CONTENT_LIBRARY.get(library_key, CONTENT_LIBRARY["life_task"])
-            await show_stub_section(
-                query,
-                f"📚 Библиотека знаний\n\n{item['title']}\n\n{item['summary']}\n\nРекомендация: {item['cta']}",
+        data = resolve_next_callback(state)
+        if user_id:
+            touch_journey(user_id, "continue_last_step", data)
+        if data == "portal_new_calc":
+            context.user_data["step"] = "fio_birth_line"
+            await query.message.reply_text(
+                "Введите данные одной строкой:\n"
+                "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
+                "Пример:\nИванов Иван Иванович 12.05.1991"
             )
             return
-        if next_step == "practice_open":
-            touch_journey(user_id, "portal_continue_path", "community_open")
-            await show_stub_section(query, PORTAL_TEXTS["practice"])
-            return
-        if next_step == "community_open":
-            touch_journey(user_id, "portal_continue_path", "support_open")
-            await show_stub_section(query, PORTAL_TEXTS["community"])
-            return
-        if next_step == "support_open":
-            touch_journey(user_id, "portal_continue_path", "support_open")
-            keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("💎 Открыть раздел поддержки", callback_data="support_project")],
-                [InlineKeyboardButton("⬅️ В портал", callback_data="portal_home")],
-            ])
-            await query.message.reply_text(PORTAL_TEXTS["support"], reply_markup=keyboard)
-            return
-        touch_journey(user_id, "portal_continue_path", "portal_new_calc")
-        context.user_data["step"] = "fio_birth_line"
-        await query.message.reply_text(
-            "Введите данные одной строкой:\n"
-            "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
-            "Пример:\nИванов Иван Иванович 12.05.1991"
-        )
-        return
 
     if data == "map_open":
         if user_id:
@@ -2277,6 +2302,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
     if data == "guide_open":
         if user_id:
             state = touch_journey(user_id, "guide_open", "library_open")
+            state["last_explored_module"] = "Проводник"
         else:
             state = {"next_step": "portal_new_calc", "roadmap": {}}
         user_data = user_storage.get(user_id) if user_id else None
@@ -2292,6 +2318,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
             user_data.get("sections", []),
             state,
         )
+        text += "\n\nПуть продолжается."
         state["guide_primary_library_key"] = primary_key
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("📚 Открыть рубрику", callback_data="guide_library_open")],
@@ -2335,6 +2362,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
     if data == "daily_insight_open":
         if user_id:
             state = touch_journey(user_id, "daily_insight_open", "portal_continue_path")
+            state["last_explored_module"] = "Дневной инсайт"
         else:
             state = {"next_step": "portal_new_calc"}
         user_data = user_storage.get(user_id) if user_id else None
@@ -2359,6 +2387,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
                 state,
             )
             state["daily_insight_date"] = today_key
+        text += "\n\nПуть продолжается."
 
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🧭 Продолжить путь", callback_data="portal_continue_path")],
@@ -2370,6 +2399,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
     if data == "library_open":
         if user_id:
             state = touch_journey(user_id, "library_open", "practice_open")
+            state["last_explored_module"] = "Библиотека знаний"
         else:
             state = {"roadmap": {"library_key": "life_task"}}
         library_key = (state.get("roadmap") or {}).get("library_key", "life_task")
@@ -2383,6 +2413,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
     if data == "path_open":
         if user_id:
             state = touch_journey(user_id, "path_open", "library_open")
+            state["last_explored_module"] = "Путь развития"
         else:
             state = {"next_step": "portal_new_calc", "roadmap": {}}
         user_data = user_storage.get(user_id) if user_id else None
@@ -2455,6 +2486,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         or data.startswith("daily_")
         or data.startswith("guide_")
         or data.startswith("channel_")
+        or data.startswith("continue_")
     ):
         return
 
@@ -3367,7 +3399,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
-    app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|practice_|support_|daily_|guide_|channel_)"))
+    app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|practice_|support_|daily_|guide_|channel_|continue_)"))
     app.add_handler(CallbackQueryHandler(main_menu_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     print("🤖 Бот запущен")
