@@ -120,6 +120,13 @@ CONTENT_LIBRARY = {
     },
 }
 
+DAILY_INSIGHTS = [
+    "Сохраняй фокус на жизненной задаче {life_task}: одно конкретное действие сегодня ценнее длинного плана.",
+    "Энергия периода {cycle_energy} ({planet_cycle}) поддерживает движение, если ты держишь простой и ясный ритм.",
+    "Твоя точка внимания сейчас: {focus}. Дай этому месту немного тишины и один осознанный шаг.",
+    "Сегодня путь раскрывается через последовательность: намерение -> действие -> фиксация результата.",
+]
+
 
 # =========================
 # Таблица букв (ЭТАЛОН)
@@ -2040,22 +2047,20 @@ def _next_step_label(next_step: str) -> str:
 
 def build_soul_map_profile(state: dict, calc_snapshot: dict, sections: list[dict]) -> str:
     cycle_number = calc_snapshot.get("cycle_number", "—")
+    cycle_start = calc_snapshot.get("cycle_start_age", "—")
+    cycle_end = calc_snapshot.get("cycle_end_age", "—")
     cycle_energy = calc_snapshot.get("cycle_energy", "—")
     cycle_planet = calc_snapshot.get("planet_cycle", "—")
     focus = pick_focus_from_sections(sections) or "Фокус проявится после первого расчёта."
     next_step = state.get("next_step", "portal_new_calc")
-    insight = state.get("last_insight") or ""
-    insight_preview = insight.split("\n")[0].strip() if insight else ""
 
     text = (
         "🌌 Карта души\n\n"
-        f"Сейчас у тебя {cycle_number}-й жизненный цикл.\n"
-        f"Энергия цикла: {cycle_energy} ({cycle_planet}).\n\n"
-        f"Текущий фокус пути: {focus}\n\n"
+        f"Вы проходите {cycle_number}-й цикл ({cycle_start}–{cycle_end} лет).\n"
+        f"Энергия периода: {cycle_energy} ({cycle_planet}).\n"
+        f"Фокус периода: {focus}\n"
         f"Следующий шаг: {_next_step_label(next_step)}"
     )
-    if insight_preview:
-        text += f"\n\nПоследний инсайт: {insight_preview}"
     return text
 
 
@@ -2068,6 +2073,33 @@ def format_path_overview(state: dict) -> str:
         f"{roadmap.get('step3', '📚 Шаг 3: выбрать рубрику')}\n"
         f"{roadmap.get('step4', '👥 Шаг 4: подключиться к сообществу')}\n\n"
         f"Следующий шаг пути: {_next_step_label(state.get('next_step', 'portal_new_calc'))}"
+    )
+
+
+def _today_key() -> str:
+    return datetime.now().date().isoformat()
+
+
+def build_daily_insight(calc_snapshot: dict, sections: list[dict], state: dict) -> str:
+    life_task = calc_snapshot.get("life_task", "—")
+    cycle_energy = calc_snapshot.get("cycle_energy", "—")
+    planet_cycle = calc_snapshot.get("planet_cycle", "—")
+    focus = pick_focus_from_sections(sections) or "держи внимание на одном главном шаге"
+
+    idx_base = int(life_task) if str(life_task).isdigit() else 0
+    idx_energy = int(cycle_energy) if str(cycle_energy).isdigit() else 0
+    variant = DAILY_INSIGHTS[(idx_base + idx_energy) % len(DAILY_INSIGHTS)]
+    core = variant.format(
+        life_task=life_task,
+        cycle_energy=cycle_energy,
+        planet_cycle=planet_cycle,
+        focus=focus,
+    )
+
+    return (
+        "✨ Дневной инсайт\n\n"
+        f"{core}\n"
+        f"Собери день вокруг фокуса: {focus}."
     )
 
 
@@ -2084,6 +2116,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
         or data.startswith("community_")
         or data.startswith("practice_")
         or data.startswith("support_")
+        or data.startswith("daily_")
     ):
         return
 
@@ -2172,10 +2205,46 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
             return
         map_text = build_soul_map_profile(state, user_data.get("calc_snapshot", {}), user_data.get("sections", []))
         keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("✨ Получить дневной инсайт", callback_data="daily_insight_open")],
             [InlineKeyboardButton("🧭 Продолжить путь", callback_data="portal_continue_path")],
             [InlineKeyboardButton("⬅️ В портал", callback_data="portal_home")],
         ])
         await query.message.reply_text(map_text, reply_markup=keyboard)
+        return
+
+    if data == "daily_insight_open":
+        if user_id:
+            state = touch_journey(user_id, "daily_insight_open", "portal_continue_path")
+        else:
+            state = {"next_step": "portal_new_calc"}
+        user_data = user_storage.get(user_id) if user_id else None
+        if not user_data:
+            await show_stub_section(
+                query,
+                "✨ Дневной инсайт\n\n"
+                "Сначала пройди «Новый расчёт», чтобы открыть персональный инсайт дня.",
+            )
+            return
+
+        today_key = _today_key()
+        if state.get("daily_insight_date") == today_key:
+            text = (
+                "✨ Дневной инсайт\n\n"
+                "Сегодняшний инсайт уже открыт — возвращайтесь позже."
+            )
+        else:
+            text = build_daily_insight(
+                user_data.get("calc_snapshot", {}),
+                user_data.get("sections", []),
+                state,
+            )
+            state["daily_insight_date"] = today_key
+
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🧭 Продолжить путь", callback_data="portal_continue_path")],
+            [InlineKeyboardButton("🌌 Вернуться к карте души", callback_data="map_open")],
+        ])
+        await query.message.reply_text(text, reply_markup=keyboard)
         return
 
     if data == "library_open":
@@ -2263,6 +2332,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         or data.startswith("community_")
         or data.startswith("practice_")
         or data.startswith("support_")
+        or data.startswith("daily_")
     ):
         return
 
@@ -3175,7 +3245,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
-    app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|practice_|support_)"))
+    app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|practice_|support_|daily_)"))
     app.add_handler(CallbackQueryHandler(main_menu_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     print("🤖 Бот запущен")
