@@ -2103,6 +2103,65 @@ def build_daily_insight(calc_snapshot: dict, sections: list[dict], state: dict) 
     )
 
 
+def select_guide_library_keys(calc_snapshot: dict, sections: list[dict], state: dict) -> list[str]:
+    roadmap_key = (state.get("roadmap") or {}).get("library_key")
+    focus_text = (pick_focus_from_sections(sections) or "").lower()
+    life_task = calc_snapshot.get("life_task")
+    cycle_energy = calc_snapshot.get("cycle_energy")
+
+    keys: list[str] = []
+    if roadmap_key in CONTENT_LIBRARY:
+        keys.append(roadmap_key)
+
+    if "род" in focus_text and "rod" not in keys:
+        keys.append("rod")
+    if ("высшее" in focus_text or "интуиц" in focus_text) and "higher_self" not in keys:
+        keys.append("higher_self")
+    if ("цикл" in focus_text or cycle_energy is not None) and "cycles" not in keys:
+        keys.append("cycles")
+    if life_task is not None and "life_task" not in keys:
+        keys.append("life_task")
+    if "practices" not in keys:
+        keys.append("practices")
+    return keys[:3]
+
+
+def build_guide_message(calc_snapshot: dict, sections: list[dict], state: dict) -> tuple[str, str]:
+    keys = select_guide_library_keys(calc_snapshot, sections, state)
+    primary_key = keys[0] if keys else "life_task"
+    focus = pick_focus_from_sections(sections) or "выдерживать внутренний фокус и идти маленькими шагами"
+    life_task = calc_snapshot.get("life_task", "—")
+    cycle_energy = calc_snapshot.get("cycle_energy", "—")
+    planet_cycle = calc_snapshot.get("planet_cycle", "—")
+
+    lines = []
+    for k in keys:
+        item = CONTENT_LIBRARY.get(k)
+        if item:
+            lines.append(f"• {item['title']} — {item['cta']}")
+
+    text = (
+        "🕊 Проводник\n\n"
+        "Сейчас для вас особенно важно исследовать те направления, которые поддерживают ваш текущий этап пути.\n\n"
+        f"Опора сейчас: жизненная задача {life_task}, энергия периода {cycle_energy} ({planet_cycle}), "
+        f"фокус — {focus}.\n\n"
+        "📡 Сейчас в пространстве доступны темы:\n"
+        + "\n".join(lines)
+    )
+    return text, primary_key
+
+
+def build_channel_updates_text(state: dict) -> str:
+    roadmap_key = (state.get("roadmap") or {}).get("library_key", "life_task")
+    item = CONTENT_LIBRARY.get(roadmap_key, CONTENT_LIBRARY["life_task"])
+    return (
+        "📡 Тема недели\n\n"
+        f"Новая тема недели: {item['title']}\n"
+        f"Рекомендуемая практика: {item['cta']}\n"
+        "Ближайший эфир: скоро анонс, следите за обновлениями пространства."
+    )
+
+
 async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not query:
@@ -2117,6 +2176,8 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
         or data.startswith("practice_")
         or data.startswith("support_")
         or data.startswith("daily_")
+        or data.startswith("guide_")
+        or data.startswith("channel_")
     ):
         return
 
@@ -2206,10 +2267,69 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
         map_text = build_soul_map_profile(state, user_data.get("calc_snapshot", {}), user_data.get("sections", []))
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("✨ Получить дневной инсайт", callback_data="daily_insight_open")],
+            [InlineKeyboardButton("🕊 Спросить проводника", callback_data="guide_open")],
             [InlineKeyboardButton("🧭 Продолжить путь", callback_data="portal_continue_path")],
             [InlineKeyboardButton("⬅️ В портал", callback_data="portal_home")],
         ])
         await query.message.reply_text(map_text, reply_markup=keyboard)
+        return
+
+    if data == "guide_open":
+        if user_id:
+            state = touch_journey(user_id, "guide_open", "library_open")
+        else:
+            state = {"next_step": "portal_new_calc", "roadmap": {}}
+        user_data = user_storage.get(user_id) if user_id else None
+        if not user_data:
+            await show_stub_section(
+                query,
+                "🕊 Проводник\n\n"
+                "Чтобы получить сопровождение по пути, сначала пройди «Новый расчёт».",
+            )
+            return
+        text, primary_key = build_guide_message(
+            user_data.get("calc_snapshot", {}),
+            user_data.get("sections", []),
+            state,
+        )
+        state["guide_primary_library_key"] = primary_key
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📚 Открыть рубрику", callback_data="guide_library_open")],
+            [InlineKeyboardButton("📡 Тема недели", callback_data="channel_updates_open")],
+            [InlineKeyboardButton("🌌 Вернуться к карте души", callback_data="map_open")],
+            [InlineKeyboardButton("🧭 Продолжить путь", callback_data="portal_continue_path")],
+        ])
+        await query.message.reply_text(text, reply_markup=keyboard)
+        return
+
+    if data == "guide_library_open":
+        state = get_or_init_journey(user_id) if user_id else {"roadmap": {}}
+        lib_key = state.get("guide_primary_library_key") or (state.get("roadmap") or {}).get("library_key", "life_task")
+        item = CONTENT_LIBRARY.get(lib_key, CONTENT_LIBRARY["life_task"])
+        text = (
+            f"📚 {item['title']}\n\n"
+            f"{item['summary']}\n\n"
+            f"Навигация шага: {item['cta']}"
+        )
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📡 Тема недели", callback_data="channel_updates_open")],
+            [InlineKeyboardButton("🌌 Вернуться к карте души", callback_data="map_open")],
+            [InlineKeyboardButton("🧭 Продолжить путь", callback_data="portal_continue_path")],
+        ])
+        await query.message.reply_text(text, reply_markup=keyboard)
+        return
+
+    if data == "channel_updates_open":
+        state = get_or_init_journey(user_id) if user_id else {"roadmap": {}}
+        if user_id:
+            touch_journey(user_id, "channel_updates_open", "portal_continue_path")
+        text = build_channel_updates_text(state)
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📚 Открыть рубрику", callback_data="guide_library_open")],
+            [InlineKeyboardButton("🌌 Вернуться к карте души", callback_data="map_open")],
+            [InlineKeyboardButton("🧭 Продолжить путь", callback_data="portal_continue_path")],
+        ])
+        await query.message.reply_text(text, reply_markup=keyboard)
         return
 
     if data == "daily_insight_open":
@@ -2333,6 +2453,8 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         or data.startswith("practice_")
         or data.startswith("support_")
         or data.startswith("daily_")
+        or data.startswith("guide_")
+        or data.startswith("channel_")
     ):
         return
 
@@ -3245,7 +3367,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
-    app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|practice_|support_|daily_)"))
+    app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|practice_|support_|daily_|guide_|channel_)"))
     app.add_handler(CallbackQueryHandler(main_menu_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     print("🤖 Бот запущен")
