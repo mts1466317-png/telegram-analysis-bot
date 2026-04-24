@@ -2201,6 +2201,107 @@ def build_circle_updates_text() -> str:
     )
 
 
+def _short_summary(text: str, limit: int = 140) -> str:
+    if not text:
+        return ""
+    clean = text.replace("\n", " ").strip()
+    if len(clean) <= limit:
+        return clean
+    return clean[: limit - 1].rstrip() + "…"
+
+
+def build_webapp_snapshot_payload(
+    result: dict | None,
+    calc_snapshot: dict | None,
+    full_name: str = "",
+) -> dict:
+    result = result or {}
+    calc_snapshot = calc_snapshot or {}
+    field_feed = {
+        "weekTheme": "Исследование внутренней опоры",
+        "dayInsight": (
+            f"Энергия периода {calc_snapshot.get('cycle_energy', '—')} "
+            f"({calc_snapshot.get('planet_cycle', '—')}) раскрывается через один осознанный шаг сегодня."
+        ),
+        "channelHighlights": [
+            {
+                "title": "Higherself Connection",
+                "summary": "Пространство, где данные Статистики Души переходят в живое исследование и практику.",
+            },
+            {
+                "title": "Тема недели",
+                "summary": "Свяжите сигнал Высшего Я с конкретным земным действием в вашем текущем цикле.",
+            },
+        ],
+    }
+    mapping = [
+        ("physical", "Физическое тело", "🧍"),
+        ("astral", "Астральное тело", "🌙"),
+        ("mental", "Ментальное тело", "🧠"),
+        ("life", "Жизненная задача", "🎯"),
+        ("egregor", "Родовой эгрегор", "🌳"),
+        ("program", "Родовая программа", "🧬"),
+        ("higher", "Высшее Я", "✨"),
+        ("social", "Социальная задача", "🌍"),
+        ("combo", "Сочетание задач", "♾"),
+    ]
+    snapshot = []
+    for key, title, icon in mapping:
+        block = result.get(key, {})
+        snapshot.append({
+            "id": key,
+            "title": title,
+            "icon": icon,
+            "shortText": _short_summary(block.get("text", "")),
+            "cta": f"Микро-шаг: исследуйте «{title}» в контексте текущего периода.",
+        })
+    snapshot.append({
+        "id": "cycle",
+        "title": "Текущий цикл",
+        "icon": "🔄",
+        "shortText": (
+            f"{calc_snapshot.get('cycle_number', '—')}-й цикл, энергия {calc_snapshot.get('cycle_energy', '—')} "
+            f"({calc_snapshot.get('planet_cycle', '—')})."
+        ),
+        "cta": "Сверяйте решения с энергией периода и одним главным фокусом недели.",
+    })
+    return {
+        "user": {
+            "fullName": full_name or "Путник",
+        },
+        "soulSnapshot": snapshot,
+        "periodCore": {
+            "cycleNumber": calc_snapshot.get("cycle_number", "—"),
+            "cyclePlanet": calc_snapshot.get("planet_cycle", "—"),
+            "periodEnergy": calc_snapshot.get("cycle_energy", "—"),
+            "focusPrompt": "Двигайтесь в ритме периода: один ясный шаг каждый день.",
+        },
+        "soulLevels": {
+            "currentLevel": 12,
+            "updatedAt": "",
+            "archetypeSummary": "Самофиксация уровня как наблюдение пути, без иерархии превосходства.",
+            "groupLabel": "Средние духи",
+        },
+        "fieldFeed": field_feed,
+        "roadmap": [
+            {"id": "wa1", "title": "WA-1 Foundation", "status": "active", "summary": "Базовая IA и интерактивная карта сфер."},
+            {"id": "wa2", "title": "WA-2 Soul Map Wheel", "status": "next", "summary": "Переход к wheel-визуализации и деталям сфер."},
+            {"id": "wa3", "title": "WA-3 Ecosystem", "status": "next", "summary": "Углубленная связка канала, практик и continuity."},
+        ],
+        "practices": [
+            "3 минуты тишины для контакта с внутренним ориентиром.",
+            "Один заземленный шаг по активной сфере дня.",
+            "Вечером: отметить, как проявилась энергия периода.",
+        ],
+        "deepLinks": {
+            "openPdf": "",
+            "openChannel": CHANNEL_LINK,
+            "openCircle": DISCUSSION_GROUP_LINK,
+            "openPractice": "",
+        },
+    }
+
+
 def resolve_next_callback(state: dict) -> str:
     allowed = {
         "portal_new_calc",
@@ -3242,13 +3343,13 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_text("Ошибка: результат не найден")
                     return
 
-                # ⚠️ Сжимаем данные, иначе Telegram не пропустит
-                compact_result = {
-                    "spheres": result.get("spheres"),
-                    "summary": result.get("summary")
-                }
-
-                result_json = json.dumps(compact_result, ensure_ascii=False)
+                calc_snapshot_webapp = (
+                    (context.user_data.get("pending_pdf") or {}).get("calc_snapshot")
+                    or (user_storage.get(update.effective_user.id if update.effective_user else 0) or {}).get("calc_snapshot")
+                    or {}
+                )
+                webapp_payload = build_webapp_snapshot_payload(result, calc_snapshot_webapp, fio)
+                result_json = quote(json.dumps(webapp_payload, ensure_ascii=False))
 
                 keyboard = InlineKeyboardMarkup([
                     [
@@ -3358,13 +3459,13 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             await update.message.reply_text("Ошибка: результат не найден")
                             return
 
-                        # ⚠️ Сжимаем данные, иначе Telegram не пропустит
-                        compact_result = {
-                            "spheres": result.get("spheres"),
-                            "summary": result.get("summary")
-                        }
-
-                        result_json = json.dumps(compact_result, ensure_ascii=False)
+                        calc_snapshot_webapp = (
+                            (context.user_data.get("pending_pdf") or {}).get("calc_snapshot")
+                            or (user_storage.get(update.effective_user.id if update.effective_user else 0) or {}).get("calc_snapshot")
+                            or {}
+                        )
+                        webapp_payload = build_webapp_snapshot_payload(result, calc_snapshot_webapp, fio)
+                        result_json = quote(json.dumps(webapp_payload, ensure_ascii=False))
 
                         keyboard = InlineKeyboardMarkup([
                             [

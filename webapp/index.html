@@ -2,82 +2,150 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Разбор по сферам</title>
+  <title>Статистика Души</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Telegram Web App -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="style.css?v=5" />
 </head>
 <body>
+  <div class="app">
+    <header class="app-header">
+      <p class="kicker">Higherself Connection</p>
+      <h1>Живая карта пути</h1>
+    </header>
 
-  <div class="container">
+    <main id="screen-host" class="screen-host">
+      <section data-screen="field" class="screen active">
+        <article class="panel panel-hero">
+          <p class="panel-label">Поле недели</p>
+          <h2 id="week-theme-title">Тема недели</h2>
+          <p id="week-theme-text"></p>
+        </article>
 
-    <!-- ЭКРАН СПИСКА СФЕР -->
-    <div id="screen-menu">
-      <h1>Выбери сферу</h1>
+        <article class="panel">
+          <p class="panel-label">Инсайт дня</p>
+          <p id="day-insight"></p>
+        </article>
 
-      <div class="grid">
-        <button class="card" data-sphere="physical">
-          <span class="icon">🧍</span>
-          <span class="label">Физическое тело</span>
-        </button>
+        <article class="panel actions">
+          <button id="action-open-map" class="btn btn-primary">Войти в путь</button>
+          <button id="action-open-channel" class="btn">Открыть канал</button>
+          <button id="action-open-circle" class="btn">Круг обсуждений</button>
+        </article>
 
-        <button class="card" data-sphere="astral">
-          <span class="icon">🌙</span>
-          <span class="label">Астральное тело</span>
-        </button>
+        <article class="panel">
+          <p class="panel-label">Сейчас в пространстве</p>
+          <div id="channel-feed" class="feed"></div>
+        </article>
 
-        <button class="card" data-sphere="mental">
-          <span class="icon">🧠</span>
-          <span class="label">Ментальное тело</span>
-        </button>
+        <article class="panel">
+          <p class="panel-label">Roadmap</p>
+          <div id="wa-roadmap" class="feed"></div>
+        </article>
+      </section>
 
-        <button class="card" data-sphere="life">
-          <span class="icon">🎯</span>
-          <span class="label">Жизненная задача</span>
-        </button>
+      <section data-screen="map" class="screen">
+        <article class="panel panel-hero">
+          <p class="panel-label">Карта Души</p>
+          <h2 id="map-user-name">Ваш Soul Snapshot</h2>
+          <p id="map-cycle-meta"></p>
+        </article>
 
-        <button class="card" data-sphere="egregor">
-          <span class="icon">🌳</span>
-          <span class="label">Родовой эгрегор</span>
-        </button>
+        <article class="panel center-badge">
+          <p class="panel-label">Центр периода</p>
+          <h3 id="period-energy"></h3>
+          <p id="period-planet"></p>
+        </article>
 
-        <button class="card" data-sphere="higher">
-          <span class="icon">✨</span>
-          <span class="label">Высшее Я</span>
-        </button>
+        <article class="panel">
+          <div class="map-header-row">
+            <p class="panel-label">Сферы</p>
+            <span class="chip">Soul Map Wheel: WA-2</span>
+          </div>
+          <div id="snapshot-grid" class="snapshot-grid"></div>
+        </article>
 
-        <button class="card" data-sphere="program">
-          <span class="icon">🧬</span>
-          <span class="label">Родовая программа</span>
-        </button>
+        <article id="sphere-detail" class="panel hidden">
+          <p class="panel-label">Сигнал сферы</p>
+          <h3 id="sphere-title"></h3>
+          <p id="sphere-summary"></p>
+          <p id="sphere-cta" class="cta-note"></p>
+        </article>
 
-        <button class="card" data-sphere="social">
-          <span class="icon">🌍</span>
-          <span class="label">Социальная задача</span>
-        </button>
+        <button id="open-pdf" class="btn btn-primary sticky">Полный PDF-свиток</button>
+      </section>
 
-        <button class="card" data-sphere="combo">
-          <span class="icon">♾</span>
-          <span class="label">Сочетание задач</span>
-        </button>
-      </div>
-    </div>
+      <section data-screen="levels" class="screen">
+        <article class="panel panel-hero">
+          <p class="panel-label">24 Soul Levels</p>
+          <h2>Самофиксация уровня</h2>
+          <p>Это не иерархия превосходства, а спектр задач воплощения.</p>
+        </article>
 
-    <!-- ЭКРАН ТЕКСТА -->
-    <div id="screen-content" class="hidden">
-      <button id="back-btn">← Назад</button>
-      <h2 id="content-title"></h2>
-      <div id="content-text"></div>
-    </div>
+        <article class="panel">
+          <div class="group-legend">
+            <span>1-6 Архонты</span>
+            <span>7-16 Средние духи</span>
+            <span>17-24 Ангелы</span>
+          </div>
+          <input id="level-slider" type="range" min="1" max="24" value="12" />
+          <div class="level-row">
+            <strong id="level-value">12</strong>
+            <span id="level-group"></span>
+          </div>
+          <textarea id="level-note" maxlength="120" placeholder="Короткая заметка о состоянии (опционально)"></textarea>
+          <button id="save-level" class="btn btn-primary">Сохранить самофиксацию</button>
+          <p id="level-saved-meta" class="meta"></p>
+        </article>
 
+        <article class="panel">
+          <p class="panel-label">Архетипический профиль</p>
+          <h3 id="archetype-title"></h3>
+          <p id="archetype-focus"></p>
+          <p id="archetype-resource"></p>
+          <p id="archetype-shadow"></p>
+          <p id="archetype-practice"></p>
+        </article>
+      </section>
+
+      <section data-screen="circle" class="screen">
+        <article class="panel panel-hero">
+          <p class="panel-label">Пространство</p>
+          <h2>Higherself Connection</h2>
+          <p>Статистика Души — входной инструмент в это пространство исследования.</p>
+        </article>
+        <article class="panel actions">
+          <button id="circle-open-channel" class="btn btn-primary">Войти в канал</button>
+          <button id="circle-open-discussion" class="btn">Круг обсуждений</button>
+        </article>
+        <article class="panel">
+          <p class="panel-label">Текущие темы</p>
+          <div id="circle-topics"></div>
+        </article>
+      </section>
+
+      <section data-screen="practices" class="screen">
+        <article class="panel panel-hero">
+          <p class="panel-label">Практики</p>
+          <h2>Ежедневные шаги</h2>
+          <p>Короткие практики на основе вашей активной сферы и периода.</p>
+        </article>
+        <article class="panel">
+          <div id="practice-list"></div>
+        </article>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button data-nav="field" class="nav-item active">Поле</button>
+      <button data-nav="map" class="nav-item">Карта Души</button>
+      <button data-nav="levels" class="nav-item">24 Уровня</button>
+      <button data-nav="circle" class="nav-item">Круг</button>
+      <button data-nav="practices" class="nav-item">Практики</button>
+    </nav>
   </div>
 
-  <!-- app.js -->
-  <script src="app.js?v=4"></script>
-
+  <script src="app.js?v=5"></script>
 </body>
 </html>
 
