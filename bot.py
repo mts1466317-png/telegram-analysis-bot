@@ -2007,6 +2007,28 @@ def build_birth_input_prompt() -> str:
     )
 
 
+def _trim_for_webapp(text: str, limit: int = 480) -> str:
+    if not text:
+        return ""
+    clean = re.sub(r"\s+", " ", text).strip()
+    if len(clean) <= limit:
+        return clean
+    return clean[: limit - 1].rstrip() + "…"
+
+
+def build_webapp_compact_payload(result: dict) -> dict:
+    keys = ("physical", "astral", "mental", "life", "egregor", "higher", "program", "social", "combo")
+    compact = {}
+    for key in keys:
+        block = result.get(key) or {}
+        compact[key] = {
+            "title": block.get("title", ""),
+            "text": _trim_for_webapp(block.get("text", "")),
+        }
+    compact["summary"] = "Базовая интерактивная карта открыта. Полный PDF доступен в чате после оплаты."
+    return compact
+
+
 def _extract_marker_text(raw: str, marker: str) -> str:
     if not raw:
         return ""
@@ -3194,7 +3216,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         journey["roadmap"] = build_lightweight_roadmap(calc_snapshot, pdf_sections)
         await update.message.reply_text(insight)
 
-        result_json = quote(json.dumps(user_result, ensure_ascii=False))
+        compact_result = build_webapp_compact_payload(user_result)
+        result_json = quote(json.dumps(compact_result, ensure_ascii=False))
         app_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🌌 Открыть результат в Mini App", web_app=WebAppInfo(url=MINI_APP_URL + "?data=" + result_json))],
         ])
