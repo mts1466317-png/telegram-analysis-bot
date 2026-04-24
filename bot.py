@@ -3230,7 +3230,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         journey = touch_journey(_uid, "calculation_done", "map_open")
         journey["last_insight"] = insight
         journey["roadmap"] = build_lightweight_roadmap(calc_snapshot, pdf_sections)
-        await update.message.reply_text(insight)
 
         compact_result = build_webapp_compact_payload(user_result, calc_snapshot)
         WEBAPP_PAYLOAD_CACHE[_uid] = compact_result
@@ -3238,7 +3237,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🌌 Открыть результат в Mini App", web_app=WebAppInfo(url=MINI_APP_URL + f"?uid={_uid}"))],
         ])
         await update.message.reply_text(
-            "Результат готов. Открой карту в Mini App, чтобы исследовать сферы в живом формате.",
+            "Результат готов. Переходи сразу в Mini App.",
             reply_markup=app_keyboard,
         )
 
