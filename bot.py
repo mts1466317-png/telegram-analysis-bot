@@ -1895,11 +1895,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     track_event("start_entry", user_id, props={"entry": "/start"})
     touch_journey(user_id, "start", "portal_begin_path")
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Начать путь", callback_data="portal_begin_path")],
+        [InlineKeyboardButton("Войти в путь", callback_data="portal_begin_path")],
     ])
     await update.message.reply_text(
-        "✨ Добро пожаловать в пространство «Статистика Души».\n\n"
-        "Чат — это врата пути, а Mini App — место, где результат раскрывается как живая карта.",
+        "🜂 Портал открыт.\n\n"
+        "Здесь начинается твой путь через пространство «Статистика Души».\n"
+        "Чат проводит инициацию, Mini App раскрывает живую карту, а круг удерживает поле движения.",
         reply_markup=keyboard,
     )
 
@@ -1990,7 +1991,9 @@ def build_birth_input_prompt() -> str:
     return (
         "Скажи, как тебя зовут в этом воплощении.\n\n"
         "Введи одной строкой:\n"
-        "Фамилия Имя Отчество ДД.ММ.ГГГГ"
+        "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
+        "Допустимо также:\n"
+        "Имя Фамилия ДД.ММ.ГГГГ"
     )
 
 
@@ -2347,6 +2350,10 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
         if user_id:
             touch_journey(user_id, "portal_begin_path", "fio_birth_line")
         context.user_data["step"] = "fio_birth_line"
+        await query.message.reply_text(
+            "✨ Вход в инициацию принят.\n"
+            "Сейчас зафиксируем имя и дату рождения для открытия карты."
+        )
         await query.message.reply_text(build_birth_input_prompt())
         return
 
@@ -2354,6 +2361,10 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
         if user_id:
             touch_journey(user_id, "portal_new_calc", "fio_birth_line")
         context.user_data["step"] = "fio_birth_line"
+        await query.message.reply_text(
+            "✨ Переходим к новому витку пути.\n"
+            "Сначала введи данные для расчёта."
+        )
         await query.message.reply_text(build_birth_input_prompt())
         return
 
@@ -3249,7 +3260,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🌌 Открыть результат в Mini App", web_app=WebAppInfo(url=MINI_APP_URL + f"?uid={_uid}"))],
         ])
         await update.message.reply_text(
-            "Результат готов. Переходи сразу в Mini App.",
+            "Врата карты открыты.\n"
+            "Переходи в Mini App — там результат разворачивается как живое поле.",
             reply_markup=app_keyboard,
         )
 
