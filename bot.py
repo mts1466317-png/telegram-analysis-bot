@@ -47,7 +47,7 @@ TOKEN = resolve_bot_token()
 print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕТ'}")
 
 ADMIN_ID = 7471303897
-CHANNEL_LINK = "https://t.me/CHANNEL_LINK"
+CHANNEL_LINK = "https://t.me/higherself_connection"
 DISCUSSION_GROUP_LINK = "https://t.me/DISCUSSION_GROUP_LINK"
 
 # Хранилище результатов расчётов пользователей (в памяти)
@@ -2181,20 +2181,23 @@ def build_channel_updates_text(state: dict) -> str:
 
 def build_circle_open_text() -> str:
     return (
-        "👥 Круг участников\n\n"
-        "Здесь пространство продолжается не только через личный путь,\n"
-        "но через круг участников.\n\n"
-        "Здесь вы можете войти в канал смыслов, участвовать в круге обсуждений\n"
-        "и при желании углубиться во внутренний круг поддержки."
+        "👥 Пространство Higherself Connection\n\n"
+        "Higherself Connection — центральное пространство экосистемы,\n"
+        "где личный путь раскрывается через живое исследование и общий контекст.\n\n"
+        "«Статистика Души» здесь выступает входным инструментом:\n"
+        "вы получаете опору в расчёте, а затем углубляете понимание в пространстве,\n"
+        "в обсуждениях и в практике круга."
     )
 
 
 def build_circle_updates_text() -> str:
     return (
-        "🌠 Сейчас в пространстве\n\n"
-        "Тема обсуждения недели: как сохранять опору в фокусе текущего периода.\n"
-        "Вопрос для размышления: какой шаг сегодня действительно ведёт ваш путь вперёд?\n"
-        "Ближайшая встреча/эфир: скоро анонс в пространстве."
+        "🌠 Сейчас в Higherself Connection\n\n"
+        "В пространстве продолжается исследование: как соединять сигналы Высшего Я\n"
+        "с конкретными шагами в текущем цикле.\n\n"
+        "Опирайтесь на данные из «Статистики Души» как на входную точку\n"
+        "и наблюдайте, как личные инсайты раскрываются в общем поле.\n"
+        "Ближайшая встреча/эфир: скоро анонс в канале."
     )
 
 
@@ -2466,6 +2469,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
         data = "circle_open"
 
     if data == "circle_open":
+        # TODO(phase-next): bot-as-channel-admin mode (channel publishing via bot with admin approval flow).
         if user_id:
             state = touch_journey(user_id, "circle_open", "channel_updates_open")
             state["last_explored_module"] = "Круг участников"
@@ -3270,7 +3274,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "Егор и Кристина."
                 )
                 keyboard = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("✨ Подписаться на канал Высшего Я", url="https://t.me/CHANNEL_LINK")],
+                    [InlineKeyboardButton("✨ Подписаться на канал Высшего Я", url=CHANNEL_LINK)],
                     [InlineKeyboardButton("🔁 Сделать новый расчёт", callback_data="restart_calc")],
                 ])
                 await update.message.reply_text(
@@ -3386,7 +3390,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             "Егор и Кристина."
                         )
                         keyboard = InlineKeyboardMarkup([
-                            [InlineKeyboardButton("✨ Подписаться на канал Высшего Я", url="https://t.me/CHANNEL_LINK")],
+                            [InlineKeyboardButton("✨ Подписаться на канал Высшего Я", url=CHANNEL_LINK)],
                             [InlineKeyboardButton("🔁 Сделать новый расчёт", callback_data="restart_calc")],
                         ])
                         await update.message.reply_text(
