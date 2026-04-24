@@ -2017,7 +2017,8 @@ def _trim_for_webapp(text: str, limit: int = 480) -> str:
     return clean[: limit - 1].rstrip() + "…"
 
 
-def build_webapp_compact_payload(result: dict) -> dict:
+def build_webapp_compact_payload(result: dict, calc_snapshot: dict | None = None) -> dict:
+    calc_snapshot = calc_snapshot or {}
     keys = ("physical", "astral", "mental", "life", "egregor", "higher", "program", "social", "combo")
     compact = {}
     for key in keys:
@@ -2026,6 +2027,14 @@ def build_webapp_compact_payload(result: dict) -> dict:
             "title": block.get("title", ""),
             "text": _trim_for_webapp(block.get("text", "")),
         }
+    compact["profile"] = {
+        "life_task": calc_snapshot.get("life_task", "—"),
+        "cycle_number": calc_snapshot.get("cycle_number", "—"),
+        "cycle_energy": calc_snapshot.get("cycle_energy", "—"),
+        "cycle_planet": calc_snapshot.get("planet_cycle", "—"),
+        "higher_self": calc_snapshot.get("higher_self", "—"),
+        "higher_planet": calc_snapshot.get("planet_higher", "—"),
+    }
     compact["summary"] = "Базовая интерактивная карта открыта. Полный PDF доступен в чате после оплаты."
     return compact
 
@@ -3223,7 +3232,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         journey["roadmap"] = build_lightweight_roadmap(calc_snapshot, pdf_sections)
         await update.message.reply_text(insight)
 
-        compact_result = build_webapp_compact_payload(user_result)
+        compact_result = build_webapp_compact_payload(user_result, calc_snapshot)
         WEBAPP_PAYLOAD_CACHE[_uid] = compact_result
         app_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🌌 Открыть результат в Mini App", web_app=WebAppInfo(url=MINI_APP_URL + f"?uid={_uid}"))],

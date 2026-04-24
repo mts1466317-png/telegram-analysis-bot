@@ -7,6 +7,10 @@ const titleEl = document.getElementById("content-title");
 const textEl = document.getElementById("content-text");
 const backBtn = document.getElementById("back-btn");
 const pdfCtaBtn = document.getElementById("pdf-cta-btn");
+const heroCycleEl = document.getElementById("hero-cycle");
+const heroTitleEl = document.getElementById("hero-title");
+const heroSubtitleEl = document.getElementById("hero-subtitle");
+const heroHighlightsEl = document.getElementById("hero-highlights");
 
 // ===============================
 // 🔹 Состояние приложения
@@ -78,7 +82,42 @@ function renderResult(result) {
   }
 
   contentData = result;
+  renderInfographicHero(result);
   console.log("✅ Данные готовы к отображению");
+}
+
+function extractSignal(text) {
+  if (!text) return "";
+  const marker = "Как проявляется:";
+  const idx = text.indexOf(marker);
+  if (idx === -1) return text.slice(0, 120).trim();
+  const chunk = text.slice(idx + marker.length).trim();
+  const dot = chunk.indexOf(".");
+  return (dot === -1 ? chunk : chunk.slice(0, dot + 1)).trim();
+}
+
+function renderInfographicHero(result) {
+  const profile = result.profile || {};
+  const cycle = profile.cycle_number || "—";
+  const energy = profile.cycle_energy || "—";
+  const planet = profile.cycle_planet || "—";
+  heroCycleEl.textContent = `Цикл ${cycle} • Энергия ${energy} (${planet})`;
+  heroTitleEl.textContent = "Твоя базовая карта уже раскрылась";
+  heroSubtitleEl.textContent = "Это верхний слой статистики: ключевые векторы, фокусы и точки роста для текущего периода.";
+
+  const items = [
+    { label: "Физический уровень", text: extractSignal(result.physical?.text || "") },
+    { label: "Ментальное поле", text: extractSignal(result.mental?.text || "") },
+    { label: "Жизненная задача", text: extractSignal(result.life?.text || "") },
+    { label: "Высшее Я", text: extractSignal(result.higher?.text || "") },
+  ];
+  heroHighlightsEl.innerHTML = "";
+  items.forEach((item) => {
+    const node = document.createElement("article");
+    node.className = "highlight-item";
+    node.innerHTML = `<strong>${item.label}:</strong> ${item.text || "Исследуй эту сферу в карточках ниже."}`;
+    heroHighlightsEl.appendChild(node);
+  });
 }
 
 // ===============================
