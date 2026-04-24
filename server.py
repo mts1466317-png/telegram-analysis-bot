@@ -16,6 +16,7 @@ from telegram.ext import (
 
 from env_token import env_token_hint, resolve_bot_token
 from snapshot_store import init_snapshot_store
+from telemetry import init_telemetry_store, track_event
 
 # По этому маркеру в логах видно, что задеплоена актуальная версия (не старый server.py:27)
 print("📌 boot server.py (env_token resolver v2026-04-19)")
@@ -27,6 +28,7 @@ print(
 TOKEN = resolve_bot_token()
 print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕТ'}")
 init_snapshot_store()
+init_telemetry_store()
 
 if not TOKEN:
     raise RuntimeError(
@@ -127,6 +129,7 @@ def webapp_payload(user_id: int):
     payload = get_cached_webapp_payload(user_id)
     if not payload:
         return jsonify({"error": "payload_not_found"}), 404
+    track_event("miniapp_open", user_id, source_layer="server", props={"endpoint": "/webapp/data"})
     return jsonify(payload), 200
 
 
@@ -146,6 +149,7 @@ def app_payload_alias(user_id: int):
     payload = get_cached_webapp_payload(user_id)
     if not payload:
         return jsonify({"error": "payload_not_found"}), 404
+    track_event("miniapp_open", user_id, source_layer="server", props={"endpoint": "/app/data"})
     return jsonify(payload), 200
 
 

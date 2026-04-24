@@ -13,6 +13,7 @@ from urllib.parse import quote
 
 from env_token import resolve_bot_token
 from snapshot_store import load_last_snapshot, save_last_snapshot
+from telemetry import track_event
 
 # Не использовать insert(0): в .vendor лежит частичная копия PIL без бинарного _imaging —
 # она перекрывает Pillow из pip и ломает ReportLab (Railway).
@@ -1891,6 +1892,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_user:
         return
     user_id = update.effective_user.id
+    track_event("start_entry", user_id, props={"entry": "/start"})
     touch_journey(user_id, "start", "portal_begin_path")
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("Начать путь", callback_data="portal_begin_path")],
@@ -2524,6 +2526,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
     if data == "community_open":
         if user_id:
             touch_journey(user_id, "community_open", "circle_open")
+            track_event("channel_or_circle_click", user_id, props={"entry": "community_open"})
         data = "circle_open"
 
     if data == "circle_open":
@@ -2531,6 +2534,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
         if user_id:
             state = touch_journey(user_id, "circle_open", "channel_updates_open")
             state["last_explored_module"] = "Круг участников"
+            track_event("channel_or_circle_click", user_id, props={"entry": "circle_open"})
         text = build_circle_open_text()
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("📡 Войти в канал", url=CHANNEL_LINK)],
@@ -2799,6 +2803,8 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         await show_action_menu(update, context)
     elif data == "unlock_full_report":
+        user = query.from_user
+        track_event("pdf_cta_click", user.id if user else None, props={"source": "chat_callback"})
         text = (
             "📖 Полный разбор — PDF\n\n"
             "После доната ты получишь PDF с:\n"
@@ -3030,6 +3036,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
+        submitted_user_id = update.effective_user.id if update.effective_user else None
+        track_event("identity_input_submitted", submitted_user_id, props={"parts_count": len(parts)})
+
         fio = f"{surname} {name} {patronymic}"
         date_str = birth_date
         context.user_data["step"] = None
@@ -3235,6 +3244,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         compact_result = build_webapp_compact_payload(user_result, calc_snapshot)
         WEBAPP_PAYLOAD_CACHE[_uid] = compact_result
         save_last_snapshot(_uid, compact_result)
+        track_event("calculation_completed", _uid, props={"cycle_number": calc_snapshot.get("cycle_number")})
         app_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🌌 Открыть результат в Mini App", web_app=WebAppInfo(url=MINI_APP_URL + f"?uid={_uid}"))],
         ])
