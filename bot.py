@@ -49,7 +49,7 @@ print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕ�
 ADMIN_ID = 7471303897
 CHANNEL_LINK = "https://t.me/higherself_connection"
 DISCUSSION_GROUP_LINK = "https://t.me/DISCUSSION_GROUP_LINK"
-MINI_APP_URL = "https://telegram-analysis-bot.onrender.com/webapp"
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://web-production-bff199.up.railway.app/webapp").rstrip("/")
 
 # Хранилище результатов расчётов пользователей (в памяти)
 results = {}
@@ -3327,7 +3327,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardButton(
                             "🔮 Открыть разбор",
                             web_app=WebAppInfo(
-                                url="https://telegram-analysis-bot.onrender.com/?data=" + result_json
+                                url=MINI_APP_URL + "?data=" + result_json
                             )
                         )
                     ]
@@ -3443,7 +3443,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 InlineKeyboardButton(
                                     "🔮 Открыть разбор",
                                     web_app=WebAppInfo(
-                                        url="https://telegram-analysis-bot.onrender.com/?data=" + result_json
+                                        url=MINI_APP_URL + "?data=" + result_json
                                     )
                                 )
                             ]
