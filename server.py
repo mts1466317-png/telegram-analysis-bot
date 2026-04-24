@@ -4,7 +4,7 @@ import threading
 import traceback
 from typing import Optional
 
-from flask import Flask, request
+from flask import Flask, request, send_from_directory
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -62,7 +62,7 @@ if _app_loop is None:
 tg_app = ApplicationBuilder().token(TOKEN).build()
 tg_app.add_handler(CommandHandler("start", start))
 tg_app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
-tg_app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|circle_|practice_|support_|daily_|guide_|channel_|continue_)"))
+tg_app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|launcher_|map_|library_|path_|community_|circle_|practice_|support_|daily_|guide_|channel_|continue_)"))
 tg_app.add_handler(CallbackQueryHandler(main_menu_callback))
 tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
@@ -76,6 +76,7 @@ _run_on_loop(tg_app.initialize())
 _run_on_loop(tg_app.start())
 
 app = Flask(__name__)
+WEBAPP_DIR = os.path.join(os.path.dirname(__file__), "webapp")
 
 
 @app.route("/", methods=["POST"])
@@ -99,6 +100,28 @@ def webhook():
 @app.route("/", methods=["GET"])
 def health():
     return "Bot is running 🚀", 200
+
+
+@app.route("/webapp", methods=["GET"])
+@app.route("/webapp/", methods=["GET"])
+def webapp_index():
+    return send_from_directory(WEBAPP_DIR, "index.html")
+
+
+@app.route("/webapp/<path:filename>", methods=["GET"])
+def webapp_assets(filename: str):
+    return send_from_directory(WEBAPP_DIR, filename)
+
+
+@app.route("/app", methods=["GET"])
+@app.route("/app/", methods=["GET"])
+def app_index_alias():
+    return send_from_directory(WEBAPP_DIR, "index.html")
+
+
+@app.route("/app/<path:filename>", methods=["GET"])
+def app_assets_alias(filename: str):
+    return send_from_directory(WEBAPP_DIR, filename)
 
 
 if __name__ == "__main__":
