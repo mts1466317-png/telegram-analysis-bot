@@ -4,7 +4,7 @@ import threading
 import traceback
 from typing import Optional
 
-from flask import Flask, request, send_from_directory
+from flask import Flask, request, send_from_directory, jsonify
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
@@ -37,7 +37,14 @@ if not TOKEN:
 
 os.environ["BOT_TOKEN"] = TOKEN
 
-from bot import start, handle_text, main_menu_callback, admin_payment_callback, portal_callback_router
+from bot import (
+    start,
+    handle_text,
+    main_menu_callback,
+    admin_payment_callback,
+    portal_callback_router,
+    get_cached_webapp_payload,
+)
 
 # Один event loop в отдельном потоке (Flask воркеры в разных потоках).
 _app_loop: Optional[asyncio.AbstractEventLoop] = None
@@ -113,6 +120,14 @@ def webapp_assets(filename: str):
     return send_from_directory(WEBAPP_DIR, filename)
 
 
+@app.route("/webapp/data/<int:user_id>", methods=["GET"])
+def webapp_payload(user_id: int):
+    payload = get_cached_webapp_payload(user_id)
+    if not payload:
+        return jsonify({"error": "payload_not_found"}), 404
+    return jsonify(payload), 200
+
+
 @app.route("/app", methods=["GET"])
 @app.route("/app/", methods=["GET"])
 def app_index_alias():
@@ -122,6 +137,14 @@ def app_index_alias():
 @app.route("/app/<path:filename>", methods=["GET"])
 def app_assets_alias(filename: str):
     return send_from_directory(WEBAPP_DIR, filename)
+
+
+@app.route("/app/data/<int:user_id>", methods=["GET"])
+def app_payload_alias(user_id: int):
+    payload = get_cached_webapp_payload(user_id)
+    if not payload:
+        return jsonify({"error": "payload_not_found"}), 404
+    return jsonify(payload), 200
 
 
 if __name__ == "__main__":

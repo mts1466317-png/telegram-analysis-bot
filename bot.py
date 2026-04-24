@@ -59,6 +59,7 @@ _payment_pending: dict[str, dict] = {}
 
 # Надёжное хранилище последних расчётных данных каждого пользователя (int user_id → dict)
 user_storage: dict[int, dict] = {}
+WEBAPP_PAYLOAD_CACHE: dict[int, dict] = {}
 
 # Базовое состояние пути пользователя (Этап 1: каркас портала)
 USER_JOURNEY_STATE: dict[int, dict] = {}
@@ -2029,6 +2030,12 @@ def build_webapp_compact_payload(result: dict) -> dict:
     return compact
 
 
+def get_cached_webapp_payload(user_id: int) -> dict | None:
+    if not user_id:
+        return None
+    return WEBAPP_PAYLOAD_CACHE.get(user_id)
+
+
 def _extract_marker_text(raw: str, marker: str) -> str:
     if not raw:
         return ""
@@ -3217,9 +3224,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(insight)
 
         compact_result = build_webapp_compact_payload(user_result)
-        result_json = quote(json.dumps(compact_result, ensure_ascii=False))
+        WEBAPP_PAYLOAD_CACHE[_uid] = compact_result
         app_keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🌌 Открыть результат в Mini App", web_app=WebAppInfo(url=MINI_APP_URL + "?data=" + result_json))],
+            [InlineKeyboardButton("🌌 Открыть результат в Mini App", web_app=WebAppInfo(url=MINI_APP_URL + f"?uid={_uid}"))],
         ])
         await update.message.reply_text(
             "Результат готов. Открой карту в Mini App, чтобы исследовать сферы в живом формате.",

@@ -36,16 +36,35 @@ function showError(text) {
 // ===============================
 const params = new URLSearchParams(window.location.search);
 const data = params.get("data");
+const uid = params.get("uid");
 
-if (!data) {
-  showError("Нет данных от Telegram");
-} else {
+if (data) {
   try {
     contentData = JSON.parse(decodeURIComponent(data));
     console.log("✅ Данные получены из URL:", contentData);
   } catch (error) {
     console.error("❌ Ошибка парсинга данных:", error);
     showError("Ошибка формата данных");
+  }
+}
+
+async function loadPayloadByUid() {
+  if (!uid) {
+    showError("Нет данных от Telegram");
+    return false;
+  }
+  try {
+    const response = await fetch(`data/${uid}`, { method: "GET" });
+    if (!response.ok) {
+      showError("Данные для пользователя пока недоступны. Повтори запуск из чата.");
+      return false;
+    }
+    contentData = await response.json();
+    return true;
+  } catch (error) {
+    console.error("❌ Ошибка загрузки payload по uid:", error);
+    showError("Ошибка загрузки данных");
+    return false;
   }
 }
 
@@ -93,10 +112,14 @@ function handleSphereClick(card) {
 // ===============================
 // 🔹 Инициализация приложения
 // ===============================
-function init() {
-  if (contentData) {
-    renderResult(contentData);
+async function init() {
+  if (!contentData) {
+    const loaded = await loadPayloadByUid();
+    if (!loaded) {
+      return;
+    }
   }
+  renderResult(contentData);
 
   // Навешиваем обработчики на карточки сфер
   document.querySelectorAll(".card").forEach(card => {
@@ -123,7 +146,9 @@ function init() {
 // 🚀 Запуск приложения
 // ===============================
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
+  document.addEventListener("DOMContentLoaded", () => {
+    init();
+  });
 } else {
   init();
 }
