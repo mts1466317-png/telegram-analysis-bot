@@ -41,6 +41,7 @@ function showError(text) {
 const params = new URLSearchParams(window.location.search);
 const data = params.get("data");
 const uid = params.get("uid");
+const tgUserId = tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : "";
 
 if (data) {
   try {
@@ -53,12 +54,13 @@ if (data) {
 }
 
 async function loadPayloadByUid() {
-  if (!uid) {
+  const effectiveUid = uid || tgUserId;
+  if (!effectiveUid) {
     showError("Нет данных от Telegram");
     return false;
   }
   try {
-    const response = await fetch(`data/${uid}`, { method: "GET" });
+    const response = await fetch(`data/${effectiveUid}`, { method: "GET" });
     if (!response.ok) {
       showError("Данные для пользователя пока недоступны. Повтори запуск из чата.");
       return false;

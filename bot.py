@@ -2028,7 +2028,18 @@ def build_webapp_compact_payload(result: dict, calc_snapshot: dict | None = None
 def get_cached_webapp_payload(user_id: int) -> dict | None:
     if not user_id:
         return None
-    return WEBAPP_PAYLOAD_CACHE.get(user_id)
+    cached = WEBAPP_PAYLOAD_CACHE.get(user_id)
+    if cached:
+        return cached
+
+    # Fallback: восстанавливаем payload из последних сохранённых данных пользователя.
+    result = results.get(str(user_id))
+    calc_snapshot = (user_storage.get(user_id) or {}).get("calc_snapshot", {})
+    if result:
+        compact = build_webapp_compact_payload(result, calc_snapshot)
+        WEBAPP_PAYLOAD_CACHE[user_id] = compact
+        return compact
+    return None
 
 
 def _extract_marker_text(raw: str, marker: str) -> str:
