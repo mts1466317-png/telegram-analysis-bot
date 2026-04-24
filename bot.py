@@ -1598,20 +1598,6 @@ def build_pdf_report(
     story.append(Paragraph(_pdf_flowable_text(f"Дата рождения: {birth_date}"), body_style))
     story.append(PageBreak())
 
-    # Нумерологическая схема расчёта (тот же текст, что в _pdf_build_calc_scheme_paragraphs)
-    if calc_snapshot:
-        story.append(
-            Paragraph(_pdf_flowable_text("Нумерологическая схема расчёта"), section_style)
-        )
-        story.append(Spacer(1, 0.15 * cm))
-        story.append(
-            Paragraph(
-                _pdf_flowable_text(_pdf_build_calc_scheme_paragraphs(calc_snapshot)),
-                calc_style,
-            )
-        )
-        story.append(PageBreak())
-
     # Персональная матрица
     story.append(Paragraph(_pdf_flowable_text("Персональная матрица"), section_style))
     story.append(Spacer(1, 0.25 * cm))
