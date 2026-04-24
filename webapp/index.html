@@ -12,12 +12,16 @@
     <header class="app-header">
       <p class="kicker">Higherself Connection</p>
       <h1>Живая карта пути</h1>
+      <p class="header-subtle">Статистика Души как входной инструмент в пространство исследования.</p>
     </header>
 
     <main id="screen-host" class="screen-host">
       <section data-screen="field" class="screen active">
         <article class="panel panel-hero">
-          <p class="panel-label">Поле недели</p>
+          <div class="hero-top-row">
+            <p class="panel-label">Поле недели</p>
+            <span class="chip chip-gold">Тема недели</span>
+          </div>
           <h2 id="week-theme-title">Тема недели</h2>
           <p id="week-theme-text"></p>
         </article>
@@ -62,13 +66,16 @@
             <p class="panel-label">Сферы</p>
             <span class="chip">Soul Map Wheel: WA-2</span>
           </div>
+          <p id="snapshot-progress" class="meta">Исследовано сфер 0/10</p>
           <div id="snapshot-grid" class="snapshot-grid"></div>
         </article>
 
         <article id="sphere-detail" class="panel hidden">
           <p class="panel-label">Сигнал сферы</p>
           <h3 id="sphere-title"></h3>
+          <p id="sphere-signal" class="signal-line"></p>
           <p id="sphere-summary"></p>
+          <p class="panel-label action-label">Что сделать сегодня</p>
           <p id="sphere-cta" class="cta-note"></p>
         </article>
 
@@ -87,6 +94,11 @@
             <span>1-6 Архонты</span>
             <span>7-16 Средние духи</span>
             <span>17-24 Ангелы</span>
+          </div>
+          <div class="level-spectrum" aria-hidden="true">
+            <span class="spectrum-band">1-6</span>
+            <span class="spectrum-band">7-16</span>
+            <span class="spectrum-band">17-24</span>
           </div>
           <input id="level-slider" type="range" min="1" max="24" value="12" />
           <div class="level-row">

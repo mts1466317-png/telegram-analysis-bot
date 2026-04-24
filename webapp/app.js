@@ -10,6 +10,7 @@ const screens = document.querySelectorAll("[data-screen]");
 const state = {
   payload: null,
   selectedSphereId: null,
+  exploredSphereIds: new Set(),
   level: 12,
   levelSavedAt: null,
 };
@@ -87,6 +88,28 @@ function openScreen(screenId) {
   });
 }
 
+function signalLabelBySphereId(id) {
+  const mapping = {
+    physical: "Сигнал состояния: Опора",
+    astral: "Сигнал состояния: Чувствование",
+    mental: "Сигнал состояния: Ясность",
+    life: "Сигнал состояния: Вектор",
+    egregor: "Сигнал состояния: Корни",
+    program: "Сигнал состояния: Паттерн",
+    higher: "Сигнал состояния: Компас",
+    social: "Сигнал состояния: Вклад",
+    combo: "Сигнал состояния: Синхронизация",
+    cycle: "Сигнал состояния: Ритм",
+  };
+  return mapping[id] || "Сигнал состояния: Наблюдение";
+}
+
+function updateSnapshotProgress() {
+  const progressEl = document.getElementById("snapshot-progress");
+  if (!progressEl) return;
+  progressEl.textContent = `Исследовано сфер ${state.exploredSphereIds.size}/10`;
+}
+
 function levelGroup(level) {
   if (level <= 6) return ARCHETYPE_GROUPS.archons;
   if (level <= 16) return ARCHETYPE_GROUPS.middle;
@@ -139,21 +162,35 @@ function renderSnapshot(payload) {
   (payload.soulSnapshot || []).forEach((sphere) => {
     const button = document.createElement("button");
     button.className = "sphere-card";
+    button.dataset.sphereId = sphere.id || "";
     button.type = "button";
     button.innerHTML = `
       <p class="sphere-title">${sphere.icon || "•"} ${sphere.title || "Сфера"}</p>
       <p class="sphere-meta">${sphere.shortText || ""}</p>
+      <span class="state-badge">${signalLabelBySphereId(sphere.id).replace("Сигнал состояния: ", "")}</span>
     `;
     button.addEventListener("click", () => showSphereDetail(sphere));
     grid.appendChild(button);
   });
+  updateSnapshotProgress();
 }
 
 function showSphereDetail(sphere) {
   state.selectedSphereId = sphere.id;
+  if (sphere.id && sphere.id !== "cycle") {
+    state.exploredSphereIds.add(sphere.id);
+    updateSnapshotProgress();
+  }
+  document.querySelectorAll(".sphere-card").forEach((el) => {
+    el.classList.toggle("is-active", el.dataset.sphereId === sphere.id);
+  });
   document.getElementById("sphere-title").textContent = sphere.title || "";
+  document.getElementById("sphere-signal").textContent = signalLabelBySphereId(sphere.id);
   document.getElementById("sphere-summary").textContent = sphere.shortText || "";
-  document.getElementById("sphere-cta").textContent = sphere.cta || "";
+  const actionText = sphere.cta || "";
+  document.getElementById("sphere-cta").textContent = actionText.startsWith("Сделайте")
+    ? actionText
+    : `Сделайте сегодня: ${actionText}`;
   document.getElementById("sphere-detail").classList.remove("hidden");
 }
 
