@@ -2,4 +2,5 @@ flask
 python-telegram-bot
 reportlab
 pillow
+psycopg2-binary
 

@@ -12,6 +12,7 @@ import tempfile
 from urllib.parse import quote
 
 from env_token import resolve_bot_token
+from snapshot_store import load_last_snapshot, save_last_snapshot
 
 # Не использовать insert(0): в .vendor лежит частичная копия PIL без бинарного _imaging —
 # она перекрывает Pillow из pip и ломает ReportLab (Railway).
@@ -2025,6 +2026,11 @@ def build_webapp_compact_payload(result: dict, calc_snapshot: dict | None = None
 def get_cached_webapp_payload(user_id: int) -> dict | None:
     if not user_id:
         return None
+    persistent = load_last_snapshot(user_id)
+    if persistent:
+        WEBAPP_PAYLOAD_CACHE[user_id] = persistent
+        return persistent
+
     cached = WEBAPP_PAYLOAD_CACHE.get(user_id)
     if cached:
         return cached
@@ -2035,6 +2041,7 @@ def get_cached_webapp_payload(user_id: int) -> dict | None:
     if result:
         compact = build_webapp_compact_payload(result, calc_snapshot)
         WEBAPP_PAYLOAD_CACHE[user_id] = compact
+        save_last_snapshot(user_id, compact)
         return compact
     return None
 
@@ -3227,6 +3234,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         compact_result = build_webapp_compact_payload(user_result, calc_snapshot)
         WEBAPP_PAYLOAD_CACHE[_uid] = compact_result
+        save_last_snapshot(_uid, compact_result)
         app_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("🌌 Открыть результат в Mini App", web_app=WebAppInfo(url=MINI_APP_URL + f"?uid={_uid}"))],
         ])

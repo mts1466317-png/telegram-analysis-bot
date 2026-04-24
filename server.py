@@ -15,6 +15,7 @@ from telegram.ext import (
 )
 
 from env_token import env_token_hint, resolve_bot_token
+from snapshot_store import init_snapshot_store
 
 # По этому маркеру в логах видно, что задеплоена актуальная версия (не старый server.py:27)
 print("📌 boot server.py (env_token resolver v2026-04-19)")
@@ -25,6 +26,7 @@ print(
 
 TOKEN = resolve_bot_token()
 print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕТ'}")
+init_snapshot_store()
 
 if not TOKEN:
     raise RuntimeError(
