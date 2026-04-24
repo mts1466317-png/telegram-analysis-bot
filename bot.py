@@ -49,6 +49,7 @@ print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕ�
 ADMIN_ID = 7471303897
 CHANNEL_LINK = "https://t.me/higherself_connection"
 DISCUSSION_GROUP_LINK = "https://t.me/DISCUSSION_GROUP_LINK"
+MINI_APP_URL = "https://telegram-analysis-bot.onrender.com/webapp"
 
 # Хранилище результатов расчётов пользователей (в памяти)
 results = {}
@@ -1901,8 +1902,16 @@ def cycle_description(num: int, cycle: dict) -> str:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_user:
         return
-    get_or_init_journey(update.effective_user.id)
-    await send_portal_home(update, context)
+    user_id = update.effective_user.id
+    touch_journey(user_id, "start", "portal_begin_path")
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Начать путь", callback_data="portal_begin_path")],
+    ])
+    await update.message.reply_text(
+        "✨ Добро пожаловать в пространство «Статистика Души».\n\n"
+        "Чат — это врата пути, а Mini App — место, где результат раскрывается как живая карта.",
+        reply_markup=keyboard,
+    )
 
 
 def build_portal_menu() -> InlineKeyboardMarkup:
@@ -1985,6 +1994,17 @@ async def show_stub_section(query, text: str):
         [InlineKeyboardButton("🔮 Новый расчёт", callback_data="portal_new_calc")],
     ])
     await query.message.reply_text(text, reply_markup=keyboard)
+
+
+def build_birth_input_prompt() -> str:
+    return (
+        "Скажи, как тебя зовут в этом воплощении.\n\n"
+        "Введи одной строкой:\n"
+        "Имя Фамилия ДД.ММ.ГГГГ\n\n"
+        "Пример:\nИван Иванов 12.05.1991\n\n"
+        "Также поддерживается расширенный формат:\n"
+        "Фамилия Имя Отчество ДД.ММ.ГГГГ"
+    )
 
 
 def _extract_marker_text(raw: str, marker: str) -> str:
@@ -2282,15 +2302,18 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
         await send_portal_home(update, context)
         return
 
+    if data == "portal_begin_path":
+        if user_id:
+            touch_journey(user_id, "portal_begin_path", "fio_birth_line")
+        context.user_data["step"] = "fio_birth_line"
+        await query.message.reply_text(build_birth_input_prompt())
+        return
+
     if data == "portal_new_calc":
         if user_id:
             touch_journey(user_id, "portal_new_calc", "fio_birth_line")
         context.user_data["step"] = "fio_birth_line"
-        await query.message.reply_text(
-            "Введите данные одной строкой:\n"
-            "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
-            "Пример:\nИванов Иван Иванович 12.05.1991"
-        )
+        await query.message.reply_text(build_birth_input_prompt())
         return
 
     if data == "portal_continue_path" or data == "continue_last_step":
@@ -2300,11 +2323,7 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
             touch_journey(user_id, "continue_last_step", data)
         if data == "portal_new_calc":
             context.user_data["step"] = "fio_birth_line"
-            await query.message.reply_text(
-                "Введите данные одной строкой:\n"
-                "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
-                "Пример:\nИванов Иван Иванович 12.05.1991"
-            )
+            await query.message.reply_text(build_birth_input_prompt())
             return
 
     if data == "map_open":
@@ -2951,19 +2970,24 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         parts = text.split()
-        if len(parts) != 4:
+        if len(parts) not in {3, 4}:
             await update.message.reply_text(
-                "❌ Неверный формат.\n\nВведите данные одной строкой:\n"
-                "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
-                "Пример:\nИванов Иван Иванович 12.05.1991"
+                "❌ Неверный формат.\n\n"
+                "Введи одной строкой:\n"
+                "Имя Фамилия ДД.ММ.ГГГГ\n\n"
+                "Пример:\nИван Иванов 12.05.1991"
             )
             return
 
-        surname, name, patronymic, birth_date = parts
+        if len(parts) == 3:
+            name, surname, birth_date = parts
+            patronymic = "-"
+        else:
+            surname, name, patronymic, birth_date = parts
         if not re.match(r"^\d{2}\.\d{2}\.\d{4}$", birth_date):
             await update.message.reply_text(
                 "Дата должна быть в формате ДД.ММ.ГГГГ\n\n"
-                "Пример:\nИванов Иван Иванович 12.05.1991"
+                "Пример:\nИван Иванов 12.05.1991"
             )
             return
 
@@ -3169,6 +3193,15 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         journey["last_insight"] = insight
         journey["roadmap"] = build_lightweight_roadmap(calc_snapshot, pdf_sections)
         await update.message.reply_text(insight)
+
+        result_json = quote(json.dumps(user_result, ensure_ascii=False))
+        app_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🌌 Открыть результат в Mini App", web_app=WebAppInfo(url=MINI_APP_URL + "?data=" + result_json))],
+        ])
+        await update.message.reply_text(
+            "Результат готов. Открой карту в Mini App, чтобы исследовать сферы в живом формате.",
+            reply_markup=app_keyboard,
+        )
 
         # CTA с кнопкой доступа к полному разбору
         cta_keyboard = InlineKeyboardMarkup([

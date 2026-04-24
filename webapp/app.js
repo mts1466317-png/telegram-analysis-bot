@@ -6,6 +6,7 @@ const contentScreen = document.getElementById("screen-content");
 const titleEl = document.getElementById("content-title");
 const textEl = document.getElementById("content-text");
 const backBtn = document.getElementById("back-btn");
+const pdfCtaBtn = document.getElementById("pdf-cta-btn");
 
 // ===============================
 // 🔹 Состояние приложения
@@ -106,6 +107,15 @@ function init() {
   backBtn.addEventListener("click", () => {
     contentScreen.classList.add("hidden");
     menuScreen.classList.remove("hidden");
+  });
+
+  // CTA на существующий PDF-слой в чате
+  pdfCtaBtn.addEventListener("click", () => {
+    if (tg && typeof tg.showAlert === "function") {
+      tg.showAlert("Полный PDF-разбор доступен в чате через кнопку «Хочу полный разбор (от 111 ₽)».");
+      return;
+    }
+    alert("Полный PDF-разбор доступен в чате через кнопку «Хочу полный разбор (от 111 ₽)».");
   });
 }
 
