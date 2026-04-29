@@ -3066,7 +3066,7 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
 
         await context.bot.send_message(
             chat_id=user_id,
-            text="✅ Оплата подтверждена! Формирую твой Паспорт Души (PDF).",
+            text="✅ Оплата подтверждена! Отправляю ваш Паспорт Души.",
         )
         print(f"📄 SEND FORMAT TO: {user_id} (pdf)")
         try:
@@ -3078,7 +3078,12 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
                 data.get("calc_snapshot"),
             )
             if pdf_path and os.path.exists(pdf_path):
-                pdf_filename = f"SoulReport_{data['birth_date'].replace('.', '')}.pdf"
+                raw_fio = str(data.get("fio", "")).strip()
+                safe_fio = re.sub(r"[\\/:*?\"<>|]+", "", raw_fio)
+                safe_fio = re.sub(r"\s+", " ", safe_fio).strip()
+                if not safe_fio:
+                    safe_fio = "Паспорт Души"
+                pdf_filename = f"{safe_fio}, Паспорт Души.pdf"
                 with open(pdf_path, "rb") as f:
                     await context.bot.send_document(
                         chat_id=user_id,
