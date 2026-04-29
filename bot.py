@@ -2021,7 +2021,12 @@ def build_miniapp_insight(calc_snapshot: dict) -> str:
     )
 
 
-def build_webapp_compact_payload(result: dict, calc_snapshot: dict | None = None) -> dict:
+def build_webapp_compact_payload(
+    result: dict,
+    calc_snapshot: dict | None = None,
+    fio: str | None = None,
+    birth_date: str | None = None,
+) -> dict:
     calc_snapshot = calc_snapshot or {}
     keys = ("physical", "astral", "mental", "life", "egregor", "higher", "program", "social", "combo")
     compact = {}
@@ -2032,6 +2037,8 @@ def build_webapp_compact_payload(result: dict, calc_snapshot: dict | None = None
             "text": _trim_for_webapp(block.get("text", "")),
         }
     compact["profile"] = {
+        "fio": fio or "—",
+        "birth_date": birth_date or "—",
         "life_task": calc_snapshot.get("life_task", "—"),
         "cycle_number": calc_snapshot.get("cycle_number", "—"),
         "cycle_energy": calc_snapshot.get("cycle_energy", "—"),
@@ -2059,7 +2066,13 @@ def get_cached_webapp_payload(user_id: int) -> dict | None:
     result = results.get(str(user_id))
     calc_snapshot = (user_storage.get(user_id) or {}).get("calc_snapshot", {})
     if result:
-        compact = build_webapp_compact_payload(result, calc_snapshot)
+        user_data = user_storage.get(user_id) or {}
+        compact = build_webapp_compact_payload(
+            result,
+            calc_snapshot,
+            user_data.get("fio"),
+            user_data.get("birth_date"),
+        )
         WEBAPP_PAYLOAD_CACHE[user_id] = compact
         save_last_snapshot(user_id, compact)
         return compact
@@ -3266,7 +3279,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         journey["last_insight"] = insight
         journey["roadmap"] = build_lightweight_roadmap(calc_snapshot, pdf_sections)
 
-        compact_result = build_webapp_compact_payload(user_result, calc_snapshot)
+        compact_result = build_webapp_compact_payload(user_result, calc_snapshot, fio, birth_date)
         WEBAPP_PAYLOAD_CACHE[_uid] = compact_result
         save_last_snapshot(_uid, compact_result)
         track_event("calculation_completed", _uid, props={"cycle_number": calc_snapshot.get("cycle_number")})

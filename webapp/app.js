@@ -3,6 +3,11 @@ const contentScreen = document.getElementById("screen-content");
 const pageContentEl = document.getElementById("page-content");
 const prevPageBtn = document.getElementById("passport-prev-btn");
 const nextPageBtn = document.getElementById("passport-next-btn");
+const editorPanelEl = document.getElementById("editor-panel");
+const editorLabelEl = document.getElementById("editor-label");
+const editorInputEl = document.getElementById("editor-input");
+const editorCancelBtn = document.getElementById("editor-cancel-btn");
+const editorSaveBtn = document.getElementById("editor-save-btn");
 const titleEl = document.getElementById("content-title");
 const textEl = document.getElementById("content-text");
 const backBtn = document.getElementById("back-btn");
@@ -14,6 +19,7 @@ const heroSubtitleEl = document.getElementById("hero-subtitle");
 let contentData = null;
 let currentPage = 1;
 const TOTAL_PAGES = 4;
+let editingKey = null;
 let passportForm = {
   fio: "",
   birth_date: "",
@@ -50,18 +56,20 @@ if (data) {
 }
 
 function hydrateFormFromPayload(result) {
-  const userName = tg?.initDataUnsafe?.user?.first_name || "";
+  const profile = result?.profile || {};
   passportForm = {
-    fio: userName || "—",
-    birth_date: "—",
+    fio: profile.fio || "—",
+    birth_date: profile.birth_date || "—",
     birth_place: "—",
     spiritual_name: "—",
     spiritual_level: "—",
   };
-
-  const profile = result?.profile || {};
   if (profile.cycle_number || profile.cycle_energy) {
-    passportForm.spiritual_level = `Цикл ${profile.cycle_number || "—"} • Энергия ${profile.cycle_energy || "—"}`;
+    passportForm.spiritual_level = formatCycleLine(profile);
+  }
+  if (!profile.fio || profile.fio === "—") {
+    const userName = tg?.initDataUnsafe?.user?.first_name || "";
+    passportForm.fio = userName || "—";
   }
 }
 
@@ -101,11 +109,44 @@ function renderResult(result) {
 
 function renderHero(result) {
   const profile = result.profile || {};
-  const cycle = profile.cycle_number || "—";
-  const energy = profile.cycle_energy || "—";
-  const planet = profile.cycle_planet || "—";
-  heroCycleEl.textContent = `Цикл ${cycle} • Энергия ${energy} (${planet})`;
-  heroSubtitleEl.textContent = result.summary || "Структурированный маршрут по ключевым уровням вашего воплощения.";
+  heroCycleEl.textContent = formatCycleLine(profile);
+  heroSubtitleEl.textContent = "Короткий паспорт текущего этапа. Выберите страницу ниже.";
+}
+
+function formatPlanetName(planetRaw) {
+  const raw = String(planetRaw || "—");
+  const isMaster = raw.includes("(мастер)");
+  const clean = raw.replace(" (мастер)", "");
+  return isMaster ? `Мастер ${clean}` : clean;
+}
+
+function formatCycleLine(profile) {
+  const cycle = profile?.cycle_number || "—";
+  const energy = profile?.cycle_energy || "—";
+  const planet = formatPlanetName(profile?.cycle_planet || "—");
+  return `Цикл ${cycle} • Энергия ${energy} • ${planet}`;
+}
+
+function extractMarker(text, marker) {
+  if (!text) return "";
+  const idx = text.indexOf(marker);
+  if (idx === -1) return "";
+  const start = idx + marker.length;
+  const end = text.indexOf("\n\n", start);
+  return (end === -1 ? text.slice(start) : text.slice(start, end)).trim();
+}
+
+function buildFriendlyMeaning(sectionText) {
+  const focus = extractMarker(sectionText, "🎯 Фокус периода:\n");
+  const recommendation = extractMarker(sectionText, "✅ Рекомендации:\n");
+  if (focus || recommendation) {
+    const parts = [];
+    if (focus) parts.push(`Сейчас важно: ${focus}`);
+    if (recommendation) parts.push(`Практично: ${recommendation}`);
+    return parts.join("\n");
+  }
+  const plain = String(sectionText || "").replace(/Планета:[^\n]*\n?/g, "").replace(/🔹 Как проявляется:\n?/g, "").trim();
+  return plain.slice(0, 280);
 }
 
 function openSection(sectionKey, fallbackTitle) {
@@ -115,7 +156,8 @@ function openSection(sectionKey, fallbackTitle) {
   }
   const section = contentData[sectionKey];
   titleEl.textContent = section?.title || fallbackTitle;
-  textEl.textContent = section?.text || "Раздел будет заполнен в следующем этапе.";
+  const main = buildFriendlyMeaning(section?.text || "");
+  textEl.textContent = `${main || "Раздел будет заполнен в следующем этапе."}\n\nЧто делать дальше:\n1) Сверь с текущей неделей\n2) Выбери одно действие\n3) Вернись и открой следующий раздел`;
   passportScreen.classList.add("hidden");
   contentScreen.classList.remove("hidden");
 }
@@ -137,11 +179,14 @@ function renderPage(page) {
       </div>
     `;
   } else if (currentPage === 2) {
+    const physical = buildFriendlyMeaning(contentData?.physical?.text || "");
+    const astral = buildFriendlyMeaning(contentData?.astral?.text || "");
+    const mental = buildFriendlyMeaning(contentData?.mental?.text || "");
     pageContentEl.innerHTML = `
-      <h3 class="page-title">Страница 2 — Личность воплощения</h3>
-      <p class="page-note">• Физическая ось: [будет рассчитано]</p>
-      <p class="page-note">• Эмоциональная ось: [будет рассчитано]</p>
-      <p class="page-note">• Ментальная ось: [будет рассчитано]</p>
+      <h3 class="page-title">Страница 2 — Как вы проявляетесь</h3>
+      <p class="page-note">• Физический уровень: ${physical || "Собираем данные..."}</p>
+      <p class="page-note">• Эмоциональный уровень: ${astral || "Собираем данные..."}</p>
+      <p class="page-note">• Ментальный уровень: ${mental || "Собираем данные..."}</p>
     `;
   } else if (currentPage === 3) {
     pageContentEl.innerHTML = `
@@ -159,7 +204,7 @@ function renderPage(page) {
     pageContentEl.innerHTML = `
       <h3 class="page-title">Страница 4 — Цикл воплощения</h3>
       <p class="page-note">Текущий цикл: ${profile.cycle_number || "—"}</p>
-      <p class="page-note">Энергия цикла: ${profile.cycle_energy || "—"} (${profile.cycle_planet || "—"})</p>
+      <p class="page-note">Энергия цикла: ${profile.cycle_energy || "—"} • ${formatPlanetName(profile.cycle_planet || "—")}</p>
       <p class="page-note">Раздел расширится в следующем этапе.</p>
     `;
   }
@@ -181,6 +226,7 @@ function renderField(label, key) {
 }
 
 function bindDynamicButtons() {
+  hideEditor();
   pageContentEl.querySelectorAll("[data-edit]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.edit;
@@ -192,12 +238,7 @@ function bindDynamicButtons() {
         spiritual_level: "Духовный уровень",
       };
       const label = labelMap[key] || "Поле";
-      const nextValue = window.prompt(`Введите ${label}:`, passportForm[key] === "—" ? "" : (passportForm[key] || ""));
-      if (nextValue === null) return;
-      const clean = nextValue.trim();
-      if (!clean) return;
-      passportForm[key] = clean;
-      renderPage(1);
+      showEditor(key, label);
     });
   });
 
@@ -215,6 +256,19 @@ function bindDynamicButtons() {
   });
 }
 
+function showEditor(key, label) {
+  editingKey = key;
+  editorLabelEl.textContent = `Изменить: ${label}`;
+  editorInputEl.value = passportForm[key] === "—" ? "" : (passportForm[key] || "");
+  editorPanelEl.classList.remove("hidden");
+  editorInputEl.focus();
+}
+
+function hideEditor() {
+  editingKey = null;
+  editorPanelEl.classList.add("hidden");
+}
+
 async function init() {
   if (!contentData) {
     const loaded = await loadPayloadByUid();
@@ -226,6 +280,15 @@ async function init() {
 
   prevPageBtn.addEventListener("click", () => renderPage(currentPage - 1));
   nextPageBtn.addEventListener("click", () => renderPage(currentPage + 1));
+  editorCancelBtn.addEventListener("click", hideEditor);
+  editorSaveBtn.addEventListener("click", () => {
+    if (!editingKey) return;
+    const value = editorInputEl.value.trim();
+    if (!value) return;
+    passportForm[editingKey] = value;
+    hideEditor();
+    renderPage(1);
+  });
 
   backBtn.addEventListener("click", () => {
     contentScreen.classList.add("hidden");
@@ -233,11 +296,25 @@ async function init() {
   });
 
   pdfCtaBtn.addEventListener("click", () => {
-    if (tg && typeof tg.showAlert === "function") {
-      tg.showAlert("Полный PDF-разбор доступен в чате через кнопку «Хочу полный разбор (от 555 ₽)».");
+    if (tg && typeof tg.showPopup === "function") {
+      tg.showPopup(
+        {
+          title: "Полный разбор",
+          message: "Полный PDF доступен в чате через кнопку «Хочу полный разбор (от 555 ₽)». Вернуться в чат сейчас?",
+          buttons: [
+            { id: "stay", type: "cancel", text: "Остаться в приложении" },
+            { id: "back_chat", type: "default", text: "Вернуться в чат" },
+          ],
+        },
+        (buttonId) => {
+          if (buttonId === "back_chat" && typeof tg.close === "function") {
+            tg.close();
+          }
+        }
+      );
       return;
     }
-    alert("Полный PDF-разбор доступен в чате через кнопку «Хочу полный разбор (от 555 ₽)».");
+    alert("Полный PDF доступен в чате через кнопку «Хочу полный разбор (от 555 ₽)». Закройте WebApp, чтобы вернуться в чат.");
   });
 }
 

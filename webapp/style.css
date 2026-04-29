@@ -49,7 +49,7 @@ h1 {
 
 #hero-title {
   margin: 8px 0;
-  font-size: 18px;
+  font-size: 0;
 }
 
 #hero-subtitle,
@@ -133,6 +133,46 @@ h1 {
 
 .pager button:disabled {
   opacity: 0.5;
+}
+
+.editor-panel {
+  margin-top: 10px;
+  background: #121729;
+  border: 1px solid #33406a;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+#editor-label {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #d7def7;
+}
+
+#editor-input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #445181;
+  background: #0e1322;
+  color: #fff;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.editor-actions {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.editor-actions button {
+  border: 1px solid #3c476b;
+  background: #1a223b;
+  color: #e5ebff;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 13px;
 }
 
 .hidden {
