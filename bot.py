@@ -1893,9 +1893,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     user_id = update.effective_user.id
     track_event("start_entry", user_id, props={"entry": "/start"})
-    touch_journey(user_id, "start", "get_stats")
+    touch_journey(user_id, "start", "onboarding_story_open")
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Получить паспорт души", callback_data="get_stats")],
+        [InlineKeyboardButton("Получить паспорт души", callback_data="onboarding_story_open")],
     ])
     await update.message.reply_text(
         "Инструмент «Паспорт Души» основан на нумерологических расчётах и формулах и позволяет получить доступ к данным, "
@@ -1994,11 +1994,9 @@ async def show_stub_section(query, text: str):
 
 def build_birth_input_prompt() -> str:
     return (
-        "Скажи, как тебя зовут в этом воплощении.\n\n"
-        "Введи одной строкой:\n"
+        "Введите данные одной строкой:\n"
         "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
-        "Допустимо также:\n"
-        "Имя Фамилия ДД.ММ.ГГГГ"
+        "Пример:\nИванов Иван Иванович 12.05.1991"
     )
 
 
@@ -2036,16 +2034,35 @@ def build_passport_hook_message(calc_snapshot: dict) -> str:
     cycle = calc_snapshot.get("cycle_number", "—")
     cycle_start = calc_snapshot.get("cycle_start_age", "—")
     cycle_end = calc_snapshot.get("cycle_end_age", "—")
-    cycle_planet = str(calc_snapshot.get("planet_cycle", "—")).replace(" (мастер)", "")
+    cycle_planet = calc_snapshot.get("planet_cycle", "—")
     cycle_energy = calc_snapshot.get("cycle_energy", "—")
+
+    physical_text = block_description(int(physical), PHYSICAL_BODY) if str(physical).isdigit() else ""
+    mental_text = block_description(int(mental), MENTAL_BODY) if str(mental).isdigit() else ""
+    life_text = block_description(int(life_task), LIFE_TASK_BODY) if str(life_task).isdigit() else ""
+    higher_text = block_description(int(higher), HIGHER_SELF_BODY) if str(higher).isdigit() else ""
+    cycle_text = cycle_description(int(cycle_energy), CYCLE_BODY) if str(cycle_energy).isdigit() else ""
+
+    physical_manifest = _extract_marker_text(physical_text, "🔹 Как проявляется:\n") or "тело реагирует тонко и чувствительно."
+    mental_manifest = _extract_marker_text(mental_text, "🔹 Как проявляется:\n") or "мышление тянется к поиску смыслов и закономерностей."
+    mental_risks = _extract_marker_text(mental_text, "⚠️ Риски:\n") or "иногда можно перегружать себя мыслями и уходить в избыточный анализ."
+    life_focus = _extract_marker_text(life_text, "🎯 Фокус периода:\n") or "раскрывать свой путь через осознанные действия."
+    life_risks = _extract_marker_text(life_text, "⚠️ Риски:\n") or "важно не уходить в крайности и не терять связь с реальностью."
+    higher_manifest = _extract_marker_text(higher_text, "🔹 Как проявляется:\n") or "у души есть сильный опыт внутреннего знания и интуиции."
+    cycle_focus = _extract_marker_text(cycle_text, "🎯 Фокус периода:\n") or "главная тема периода — внимание к чувствам, опоре и внутренней стабильности."
+
+    cycle_planet_line = str(cycle_planet)
+    if "(мастер)" in cycle_planet_line:
+        cycle_planet_line = cycle_planet_line.replace(" (мастер)", " (мастер)")
+
     return (
         "Я посмотрел твою карту — там очень интересная картина.\n\n"
-        f"По физическому уровню у тебя вибрация {physical} ({physical_planet}).\n"
-        f"По ментальному полю — активна вибрация {mental}: мышление ищет смысл и общую картину.\n"
-        f"Жизненная задача у тебя — {life_task}: это главный вектор воплощения на текущем этапе.\n"
-        f"По более глубоким уровням — Высшее Я {higher} ({higher_planet}).\n"
+        f"По физическому уровню у тебя вибрация {physical} ({physical_planet}) — {physical_manifest}\n"
+        f"По ментальному полю — {mental_manifest} Из-за этого нередко проявляется: {mental_risks}\n"
+        f"Жизненная задача у тебя — {life_focus} И одновременно с этим риск: {life_risks}\n"
+        f"По более глубоким уровням — Высшее Я у тебя {higher} ({higher_planet}): {higher_manifest}\n"
         f"Сейчас ты в {cycle}-м жизненном цикле (возраст {cycle_start}–{cycle_end} лет), "
-        f"энергия {cycle_energy}, планета — {cycle_planet}.\n\n"
+        f"планета — {cycle_planet_line}. Фокус: {cycle_focus}\n\n"
         "И это только верхний слой. Там дальше намного глубже.\n\n"
         "Я сейчас вижу полную картину по тебе:\n"
         "— сильные стороны\n"
@@ -2699,13 +2716,40 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     data = query.data
 
-    if data == "get_stats":
-        context.user_data["step"] = "fio_birth_line"
-        await query.message.reply_text(
-            "Введите данные одной строкой:\n"
-            "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
-            "Пример:\nИванов Иван Иванович 12.05.1991"
+    if data == "onboarding_story_open":
+        text = (
+            "Иногда внутри нас есть вопросы, которые сложно сформулировать словами:\n"
+            "почему повторяются одни и те же сценарии, где уходит энергия, и куда на самом деле ведет наш путь.\n\n"
+            "Паспорт Души — это начало личного исследования, где ваша история читается через ключ рождения."
         )
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Продолжить", callback_data="onboarding_story_next")],
+        ])
+        await query.message.reply_text(text, reply_markup=keyboard)
+    elif data == "onboarding_story_next":
+        text = (
+            "Ваше имя и дата рождения могут раскрыть:\n"
+            "особенности физической сферы, эмоциональные сценарии, устройство мышления,\n"
+            "задачи воплощения, влияние родовой линии, связь с Высшим Я и текущий этап пути.\n\n"
+            "Это не просто список функций — это карта, которая часто дает ответы на вопросы,\n"
+            "которые человек давно носит внутри."
+        )
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Оформить Паспорт Души", callback_data="get_stats")],
+            [InlineKeyboardButton("Пока не готов(а)", callback_data="onboarding_later")],
+        ])
+        await query.message.reply_text(text, reply_markup=keyboard)
+    elif data == "onboarding_later":
+        await query.message.reply_text(
+            "Берите столько времени, сколько нужно.\n"
+            "Когда почувствуете внутреннюю готовность — мы будем рядом.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("Вернуться к оформлению", callback_data="onboarding_story_open")],
+            ]),
+        )
+    elif data == "get_stats":
+        context.user_data["step"] = "fio_birth_line"
+        await query.message.reply_text(build_birth_input_prompt())
     elif data == "restart_calc":
         context.user_data.clear()
         context.user_data["step"] = "fio_birth_line"
@@ -2888,8 +2932,8 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if pending:
             pending["delivery_format"] = "pdf"
         text = (
-            "📖 Полный разбор — PDF\n\n"
-            "После доната ты получишь PDF с:\n"
+            "📖 Полный Паспорт Души — PDF\n\n"
+            "После вклада в оформление Паспорта Души вы получите PDF с:\n"
             "— полной схемой расчётов\n"
             "— матрицей сфер и вибраций\n"
             "— детальным разбором каждой сферы\n"
@@ -2899,7 +2943,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "Карта: <code>2200 7008 8290 3809</code>\n"
             "Нажми на номер карты, чтобы скопировать 👆\n"
             "Получатель: Кристина Г\n\n"
-            "Минимальный донат — 222 ₽.\n"
+            "Минимальный вклад в оформление Паспорта Души — 222 ₽.\n"
             "После перевода нажми «Я оплатил» — и сразу получишь PDF."
         )
         keyboard = InlineKeyboardMarkup([
@@ -2913,8 +2957,8 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if pending:
             pending["delivery_format"] = "electronic"
         text = (
-            "📖 Полный разбор — электронный\n\n"
-            "После доната ты получишь доступ в Mini App с:\n"
+            "📖 Полный Паспорт Души — электронный\n\n"
+            "После вклада в оформление Паспорта Души вы получите доступ в Mini App с:\n"
             "— полной схемой расчётов\n"
             "— матрицей сфер и вибраций\n"
             "— детальным разбором каждой сферы\n"
@@ -2924,7 +2968,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "Карта: <code>2200 7008 8290 3809</code>\n"
             "Нажми на номер карты, чтобы скопировать 👆\n"
             "Получатель: Кристина Г\n\n"
-            "Минимальный донат — 222 ₽.\n"
+            "Минимальный вклад в оформление Паспорта Души — 222 ₽.\n"
             "После перевода нажми «Я оплатил» — и сразу получишь доступ."
         )
         keyboard = InlineKeyboardMarkup([
@@ -3111,7 +3155,6 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
             warm_keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("🎁 Послание души", callback_data="soul_message")],
                 [InlineKeyboardButton("ℹ️ Больше о проекте", callback_data="about_project")],
-                [InlineKeyboardButton("🔁 Вернуться в начало", callback_data="get_stats")],
             ])
             await context.bot.send_message(
                 chat_id=user_id,
@@ -3401,10 +3444,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🌌 Получить электронный паспорт души", callback_data="unlock_electronic_passport")],
         ])
         await update.message.reply_text(
-            "Паспорт доступен в 2 форматах:\n"
-            "— в виде красивого PDF-документа\n"
-            "— в виде Mini App внутри Telegram\n\n"
-            "Оба формата открываются после доната от 222 ₽.",
+            "Паспорт Души доступен в 2 форматах:\n"
+            "— PDF-документ\n"
+            "— Mini App внутри Telegram\n\n"
+            "Паспорт Души станет твоим после вклада в оформление от 222 ₽.",
             reply_markup=cta_keyboard,
         )
         await show_action_menu(update, context)
