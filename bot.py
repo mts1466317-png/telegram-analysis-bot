@@ -2037,39 +2037,57 @@ def build_passport_hook_message(calc_snapshot: dict) -> str:
     cycle_planet = calc_snapshot.get("planet_cycle", "—")
     cycle_energy = calc_snapshot.get("cycle_energy", "—")
 
+    def _first_sentence(text: str, fallback: str) -> str:
+        clean = re.sub(r"\s+", " ", (text or "").strip())
+        if not clean:
+            return fallback
+        dot = clean.find(".")
+        return clean if dot == -1 else clean[: dot + 1]
+
     physical_text = block_description(int(physical), PHYSICAL_BODY) if str(physical).isdigit() else ""
     mental_text = block_description(int(mental), MENTAL_BODY) if str(mental).isdigit() else ""
     life_text = block_description(int(life_task), LIFE_TASK_BODY) if str(life_task).isdigit() else ""
     higher_text = block_description(int(higher), HIGHER_SELF_BODY) if str(higher).isdigit() else ""
     cycle_text = cycle_description(int(cycle_energy), CYCLE_BODY) if str(cycle_energy).isdigit() else ""
 
-    physical_manifest = _extract_marker_text(physical_text, "🔹 Как проявляется:\n") or "тело реагирует тонко и чувствительно."
-    mental_manifest = _extract_marker_text(mental_text, "🔹 Как проявляется:\n") or "мышление тянется к поиску смыслов и закономерностей."
-    mental_risks = _extract_marker_text(mental_text, "⚠️ Риски:\n") or "иногда можно перегружать себя мыслями и уходить в избыточный анализ."
-    life_focus = _extract_marker_text(life_text, "🎯 Фокус периода:\n") or "раскрывать свой путь через осознанные действия."
-    life_risks = _extract_marker_text(life_text, "⚠️ Риски:\n") or "важно не уходить в крайности и не терять связь с реальностью."
-    higher_manifest = _extract_marker_text(higher_text, "🔹 Как проявляется:\n") or "у души есть сильный опыт внутреннего знания и интуиции."
-    cycle_focus = _extract_marker_text(cycle_text, "🎯 Фокус периода:\n") or "главная тема периода — внимание к чувствам, опоре и внутренней стабильности."
-
-    cycle_planet_line = str(cycle_planet)
-    if "(мастер)" in cycle_planet_line:
-        cycle_planet_line = cycle_planet_line.replace(" (мастер)", " (мастер)")
+    physical_manifest = _first_sentence(
+        _extract_marker_text(physical_text, "🔹 Как проявляется:\n"),
+        "тело тонко чувствует нагрузку и быстро откликается на среду.",
+    )
+    mental_manifest = _first_sentence(
+        _extract_marker_text(mental_text, "🔹 Как проявляется:\n"),
+        "мышление направлено на поиск смысла и общей картины.",
+    )
+    mental_risks = _first_sentence(
+        _extract_marker_text(mental_text, "⚠️ Риски:\n"),
+        "иногда это дает перегруз мыслей и категоричность в суждениях.",
+    )
+    life_focus = _first_sentence(
+        _extract_marker_text(life_text, "🎯 Фокус периода:\n"),
+        "твоя задача сейчас — расти через осознанные решения и действия.",
+    )
+    higher_manifest = _first_sentence(
+        _extract_marker_text(higher_text, "🔹 Как проявляется:\n"),
+        "у души уже есть опыт внутреннего знания и тонкой интуиции.",
+    )
+    cycle_focus = _first_sentence(
+        _extract_marker_text(cycle_text, "🎯 Фокус периода:\n"),
+        "главный фокус периода — чувства, опора и внутренняя безопасность.",
+    )
 
     return (
         "Я посмотрел твою карту — там очень интересная картина.\n\n"
-        f"По физическому уровню у тебя вибрация {physical} ({physical_planet}) — {physical_manifest}\n"
-        f"По ментальному полю — {mental_manifest} Из-за этого нередко проявляется: {mental_risks}\n"
-        f"Жизненная задача у тебя — {life_focus} И одновременно с этим риск: {life_risks}\n"
-        f"По более глубоким уровням — Высшее Я у тебя {higher} ({higher_planet}): {higher_manifest}\n"
-        f"Сейчас ты в {cycle}-м жизненном цикле (возраст {cycle_start}–{cycle_end} лет), "
-        f"планета — {cycle_planet_line}. Фокус: {cycle_focus}\n\n"
-        "И это только верхний слой. Там дальше намного глубже.\n\n"
-        "Я сейчас вижу полную картину по тебе:\n"
-        "— сильные стороны\n"
-        "— где деньги\n"
-        "— где блоки\n"
-        "— как у тебя идут жизненные циклы\n\n"
-        "Но это уже разворачивается в полном разборе."
+        f"🔹 Физический уровень: вибрация {physical} ({physical_planet}) — {physical_manifest}\n\n"
+        f"🔹 Ментальное поле: {mental_manifest} Риск: {mental_risks}\n\n"
+        f"🔹 Жизненная задача: {life_focus}\n\n"
+        f"🔹 Высшее Я: {higher} ({higher_planet}) — {higher_manifest}\n\n"
+        f"🔹 Текущий цикл: {cycle}-й (возраст {cycle_start}–{cycle_end}), энергия {cycle_energy}, планета {cycle_planet}. "
+        f"Фокус: {cycle_focus}\n\n"
+        "И это только верхний слой. В полном разборе раскрывается вся картина:\n"
+        "— твои сильные стороны\n"
+        "— денежные векторы\n"
+        "— ключевые блоки\n"
+        "— логика жизненных циклов."
     )
 
 
