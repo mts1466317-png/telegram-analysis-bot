@@ -1893,14 +1893,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     user_id = update.effective_user.id
     track_event("start_entry", user_id, props={"entry": "/start"})
-    touch_journey(user_id, "start", "portal_begin_path")
+    touch_journey(user_id, "start", "get_stats")
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Войти в путь", callback_data="portal_begin_path")],
+        [InlineKeyboardButton("Получить паспорт души", callback_data="get_stats")],
     ])
     await update.message.reply_text(
-        "🜂 Портал открыт.\n\n"
-        "Здесь начинается твой путь через пространство «Статистика Души».\n"
-        "Чат проводит инициацию, Mini App раскрывает живую карту, а круг удерживает поле движения.",
+        "Инструмент «Паспорт Души» основан на нумерологических расчётах и формулах и позволяет получить доступ к данным, "
+        "зашифрованным в момент вашего рождения.\n\n"
+        "Эти данные отражают ваши природные качества, зоны наибольшего роста и те точки, где человек может отклоняться "
+        "от своей реализации и пути своего Высшего Я.\n\n"
+        "Метод проверен на личном опыте и в практике работы с людьми. Формулы выверены и дополнены знаниями, "
+        "полученными в контакте с тонкими уровнями сознания.\n\n"
+        "Чат-бот создан с уважением и любовью — чтобы передать вам знания, которые могут помочь увеличить в вашей жизни "
+        "ясность, гармонию, любовь и ощущение себя счастливой личностью на своем пути.",
         reply_markup=keyboard,
     )
 
@@ -2018,6 +2023,36 @@ def build_miniapp_insight(calc_snapshot: dict) -> str:
         f"Жизненная задача {life_task} задает главный вектор пути, "
         f"а код Высшего Я {higher_self} ({higher_planet}) показывает, "
         "как проходить этот этап осознанно и без внутреннего разрыва."
+    )
+
+
+def build_passport_hook_message(calc_snapshot: dict) -> str:
+    physical = calc_snapshot.get("physical", "—")
+    physical_planet = calc_snapshot.get("planet_physical", "—")
+    mental = calc_snapshot.get("mental", "—")
+    life_task = calc_snapshot.get("life_task", "—")
+    higher = calc_snapshot.get("higher_self", "—")
+    higher_planet = calc_snapshot.get("planet_higher", "—")
+    cycle = calc_snapshot.get("cycle_number", "—")
+    cycle_start = calc_snapshot.get("cycle_start_age", "—")
+    cycle_end = calc_snapshot.get("cycle_end_age", "—")
+    cycle_planet = str(calc_snapshot.get("planet_cycle", "—")).replace(" (мастер)", "")
+    cycle_energy = calc_snapshot.get("cycle_energy", "—")
+    return (
+        "Я посмотрел твою карту — там очень интересная картина.\n\n"
+        f"По физическому уровню у тебя вибрация {physical} ({physical_planet}).\n"
+        f"По ментальному полю — активна вибрация {mental}: мышление ищет смысл и общую картину.\n"
+        f"Жизненная задача у тебя — {life_task}: это главный вектор воплощения на текущем этапе.\n"
+        f"По более глубоким уровням — Высшее Я {higher} ({higher_planet}).\n"
+        f"Сейчас ты в {cycle}-м жизненном цикле (возраст {cycle_start}–{cycle_end} лет), "
+        f"энергия {cycle_energy}, планета — {cycle_planet}.\n\n"
+        "И это только верхний слой. Там дальше намного глубже.\n\n"
+        "Я сейчас вижу полную картину по тебе:\n"
+        "— сильные стороны\n"
+        "— где деньги\n"
+        "— где блоки\n"
+        "— как у тебя идут жизненные циклы\n\n"
+        "Но это уже разворачивается в полном разборе."
     )
 
 
@@ -2844,6 +2879,9 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif data == "unlock_full_report":
         user = query.from_user
         track_event("pdf_cta_click", user.id if user else None, props={"source": "chat_callback"})
+        pending = context.user_data.get("pending_pdf")
+        if pending:
+            pending["delivery_format"] = "pdf"
         text = (
             "📖 Полный разбор — PDF\n\n"
             "После доната ты получишь PDF с:\n"
@@ -2856,8 +2894,33 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "Карта: <code>2200 7008 8290 3809</code>\n"
             "Нажми на номер карты, чтобы скопировать 👆\n"
             "Получатель: Кристина Г\n\n"
-            "Минимальный донат — 555 ₽.\n"
+            "Минимальный донат — 222 ₽.\n"
             "После перевода нажми «Я оплатил» — и сразу получишь PDF."
+        )
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 Скопировать номер карты", callback_data="copy_card")],
+            [InlineKeyboardButton("✅ Я оплатил", callback_data="donate_paid")],
+            [InlineKeyboardButton("⬅️ Назад", callback_data="back_menu")],
+        ])
+        await query.message.reply_text(text, reply_markup=keyboard, parse_mode="HTML")
+    elif data == "unlock_electronic_passport":
+        pending = context.user_data.get("pending_pdf")
+        if pending:
+            pending["delivery_format"] = "electronic"
+        text = (
+            "📖 Полный разбор — электронный\n\n"
+            "После доната ты получишь доступ в Mini App с:\n"
+            "— полной схемой расчётов\n"
+            "— матрицей сфер и вибраций\n"
+            "— детальным разбором каждой сферы\n"
+            "— итоговым профилем\n\n"
+            "Реквизиты:\n"
+            "Банк: Т-Банк\n"
+            "Карта: <code>2200 7008 8290 3809</code>\n"
+            "Нажми на номер карты, чтобы скопировать 👆\n"
+            "Получатель: Кристина Г\n\n"
+            "Минимальный донат — 222 ₽.\n"
+            "После перевода нажми «Я оплатил» — и сразу получишь доступ."
         )
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("📋 Скопировать номер карты", callback_data="copy_card")],
@@ -2879,6 +2942,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user = query.from_user
         user_id_str = str(user.id)
         username_display = f"@{user.username}" if user.username else "без username"
+        selected_format = (pending or {}).get("delivery_format", "pdf")
 
         if pending:
             _payment_pending[user_id_str] = {
@@ -2900,11 +2964,20 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 f"💸 Новый платёж\n\n"
                 f"Имя: {user.full_name}\n"
                 f"Username: {username_display}\n"
-                f"ID: {user.id}"
+                f"ID: {user.id}\n"
+                f"Формат: {'Электронный' if selected_format == 'electronic' else 'PDF'}"
             ),
             reply_markup=admin_keyboard,
         )
     elif data == "back_menu":
+        await show_action_menu(update, context)
+    elif data == "about_project":
+        await query.message.reply_text(
+            "🌿 О проекте «Паспорт Души»\n\n"
+            "Это инструмент самопознания на базе расчётов, который помогает увидеть сильные стороны, "
+            "ключевые точки роста и направление вашего пути.\n\n"
+            "Наша цель — дать понятную навигацию по себе без перегруза сложными терминами."
+        )
         await show_action_menu(update, context)
     elif data == "soul_message":
         messages = [
@@ -2983,36 +3056,66 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
                 pass
             return
 
-        await context.bot.send_message(
-            chat_id=user_id,
-            text="✅ Оплата подтверждена! Формирую твой полный разбор...",
-        )
-        print(f"📄 SEND PDF TO: {user_id}")
-        try:
-            pdf_path = await asyncio.to_thread(
-                build_pdf_report,
-                data["fio"],
-                data["birth_date"],
-                data["sections"],
-                data.get("calc_snapshot"),
+        delivery_format = data.get("delivery_format", "pdf")
+        if delivery_format == "electronic":
+            await context.bot.send_message(
+                chat_id=user_id,
+                text="✅ Оплата подтверждена! Открываю твой Паспорт Души (электронный формат).",
             )
-            if pdf_path and os.path.exists(pdf_path):
-                pdf_filename = f"SoulReport_{data['birth_date'].replace('.', '')}.pdf"
-                with open(pdf_path, "rb") as f:
-                    await context.bot.send_document(
-                        chat_id=user_id,
-                        document=f,
-                        filename=pdf_filename,
-                    )
-                try:
-                    os.remove(pdf_path)
-                except Exception:
-                    pass
-            else:
+        else:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text="✅ Оплата подтверждена! Формирую твой Паспорт Души (PDF).",
+            )
+        print(f"📄 SEND FORMAT TO: {user_id} ({delivery_format})")
+        try:
+            if delivery_format == "electronic":
+                app_keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🌌 Открыть электронный паспорт", web_app=WebAppInfo(url=MINI_APP_URL + f"?uid={user_id}"))],
+                ])
                 await context.bot.send_message(
                     chat_id=user_id,
-                    text="❌ Не удалось создать PDF. Обратитесь в поддержку.",
+                    text="Переходи в Mini App — там данные разворачиваются как живое поле.",
+                    reply_markup=app_keyboard,
                 )
+            else:
+                pdf_path = await asyncio.to_thread(
+                    build_pdf_report,
+                    data["fio"],
+                    data["birth_date"],
+                    data["sections"],
+                    data.get("calc_snapshot"),
+                )
+                if pdf_path and os.path.exists(pdf_path):
+                    pdf_filename = f"SoulReport_{data['birth_date'].replace('.', '')}.pdf"
+                    with open(pdf_path, "rb") as f:
+                        await context.bot.send_document(
+                            chat_id=user_id,
+                            document=f,
+                            filename=pdf_filename,
+                        )
+                    try:
+                        os.remove(pdf_path)
+                    except Exception:
+                        pass
+                else:
+                    await context.bot.send_message(
+                        chat_id=user_id,
+                        text="❌ Не удалось создать PDF. Обратитесь в поддержку.",
+                    )
+            warm_keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🎁 Послание души", callback_data="soul_message")],
+                [InlineKeyboardButton("ℹ️ Больше о проекте", callback_data="about_project")],
+                [InlineKeyboardButton("🔁 Вернуться в начало", callback_data="get_stats")],
+            ])
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=(
+                    "Твоя свобода воли всегда важна.\n"
+                    "Take your time — мы рядом и всегда рады поддержать тебя на пути."
+                ),
+                reply_markup=warm_keyboard,
+            )
         except Exception as e:
             print("ERROR in admin_payment_callback (approve):", e)
             await context.bot.send_message(
@@ -3283,22 +3386,20 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         WEBAPP_PAYLOAD_CACHE[_uid] = compact_result
         save_last_snapshot(_uid, compact_result)
         track_event("calculation_completed", _uid, props={"cycle_number": calc_snapshot.get("cycle_number")})
-        app_keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🌌 Открыть результат в Mini App", web_app=WebAppInfo(url=MINI_APP_URL + f"?uid={_uid}"))],
-        ])
-        await update.message.reply_text(
-            "Врата карты открыты.\n"
-            "Переходи в Mini App — там результат разворачивается как живое поле.",
-            reply_markup=app_keyboard,
-        )
+        await update.message.reply_text(build_passport_hook_message(calc_snapshot))
 
-        # CTA с кнопкой доступа к полному разбору
+        # Сохраняем базу для последующей ручной верификации оплаты.
+        context.user_data["pending_pdf"]["delivery_format"] = "pdf"
+
         cta_keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📖 Хочу полный разбор (от 555 ₽)", callback_data="unlock_full_report")],
+            [InlineKeyboardButton("📖 Получить паспорт в PDF", callback_data="unlock_full_report")],
+            [InlineKeyboardButton("🌌 Получить электронный паспорт души", callback_data="unlock_electronic_passport")],
         ])
         await update.message.reply_text(
-            "Хочешь полный разбор — открой доступ (донат от 555 ₽).\n"
-            "Там детализация по каждой сфере, расчётная схема и матрица вибраций.",
+            "Паспорт доступен в 2 форматах:\n"
+            "— в виде красивого PDF-документа\n"
+            "— в виде Mini App внутри Telegram\n\n"
+            "Оба формата открываются после доната от 222 ₽.",
             reply_markup=cta_keyboard,
         )
         await show_action_menu(update, context)
