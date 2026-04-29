@@ -2978,13 +2978,31 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             reply_markup=admin_keyboard,
         )
     elif data == "back_menu":
-        await show_action_menu(update, context)
+        warm_text = (
+            "Ты можешь идти в своём темпе.\n"
+            "Мы рядом, если захочешь продолжить путь чуть позже.\n\n"
+            "Выбери, что откликается сейчас:"
+        )
+        warm_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🎁 Послание души", callback_data="soul_message")],
+            [InlineKeyboardButton("ℹ️ Больше о проекте", callback_data="about_project")],
+        ])
+        await query.message.reply_text(warm_text, reply_markup=warm_keyboard)
     elif data == "about_project":
         await query.message.reply_text(
             "🌿 О проекте «Паспорт Души»\n\n"
             "Это инструмент самопознания на базе расчётов, который помогает увидеть сильные стороны, "
             "ключевые точки роста и направление вашего пути.\n\n"
             "Наша цель — дать понятную навигацию по себе без перегруза сложными терминами."
+        )
+        await show_action_menu(update, context)
+    elif data == "feedback_open":
+        await query.message.reply_text(
+            "💬 Спасибо, что готовы оставить отзыв.\n\n"
+            "Напишите в ответном сообщении:\n"
+            "— что было для вас самым ценным\n"
+            "— что можно улучшить\n"
+            "— кому вы бы порекомендовали Паспорт Души"
         )
         await show_action_menu(update, context)
     elif data == "soul_message":
@@ -3100,14 +3118,18 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
                     text="❌ Не удалось создать PDF. Обратитесь в поддержку.",
                 )
             warm_keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("🎁 Послание души", callback_data="soul_message")],
-                [InlineKeyboardButton("ℹ️ Больше о проекте", callback_data="about_project")],
+                [InlineKeyboardButton("🔮 Новый расчет Паспорта Души", callback_data="get_stats")],
+                [InlineKeyboardButton("📢 Поделиться с другом", callback_data="share_bot")],
+                [InlineKeyboardButton("💬 Оставить отзыв", callback_data="feedback_open")],
+                [InlineKeyboardButton("🕊 Записаться на личный разбор", callback_data="consult_higher_self")],
             ])
             await context.bot.send_message(
                 chat_id=user_id,
                 text=(
-                    "Твоя свобода воли всегда важна.\n"
-                    "Take your time — мы рядом и всегда рады поддержать тебя на пути."
+                    "Паспорт Души отправлен.\n\n"
+                    "Сейчас важный момент: ты прикоснулся к более глубокому пониманию себя.\n"
+                    "Я рядом как проводник и понимаю, насколько ценно не потерять этот импульс.\n\n"
+                    "Если почувствуешь отклик — продолжим путь в удобном для тебя формате."
                 ),
                 reply_markup=warm_keyboard,
             )
