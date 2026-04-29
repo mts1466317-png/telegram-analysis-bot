@@ -1895,7 +1895,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     track_event("start_entry", user_id, props={"entry": "/start"})
     touch_journey(user_id, "start", "get_stats")
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Получить паспорт души", callback_data="get_stats")],
+        [InlineKeyboardButton("💌 Получить Паспорт Души 💌", callback_data="get_stats")],
     ])
     await update.message.reply_text(
         "Инструмент «Паспорт Души» основан на нумерологических расчётах и формулах и позволяет получить доступ к данным, "
@@ -3380,7 +3380,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["pending_pdf"]["delivery_format"] = "pdf"
 
         payment_text = (
-            "Ваш Паспорт Души готов.📖\n\n"
+            "💌 Ваш Паспорт Души готов\n\n"
             "После доната ты получишь PDF с:\n"
             "— полной схемой расчётов\n"
             "— матрицей сфер и вибраций\n"
@@ -3399,7 +3399,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("✅ Я оплатил", callback_data="donate_paid")],
         ])
         await update.message.reply_text(payment_text, reply_markup=payment_keyboard, parse_mode="HTML")
-        await show_action_menu(update, context)
         return
         
         # Вычисляем размеры блоков (с учётом разделителей "\n\n")
