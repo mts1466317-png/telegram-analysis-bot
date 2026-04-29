@@ -1892,15 +1892,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_user:
         return
     user_id = update.effective_user.id
-    track_event("start_entry", user_id, props={"entry": "/start", "entry_variant": "passport"})
-    touch_journey(user_id, "start", "passport_open")
+    track_event("start_entry", user_id, props={"entry": "/start"})
+    touch_journey(user_id, "start", "portal_begin_path")
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Открыть паспорт", callback_data="passport_open")],
+        [InlineKeyboardButton("Войти в путь", callback_data="portal_begin_path")],
     ])
     await update.message.reply_text(
-        "Добро пожаловать в Паспорт Души.\n\n"
-        "Систему навигации по вашему воплощению.\n\n"
-        "Здесь вы можете оформить свой личный документ души и получить структурированный паспорт воплощения.",
+        "🜂 Портал открыт.\n\n"
+        "Здесь начинается твой путь через пространство «Статистика Души».\n"
+        "Чат проводит инициацию, Mini App раскрывает живую карту, а круг удерживает поле движения.",
         reply_markup=keyboard,
     )
 
@@ -1995,91 +1995,6 @@ def build_birth_input_prompt() -> str:
         "Допустимо также:\n"
         "Имя Фамилия ДД.ММ.ГГГГ"
     )
-
-
-def get_passport_form(context: ContextTypes.DEFAULT_TYPE) -> dict:
-    form = context.user_data.get("passport_form")
-    if not isinstance(form, dict):
-        form = {
-            "fio": "",
-            "birth_date": "",
-            "birth_place": "",
-            "spiritual_name": "",
-            "spiritual_level": "",
-        }
-        context.user_data["passport_form"] = form
-    return form
-
-
-def build_passport_page(page: int, form: dict) -> tuple[str, InlineKeyboardMarkup]:
-    if page == 1:
-        text = (
-            "📘 Паспорт Души\n"
-            "Навигация по вашему воплощению\n\n"
-            "Страница 1/4 — Данные воплощения\n\n"
-            f"• ФИО: {form.get('fio') or '—'}\n"
-            f"• Дата рождения: {form.get('birth_date') or '—'}\n"
-            f"• Место рождения: {form.get('birth_place') or '—'}\n"
-            f"• Духовное имя: {form.get('spiritual_name') or '—'}\n"
-            f"• Духовный уровень: {form.get('spiritual_level') or '—'}\n\n"
-            "Заполните поля через кнопки ниже."
-        )
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("✍️ ФИО", callback_data="passport_edit_fio")],
-            [InlineKeyboardButton("✍️ Дата рождения", callback_data="passport_edit_birth_date")],
-            [InlineKeyboardButton("✍️ Место рождения", callback_data="passport_edit_birth_place")],
-            [InlineKeyboardButton("✍️ Духовное имя", callback_data="passport_edit_spiritual_name")],
-            [InlineKeyboardButton("✍️ Духовный уровень", callback_data="passport_edit_spiritual_level")],
-            [
-                InlineKeyboardButton("◀ Предыдущая", callback_data="passport_noop"),
-                InlineKeyboardButton("Следующая ▶", callback_data="passport_page_2"),
-            ],
-        ])
-        return text, keyboard
-
-    if page == 2:
-        text = (
-            "📘 Паспорт Души\n"
-            "Страница 2/4 — Личность воплощения\n\n"
-            "• Физическая ось: [будет рассчитано]\n"
-            "• Эмоциональная ось: [будет рассчитано]\n"
-            "• Ментальная ось: [будет рассчитано]"
-        )
-    elif page == 3:
-        text = (
-            "📘 Паспорт Души\n"
-            "Страница 3/4 — Статистика Души\n\n"
-            "• Высшее Я: [раздел будет подключен]\n"
-            "• Задача жизни: [раздел будет подключен]\n"
-            "• Родовая программа: [раздел будет подключен]\n"
-            "• Социальная задача: [раздел будет подключен]"
-        )
-    else:
-        text = (
-            "📘 Паспорт Души\n"
-            "Страница 4/4 — Цикл воплощения\n\n"
-            "Раздел цикла воплощения будет подключен на следующем этапе."
-        )
-
-    prev_page = max(1, page - 1)
-    next_page = min(4, page + 1)
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("◀ Предыдущая", callback_data=f"passport_page_{prev_page}"),
-            InlineKeyboardButton("Следующая ▶", callback_data=f"passport_page_{next_page}"),
-        ],
-        [InlineKeyboardButton("К данным воплощения", callback_data="passport_page_1")],
-    ])
-    return text, keyboard
-
-
-async def send_passport_page_message(target_message, context: ContextTypes.DEFAULT_TYPE, page: int):
-    page = max(1, min(4, page))
-    context.user_data["passport_flow_active"] = True
-    context.user_data["passport_page"] = page
-    form = get_passport_form(context)
-    text, keyboard = build_passport_page(page, form)
-    await target_message.reply_text(text, reply_markup=keyboard)
 
 
 def _trim_for_webapp(text: str, limit: int = 480) -> str:
@@ -2423,7 +2338,6 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
     data = query.data or ""
     if not (
         data.startswith("portal_")
-        or data.startswith("passport_")
         or data.startswith("map_")
         or data.startswith("library_")
         or data.startswith("path_")
@@ -2440,36 +2354,6 @@ async def portal_callback_router(update: Update, context: ContextTypes.DEFAULT_T
 
     await query.answer()
     user_id = query.from_user.id if query.from_user else 0
-
-    if data == "passport_noop":
-        return
-
-    if data == "passport_open":
-        await send_passport_page_message(query.message, context, 1)
-        return
-
-    if data.startswith("passport_page_"):
-        page_raw = data.replace("passport_page_", "", 1)
-        page = int(page_raw) if page_raw.isdigit() else 1
-        await send_passport_page_message(query.message, context, page)
-        return
-
-    if data.startswith("passport_edit_"):
-        field = data.replace("passport_edit_", "", 1)
-        prompts = {
-            "fio": "Введите ФИО:",
-            "birth_date": "Введите дату рождения в формате ДД.ММ.ГГГГ:",
-            "birth_place": "Введите место рождения:",
-            "spiritual_name": "Введите духовное имя:",
-            "spiritual_level": "Введите духовный уровень:",
-        }
-        if field not in prompts:
-            await query.message.reply_text("Поле не найдено.")
-            return
-        context.user_data["passport_flow_active"] = True
-        context.user_data["passport_step"] = field
-        await query.message.reply_text(prompts[field])
-        return
 
     if data == "portal_home":
         if user_id:
@@ -3145,21 +3029,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         text = update.message.text.strip()
         step = context.user_data.get("step")
-        passport_step = context.user_data.get("passport_step")
-
-        if passport_step:
-            form = get_passport_form(context)
-            if passport_step == "birth_date":
-                if not re.match(r"^\d{2}\.\d{2}\.\d{4}$", text):
-                    await update.message.reply_text("Дата должна быть в формате ДД.ММ.ГГГГ")
-                    return
-            form[passport_step] = text
-            context.user_data["passport_form"] = form
-            context.user_data["passport_step"] = None
-            await update.message.reply_text("Поле сохранено.")
-            await send_passport_page_message(update.message, context, 1)
-            return
-
         # Используем единый ввод: Фамилия Имя Отчество ДД.ММ.ГГГГ
         if step in {"last_name", "first_name", "middle_name", "birth_date"}:
             context.user_data["step"] = "fio_birth_line"
@@ -3700,7 +3569,7 @@ def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
-    app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|passport_|map_|library_|path_|community_|circle_|practice_|support_|daily_|guide_|channel_|continue_)"))
+    app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|circle_|practice_|support_|daily_|guide_|channel_|continue_)"))
     app.add_handler(CallbackQueryHandler(main_menu_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     print("🤖 Бот запущен")
