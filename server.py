@@ -16,6 +16,7 @@ from telegram.ext import (
 
 from env_token import env_token_hint, resolve_bot_token
 from snapshot_store import init_snapshot_store
+from snapshot_store import save_last_snapshot
 from telemetry import init_telemetry_store, track_event
 
 # По этому маркеру в логах видно, что задеплоена актуальная версия (не старый server.py:27)
@@ -133,6 +134,21 @@ def webapp_payload(user_id: int):
     return jsonify(payload), 200
 
 
+@app.route("/webapp/data/<int:user_id>/profile", methods=["POST"])
+def webapp_profile_update(user_id: int):
+    payload = get_cached_webapp_payload(user_id)
+    if not payload:
+        return jsonify({"error": "payload_not_found"}), 404
+    data = request.get_json(silent=True) or {}
+    profile = payload.get("passport_profile") or {}
+    profile["birth_place"] = str(data.get("birth_place", profile.get("birth_place", ""))).strip()
+    profile["spiritual_name"] = str(data.get("spiritual_name", profile.get("spiritual_name", ""))).strip()
+    profile["spiritual_level"] = str(data.get("spiritual_level", profile.get("spiritual_level", ""))).strip()
+    payload["passport_profile"] = profile
+    save_last_snapshot(user_id, payload)
+    return jsonify({"ok": True}), 200
+
+
 @app.route("/app", methods=["GET"])
 @app.route("/app/", methods=["GET"])
 def app_index_alias():
@@ -151,6 +167,11 @@ def app_payload_alias(user_id: int):
         return jsonify({"error": "payload_not_found"}), 404
     track_event("miniapp_open", user_id, source_layer="server", props={"endpoint": "/app/data"})
     return jsonify(payload), 200
+
+
+@app.route("/app/data/<int:user_id>/profile", methods=["POST"])
+def app_profile_update_alias(user_id: int):
+    return webapp_profile_update(user_id)
 
 
 if __name__ == "__main__":

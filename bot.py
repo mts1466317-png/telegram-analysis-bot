@@ -2081,6 +2081,11 @@ def build_webapp_compact_payload(
         "higher_self": calc_snapshot.get("higher_self", "—"),
         "higher_planet": calc_snapshot.get("planet_higher", "—"),
     }
+    compact["passport_profile"] = {
+        "birth_place": "",
+        "spiritual_name": "",
+        "spiritual_level": "",
+    }
     compact["summary"] = build_miniapp_insight(calc_snapshot)
     return compact
 
