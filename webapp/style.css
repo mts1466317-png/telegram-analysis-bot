@@ -1,128 +1,152 @@
-/* Базовые настройки */
 * {
   box-sizing: border-box;
 }
 
-/* Тело страницы */
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #0f0f14;
+  background: radial-gradient(circle at top, #1a1f33 0%, #0f1119 60%, #0b0d14 100%);
   color: #ffffff;
   height: 100vh;
   overflow: hidden;
 }
 
-/* Основной контейнер */
 .container {
   padding: 20px;
   height: 100%;
+  overflow-y: auto;
 }
 
-/* Заголовок */
 h1 {
   text-align: center;
-  margin-bottom: 20px;
-  font-size: 20px;
+  margin: 0;
+  font-size: 24px;
+}
+
+.subtitle {
+  margin: 6px 0 16px;
+  color: #c9cfe3;
+  text-align: center;
+  font-size: 14px;
 }
 
 .hero-card {
-  background: linear-gradient(180deg, #1b1e2d 0%, #151826 100%);
-  border: 1px solid #2f3550;
+  background: linear-gradient(180deg, rgba(35, 42, 67, 0.9) 0%, rgba(22, 27, 44, 0.9) 100%);
+  border: 1px solid #3f486c;
   border-radius: 16px;
   padding: 14px;
   margin-bottom: 14px;
 }
 
-.hero-card h2 {
-  margin: 6px 0 6px;
-  font-size: 18px;
-}
-
-.hero-card p {
-  margin: 0;
-}
-
 .hero-chip {
   display: inline-block;
-  color: #d5bf8c;
-  border: 1px solid #5a4d32;
+  color: #f0d8a2;
+  border: 1px solid #766241;
   border-radius: 14px;
   padding: 3px 9px;
   font-size: 11px;
 }
 
-#hero-subtitle {
+#hero-title {
+  margin: 8px 0;
+  font-size: 18px;
+}
+
+#hero-subtitle,
+.page-note {
   color: #c6cbe1;
   font-size: 13px;
   line-height: 1.45;
+  margin: 0;
 }
 
-.hero-highlights {
-  margin-top: 10px;
+.page-card {
+  background: rgba(16, 20, 33, 0.85);
+  border: 1px solid #2f3854;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.page-title {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+.field-list {
   display: grid;
   gap: 8px;
 }
 
-.highlight-item {
-  background: #111423;
-  border: 1px solid #2a3048;
+.field-row {
+  background: #13182a;
+  border: 1px solid #303a59;
   border-radius: 10px;
   padding: 8px;
-  font-size: 12px;
-  color: #d7dbeb;
-}
-
-/* Сетка сфер */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-/* Карточки сфер */
-.card {
-  background: #1c1c24;
-  border: none;
-  border-radius: 14px;
-  padding: 20px 10px;
-  color: white;
-  font-size: 14px;
-  text-align: center;
-  cursor: pointer;
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
   gap: 8px;
 }
 
-.card:active {
-  background: #2a2a35;
+.field-label {
+  font-size: 12px;
+  color: #c9d0e8;
 }
 
-.card .icon {
-  font-size: 22px;
-  opacity: 0.9;
-}
-
-.card .label {
+.field-value {
+  margin-top: 4px;
   font-size: 13px;
-  text-align: center;
+  color: #fff;
 }
 
-/* Скрытые экраны */
+.edit-btn,
+.section-btn {
+  border: 1px solid #49598a;
+  background: #202a45;
+  color: #e7edff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.section-list {
+  display: grid;
+  gap: 8px;
+}
+
+.pager {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pager button {
+  border: 1px solid #3c476b;
+  background: #1a223b;
+  color: #e5ebff;
+  border-radius: 10px;
+  padding: 10px 8px;
+  font-size: 13px;
+}
+
+.pager button:disabled {
+  opacity: 0.5;
+}
+
 .hidden {
   display: none;
 }
 
-/* Экран контента */
 #screen-content {
-  height: 100%;
-  overflow-y: auto;
-  padding-bottom: 40px;
+  margin-top: 12px;
+  background: rgba(16, 20, 33, 0.85);
+  border: 1px solid #2f3854;
+  border-radius: 14px;
+  padding: 12px;
 }
 
-/* Кнопка назад */
 #back-btn {
   background: none;
   border: none;
@@ -133,17 +157,16 @@ h1 {
 }
 
 #pdf-cta-btn {
-  margin-top: 14px;
+  margin-top: 12px;
   width: 100%;
   background: #2a2a35;
-  border: 1px solid #3a3a48;
+  border: 1px solid #5a4f3a;
   color: #f0f0f7;
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 14px;
 }
 
-/* Заголовок контента */
 #content-title {
   margin-top: 0;
   margin-bottom: 12px;
@@ -151,7 +174,6 @@ h1 {
   font-weight: 600;
 }
 
-/* Текст контента */
 #content-text {
   font-size: 15px;
   line-height: 1.7;
@@ -159,8 +181,7 @@ h1 {
   white-space: pre-line;
 }
 
-/* Мягкая анимация появления */
-#screen-menu,
+#screen-passport,
 #screen-content {
   animation: fadeIn 0.25s ease-in-out;
 }

@@ -2,89 +2,48 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Разбор по сферам</title>
+  <title>Паспорт Души</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <base href="/webapp/">
 
   <!-- Telegram Web App -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
 
   <div class="container">
 
-    <!-- ЭКРАН СПИСКА СФЕР -->
-    <div id="screen-menu">
-      <h1>Выбери сферу</h1>
-      <div id="infographic-hero" class="hero-card">
+    <div id="screen-passport">
+      <h1>Паспорт Души</h1>
+      <p class="subtitle">Навигация по вашему воплощению</p>
+
+      <div class="hero-card">
         <p id="hero-cycle" class="hero-chip"></p>
-        <h2 id="hero-title"></h2>
+        <h2 id="hero-title">Структурированный паспорт воплощения</h2>
         <p id="hero-subtitle"></p>
-        <div id="hero-highlights" class="hero-highlights"></div>
       </div>
 
-      <div class="grid">
-        <button class="card" data-sphere="physical">
-          <span class="icon">🧍</span>
-          <span class="label">Физическое тело</span>
-        </button>
+      <div id="page-content" class="page-card"></div>
 
-        <button class="card" data-sphere="astral">
-          <span class="icon">🌙</span>
-          <span class="label">Астральное тело</span>
-        </button>
-
-        <button class="card" data-sphere="mental">
-          <span class="icon">🧠</span>
-          <span class="label">Ментальное тело</span>
-        </button>
-
-        <button class="card" data-sphere="life">
-          <span class="icon">🎯</span>
-          <span class="label">Жизненная задача</span>
-        </button>
-
-        <button class="card" data-sphere="egregor">
-          <span class="icon">🌳</span>
-          <span class="label">Родовой эгрегор</span>
-        </button>
-
-        <button class="card" data-sphere="higher">
-          <span class="icon">✨</span>
-          <span class="label">Высшее Я</span>
-        </button>
-
-        <button class="card" data-sphere="program">
-          <span class="icon">🧬</span>
-          <span class="label">Родовая программа</span>
-        </button>
-
-        <button class="card" data-sphere="social">
-          <span class="icon">🌍</span>
-          <span class="label">Социальная задача</span>
-        </button>
-
-        <button class="card" data-sphere="combo">
-          <span class="icon">♾</span>
-          <span class="label">Сочетание задач</span>
-        </button>
+      <div class="pager">
+        <button id="passport-prev-btn">◀ Предыдущая</button>
+        <button id="passport-next-btn">Следующая ▶</button>
       </div>
+
+      <button id="pdf-cta-btn">💎 Полный PDF-разбор</button>
     </div>
 
-    <!-- ЭКРАН ТЕКСТА -->
     <div id="screen-content" class="hidden">
       <button id="back-btn">← Назад</button>
       <h2 id="content-title"></h2>
       <div id="content-text"></div>
-      <button id="pdf-cta-btn">💎 Полный PDF-разбор</button>
     </div>
 
   </div>
 
-  <!-- app.js -->
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 
 </body>
 </html>
