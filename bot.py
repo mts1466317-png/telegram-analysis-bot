@@ -3031,29 +3031,26 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             await query.message.reply_text(
                 "Не удалось получить ссылку на бота. Попробуйте позже."
             )
-            await show_action_menu(update, context)
             return
 
         bot_link = f"https://t.me/{username}"
 
         share_text = (
-            "✨ Будет круто, если вы поделитесь этим ботом\n"
-            "с тем, кому это может быть важно сейчас.\n\n"
-            "Иногда именно такие инструменты\n"
-            "помогают людям лучше понять себя."
+            "Я только что прошёл(ла) Паспорт Души и нашел(ла) там очень ценные подсказки о себе.\n\n"
+            "Делюсь этим с тобой как друг: чувствую, что тебе это тоже может быть полезно именно сейчас.\n\n"
+            "Если откликнется — попробуй."
         )
 
         share_url = f"https://t.me/share/url?url={bot_link}&text={quote(share_text, safe='')}"
 
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📢 Отправить другу", url=share_url)],
+            [InlineKeyboardButton("💌 Поделиться с другом", url=share_url)],
         ])
 
         await query.message.reply_text(
-            "Поделитесь ботом с друзьями 👇",
+            "Передай это сообщение тому, кому сейчас важно услышать себя 👇",
             reply_markup=keyboard,
         )
-        await show_action_menu(update, context)
 
 
 async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3126,10 +3123,10 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
             await context.bot.send_message(
                 chat_id=user_id,
                 text=(
-                    "Паспорт Души отправлен.\n\n"
-                    "Сейчас важный момент: ты прикоснулся к более глубокому пониманию себя.\n"
-                    "Я рядом как проводник и понимаю, насколько ценно не потерять этот импульс.\n\n"
-                    "Если почувствуешь отклик — продолжим путь в удобном для тебя формате."
+                    "Запомни этот момент и воспользуйся полученной информацией со всей любовью и мудростью. "
+                    "Сейчас ты прикоснулся к более глубокому пониманию себя. "
+                    "Я рядом как проводник и понимаю, насколько ценно не потерять импульс 🤍\n\n"
+                    "Если почувствуешь отклик — продолжим путь в удобном для тебя формате 🙏"
                 ),
                 reply_markup=warm_keyboard,
             )
