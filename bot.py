@@ -1893,9 +1893,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     user_id = update.effective_user.id
     track_event("start_entry", user_id, props={"entry": "/start"})
-    touch_journey(user_id, "start", "onboarding_story_open")
+    touch_journey(user_id, "start", "get_stats")
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Получить паспорт души", callback_data="onboarding_story_open")],
+        [InlineKeyboardButton("Получить паспорт души", callback_data="get_stats")],
     ])
     await update.message.reply_text(
         "Инструмент «Паспорт Души» основан на нумерологических расчётах и формулах и позволяет получить доступ к данным, "
@@ -2716,38 +2716,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     data = query.data
 
-    if data == "onboarding_story_open":
-        text = (
-            "Иногда внутри нас есть вопросы, которые сложно сформулировать словами:\n"
-            "почему повторяются одни и те же сценарии, где уходит энергия, и куда на самом деле ведет наш путь.\n\n"
-            "Паспорт Души — это начало личного исследования, где ваша история читается через ключ рождения."
-        )
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("Продолжить", callback_data="onboarding_story_next")],
-        ])
-        await query.message.reply_text(text, reply_markup=keyboard)
-    elif data == "onboarding_story_next":
-        text = (
-            "Ваше имя и дата рождения могут раскрыть:\n"
-            "особенности физической сферы, эмоциональные сценарии, устройство мышления,\n"
-            "задачи воплощения, влияние родовой линии, связь с Высшим Я и текущий этап пути.\n\n"
-            "Это не просто список функций — это карта, которая часто дает ответы на вопросы,\n"
-            "которые человек давно носит внутри."
-        )
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("Оформить Паспорт Души", callback_data="get_stats")],
-            [InlineKeyboardButton("Пока не готов(а)", callback_data="onboarding_later")],
-        ])
-        await query.message.reply_text(text, reply_markup=keyboard)
-    elif data == "onboarding_later":
-        await query.message.reply_text(
-            "Берите столько времени, сколько нужно.\n"
-            "Когда почувствуете внутреннюю готовность — мы будем рядом.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Вернуться к оформлению", callback_data="onboarding_story_open")],
-            ]),
-        )
-    elif data == "get_stats":
+    if data == "get_stats":
         context.user_data["step"] = "fio_birth_line"
         await query.message.reply_text(build_birth_input_prompt())
     elif data == "restart_calc":
