@@ -105,7 +105,7 @@ function renderInfographicHero(result) {
   const planet = profile.cycle_planet || "—";
   heroCycleEl.textContent = `Цикл ${cycle} • Энергия ${energy} (${planet})`;
   heroTitleEl.textContent = "Твоя базовая карта уже раскрылась";
-  heroSubtitleEl.textContent = "Это верхний слой статистики: ключевые векторы, фокусы и точки роста для текущего периода.";
+  heroSubtitleEl.textContent = result.summary || "Это верхний слой статистики: ключевые векторы, фокусы и точки роста для текущего периода.";
 
   const items = [
     { label: "Физический уровень", text: extractSignal(result.physical?.text || "") },
@@ -176,10 +176,10 @@ async function init() {
   // CTA на существующий PDF-слой в чате
   pdfCtaBtn.addEventListener("click", () => {
     if (tg && typeof tg.showAlert === "function") {
-      tg.showAlert("Полный PDF-разбор доступен в чате через кнопку «Хочу полный разбор (от 111 ₽)».");
+      tg.showAlert("Полный PDF-разбор доступен в чате через кнопку «Хочу полный разбор (от 555 ₽)».");
       return;
     }
-    alert("Полный PDF-разбор доступен в чате через кнопку «Хочу полный разбор (от 111 ₽)».");
+    alert("Полный PDF-разбор доступен в чате через кнопку «Хочу полный разбор (от 555 ₽)».");
   });
 }
 

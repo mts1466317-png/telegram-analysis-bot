@@ -73,7 +73,7 @@ if _app_loop is None:
 tg_app = ApplicationBuilder().token(TOKEN).build()
 tg_app.add_handler(CommandHandler("start", start))
 tg_app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
-tg_app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|launcher_|map_|library_|path_|community_|circle_|practice_|support_|daily_|guide_|channel_|continue_)"))
+tg_app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|launcher_|passport_|map_|library_|path_|community_|circle_|practice_|support_|daily_|guide_|channel_|continue_)"))
 tg_app.add_handler(CallbackQueryHandler(main_menu_callback))
 tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
