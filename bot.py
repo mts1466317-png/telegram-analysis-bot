@@ -2920,7 +2920,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             pending["delivery_format"] = "pdf"
         text = (
             "📖 Полный Паспорт Души — PDF\n\n"
-            "После вклада в оформление Паспорта Души вы получите PDF с:\n"
+            "После доната ты получишь PDF с:\n"
             "— полной схемой расчётов\n"
             "— матрицей сфер и вибраций\n"
             "— детальным разбором каждой сферы\n"
@@ -2930,7 +2930,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "Карта: <code>2200 7008 8290 3809</code>\n"
             "Нажми на номер карты, чтобы скопировать 👆\n"
             "Получатель: Кристина Г\n\n"
-            "Минимальный вклад в оформление Паспорта Души — 222 ₽.\n"
+            "Минимальный донат — 222 ₽.\n"
             "После перевода нажми «Я оплатил» — и сразу получишь PDF."
         )
         keyboard = InlineKeyboardMarkup([
@@ -3379,16 +3379,27 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Сохраняем базу для последующей ручной верификации оплаты.
         context.user_data["pending_pdf"]["delivery_format"] = "pdf"
 
-        cta_keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📖 Оформить полный Паспорт Души (PDF)", callback_data="unlock_full_report")],
-            [InlineKeyboardButton("🎁 Послание души", callback_data="soul_message")],
-            [InlineKeyboardButton("ℹ️ Больше о проекте", callback_data="about_project")],
-        ])
-        await update.message.reply_text(
-            "Готов перейти к полному разбору?\n\n"
-            "Оформи полный Паспорт Души (PDF) — и получи детальную персональную карту с пояснениями.",
-            reply_markup=cta_keyboard,
+        await update.message.reply_text("Ваш Паспорт Души готов.")
+        payment_text = (
+            "📖 Полный разбор — PDF\n\n"
+            "После доната ты получишь PDF с:\n"
+            "— полной схемой расчётов\n"
+            "— матрицей сфер и вибраций\n"
+            "— детальным разбором каждой сферы\n"
+            "— итоговым профилем\n\n"
+            "Реквизиты:\n"
+            "Банк: Т-Банк\n"
+            "Карта: <code>2200 7008 8290 3809</code>\n"
+            "Нажми на номер карты, чтобы скопировать 👆\n"
+            "Получатель: Кристина Г\n\n"
+            "Минимальный донат — 222 ₽.\n"
+            "После перевода нажми «Я оплатил» — и сразу получишь PDF."
         )
+        payment_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 Скопировать номер карты", callback_data="copy_card")],
+            [InlineKeyboardButton("✅ Я оплатил", callback_data="donate_paid")],
+        ])
+        await update.message.reply_text(payment_text, reply_markup=payment_keyboard, parse_mode="HTML")
         await show_action_menu(update, context)
         return
         
