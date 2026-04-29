@@ -3379,9 +3379,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Сохраняем базу для последующей ручной верификации оплаты.
         context.user_data["pending_pdf"]["delivery_format"] = "pdf"
 
-        await update.message.reply_text("Ваш Паспорт Души готов.")
         payment_text = (
-            "📖 Полный разбор — PDF\n\n"
+            "Ваш Паспорт Души готов.📖\n\n"
             "После доната ты получишь PDF с:\n"
             "— полной схемой расчётов\n"
             "— матрицей сфер и вибраций\n"
@@ -3393,7 +3392,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Нажми на номер карты, чтобы скопировать 👆\n"
             "Получатель: Кристина Г\n\n"
             "Минимальный донат — 222 ₽.\n"
-            "После перевода нажми «Я оплатил» — и сразу получишь PDF."
+            "После перевода нажми «Я оплатил»."
         )
         payment_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("📋 Скопировать номер карты", callback_data="copy_card")],
