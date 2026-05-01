@@ -43,6 +43,64 @@
     opacity: 0.5;
   }
 
+  .space-parallax {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .space-girl {
+    position: absolute;
+    width: clamp(140px, 18vw, 260px);
+    opacity: 0.34;
+    filter: saturate(1.08) contrast(1.04) drop-shadow(0 10px 35px rgba(201,169,110,0.12));
+    will-change: transform;
+  }
+
+  .space-girl img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .girl-1 { top: 12vh; left: -2.5vw; }
+  .girl-2 { top: 35vh; right: -3vw; width: clamp(150px, 20vw, 280px); }
+  .girl-3 { top: 72vh; left: 1vw; width: clamp(120px, 15vw, 220px); }
+  .girl-4 { top: 120vh; right: 2vw; width: clamp(130px, 16vw, 240px); }
+  .girl-5 { top: 182vh; left: -1vw; width: clamp(150px, 19vw, 290px); }
+
+  section, .divider, footer, nav {
+    position: relative;
+    z-index: 5;
+  }
+
+  .space-inline {
+    margin-top: 2.2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .space-inline-card {
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.01);
+    overflow: hidden;
+    min-height: 220px;
+  }
+
+  .space-inline-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    opacity: 0.82;
+    transform: scale(1.02);
+  }
+
   .hero {
     min-height: 100vh;
     display: flex;
@@ -536,6 +594,14 @@
   .nav-cta:hover { border-color: var(--accent); }
 
   @media (max-width: 768px) {
+    .space-girl {
+      opacity: 0.18;
+      width: clamp(100px, 30vw, 150px);
+    }
+    .girl-2, .girl-4 { display: none; }
+    .space-inline {
+      grid-template-columns: 1fr;
+    }
     .what-grid { grid-template-columns: 1fr; gap: 2.5rem; }
     .how-steps { grid-template-columns: 1fr; }
     .how-step { border-right: none; border-bottom: 1px solid var(--border); }
@@ -551,6 +617,24 @@
   <a href="#" class="nav-logo">Паспорт <span>Души</span></a>
   <a href="https://t.me/GodStatistics_bot" class="nav-cta" target="_blank">Открыть паспорт →</a>
 </nav>
+
+<div class="space-parallax" aria-hidden="true">
+  <figure class="space-girl girl-1" data-parallax="0.08" data-rotate="2">
+    <img src="/site/media/cosmos-1.png" alt="">
+  </figure>
+  <figure class="space-girl girl-2" data-parallax="0.12" data-rotate="-3">
+    <img src="/site/media/cosmos-2.png" alt="">
+  </figure>
+  <figure class="space-girl girl-3" data-parallax="0.06" data-rotate="1.5">
+    <img src="/site/media/cosmos-3.png" alt="">
+  </figure>
+  <figure class="space-girl girl-4" data-parallax="0.1" data-rotate="-2.5">
+    <img src="/site/media/cosmos-4.png" alt="">
+  </figure>
+  <figure class="space-girl girl-5" data-parallax="0.09" data-rotate="2.2">
+    <img src="/site/media/cosmos-5.png" alt="">
+  </figure>
+</div>
 
 <section class="hero">
   <div class="hero-orb"></div>
@@ -604,6 +688,10 @@
         <div class="sphere-row reveal"><div class="sphere-dot"></div><div><div class="sphere-name">Высшее Я</div><div class="sphere-desc">Твой внутренний компас. Источник самого точного знания о себе.</div></div></div>
         <div class="sphere-row reveal"><div class="sphere-dot"></div><div><div class="sphere-name">Текущий цикл развития</div><div class="sphere-desc">Что сейчас открывается в твоей жизни — и как с этим работать.</div></div></div>
       </div>
+    </div>
+    <div class="space-inline reveal">
+      <div class="space-inline-card"><img src="/site/media/cosmos-2.png" alt="Космический образ"></div>
+      <div class="space-inline-card"><img src="/site/media/cosmos-5.png" alt="Космический образ"></div>
     </div>
   </div>
 </section>
@@ -670,6 +758,32 @@
     });
   }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
   reveals.forEach(el => observer.observe(el));
+
+  const parallaxItems = document.querySelectorAll('[data-parallax]');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!reduceMotion && parallaxItems.length) {
+    let ticking = false;
+    const updateParallax = () => {
+      const y = window.scrollY || window.pageYOffset || 0;
+      parallaxItems.forEach((item) => {
+        const speed = parseFloat(item.getAttribute('data-parallax') || '0');
+        const baseRotate = parseFloat(item.getAttribute('data-rotate') || '0');
+        const shift = y * speed;
+        const rotate = baseRotate + y * 0.002;
+        item.style.transform = `translate3d(0, ${shift}px, 0) rotate(${rotate}deg)`;
+      });
+      ticking = false;
+    };
+
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        requestAnimationFrame(updateParallax);
+        ticking = true;
+      }
+    }, { passive: true });
+    updateParallax();
+  }
 </script>
 </body>
 </html>
