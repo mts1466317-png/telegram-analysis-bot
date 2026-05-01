@@ -119,12 +119,11 @@
   .space-girl {
     position: absolute;
     width: clamp(220px, 26vw, 420px);
-    opacity: 0.5;
-    filter: saturate(1.12) contrast(1.08) drop-shadow(0 24px 70px rgba(213, 178, 119, 0.28));
+    opacity: 0.46;
+    filter: drop-shadow(0 24px 70px rgba(213, 178, 119, 0.24));
     will-change: transform;
     transform-style: preserve-3d;
     transform-origin: 50% 50%;
-    mix-blend-mode: screen;
   }
 
   .space-girl::before {
@@ -142,10 +141,8 @@
     width: 100%;
     height: auto;
     display: block;
-    border-radius: 24px;
+    border-radius: 14px;
     border: none;
-    mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%);
-    -webkit-mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%);
   }
 
   .girl-1 { top: 10vh; left: -8vw; width: clamp(260px, 29vw, 470px); }
@@ -679,7 +676,6 @@
     .space-girl {
       opacity: 0.24;
       width: clamp(150px, 44vw, 240px);
-      mix-blend-mode: lighten;
     }
     .girl-2, .girl-4 { display: none; }
     section { width: min(100%, 96vw); padding: 3.2rem 1rem; }
@@ -708,19 +704,19 @@
 
 <div class="space-parallax" aria-hidden="true">
   <figure class="space-girl girl-1" data-parallax="0.06" data-rotate="2" data-depth="18">
-    <img src="/site/media/cosmos-cutout-1.png" alt="">
+    <img src="/site/media/cosmos-1.png" alt="">
   </figure>
   <figure class="space-girl girl-2" data-parallax="0.1" data-rotate="-3" data-depth="24">
-    <img src="/site/media/cosmos-cutout-2.png" alt="">
+    <img src="/site/media/cosmos-2.png" alt="">
   </figure>
   <figure class="space-girl girl-3" data-parallax="0.05" data-rotate="1.5" data-depth="14">
-    <img src="/site/media/cosmos-cutout-3.png" alt="">
+    <img src="/site/media/cosmos-3.png" alt="">
   </figure>
   <figure class="space-girl girl-4" data-parallax="0.09" data-rotate="-2.5" data-depth="22">
-    <img src="/site/media/cosmos-cutout-4.png" alt="">
+    <img src="/site/media/cosmos-4.png" alt="">
   </figure>
   <figure class="space-girl girl-5" data-parallax="0.07" data-rotate="2.2" data-depth="20">
-    <img src="/site/media/cosmos-cutout-5.png" alt="">
+    <img src="/site/media/cosmos-5.png" alt="">
   </figure>
 </div>
 
