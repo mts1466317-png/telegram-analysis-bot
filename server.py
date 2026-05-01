@@ -89,6 +89,11 @@ _run_on_loop(tg_app.start())
 
 app = Flask(__name__)
 WEBAPP_DIR = os.path.join(os.path.dirname(__file__), "webapp")
+SITE_DIR = os.path.join(os.path.dirname(__file__), "site")
+BOT_USERNAME = tg_app.bot.username or ""
+DEFAULT_BOT_URL = f"https://t.me/{BOT_USERNAME}" if BOT_USERNAME else "https://t.me/higherself_connection"
+PUBLIC_BOT_URL = os.getenv("PUBLIC_BOT_URL", DEFAULT_BOT_URL).strip() or DEFAULT_BOT_URL
+PUBLIC_CHANNEL_URL = os.getenv("PUBLIC_CHANNEL_URL", "https://t.me/higherself_connection").strip()
 
 
 @app.route("/", methods=["POST"])
@@ -172,6 +177,27 @@ def app_payload_alias(user_id: int):
 @app.route("/app/data/<int:user_id>/profile", methods=["POST"])
 def app_profile_update_alias(user_id: int):
     return webapp_profile_update(user_id)
+
+
+@app.route("/site", methods=["GET"])
+@app.route("/site/", methods=["GET"])
+def site_index():
+    return send_from_directory(SITE_DIR, "index.html")
+
+
+@app.route("/site/config", methods=["GET"])
+def site_config():
+    return jsonify(
+        {
+            "bot_url": PUBLIC_BOT_URL,
+            "channel_url": PUBLIC_CHANNEL_URL,
+        }
+    ), 200
+
+
+@app.route("/site/<path:filename>", methods=["GET"])
+def site_assets(filename: str):
+    return send_from_directory(SITE_DIR, filename)
 
 
 if __name__ == "__main__":
