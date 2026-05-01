@@ -5,3 +5,4 @@ database.db
 new window
 .bot_token
 bot_token.txt
+node_modules/
