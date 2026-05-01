@@ -1,10 +1,13 @@
 :root {
   --bg: #0b1020;
   --bg-soft: #121933;
+  --bg-soft-2: #171f3f;
   --text: #f7f8ff;
   --muted: #c2c8e6;
   --primary: #8d7aff;
   --primary-2: #6b5af1;
+  --gold: #f0c779;
+  --gold-soft: #9c7a41;
   --line: #273154;
 }
 
@@ -18,6 +21,7 @@ body {
   background: radial-gradient(1100px 560px at 10% -10%, #1f2f66 0%, var(--bg) 48%);
   color: var(--text);
   line-height: 1.5;
+  min-height: 100vh;
 }
 
 .container {
@@ -38,6 +42,22 @@ body {
 
 .hero {
   padding: 88px 0 56px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  width: 560px;
+  height: 560px;
+  left: 50%;
+  top: -220px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(240, 199, 121, 0.2), rgba(141, 122, 255, 0.05) 45%, rgba(11, 16, 32, 0) 72%);
+  filter: blur(10px);
+  pointer-events: none;
+  animation: breatheGlow 7s ease-in-out infinite;
 }
 
 .tag {
@@ -61,6 +81,7 @@ h1 {
 h2 {
   margin: 0 0 18px;
   font-size: clamp(24px, 4vw, 34px);
+  line-height: 1.15;
 }
 
 h3 {
@@ -119,6 +140,12 @@ h3 {
   padding: 42px 0;
 }
 
+.section-lead {
+  margin: 0 0 18px;
+  max-width: 780px;
+  color: var(--muted);
+}
+
 .section-accent {
   background: rgba(255, 255, 255, 0.03);
   border-top: 1px solid var(--line);
@@ -141,6 +168,114 @@ h3 {
   border-radius: 14px;
   padding: 18px;
   box-shadow: 0 10px 30px rgba(11, 13, 34, 0.3);
+}
+
+.card-premium {
+  background:
+    radial-gradient(120% 100% at 10% 0%, rgba(141, 122, 255, 0.22), rgba(23, 31, 63, 0) 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)),
+    var(--bg-soft-2);
+  border-color: #3a467b;
+}
+
+.program-kicker {
+  margin: 0 0 10px;
+  color: var(--gold);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.grid-3-premium {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.story-intro {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  box-shadow: 0 16px 40px rgba(8, 11, 33, 0.35);
+}
+
+.story-intro p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.story-intro p + p {
+  margin-top: 10px;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 5px 10px;
+  border: 1px solid #3d4a82;
+  border-radius: 999px;
+  color: var(--gold);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.journey {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.journey-step {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  background: rgba(18, 25, 51, 0.6);
+}
+
+.journey-num {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--gold-soft);
+  letter-spacing: 0.08em;
+}
+
+.pdf-preview {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 14px;
+}
+
+.pdf-glow {
+  position: absolute;
+  inset: -30px auto auto 12%;
+  width: 72%;
+  height: 140px;
+  background: radial-gradient(closest-side, rgba(141, 122, 255, 0.22), rgba(141, 122, 255, 0));
+  filter: blur(24px);
+  pointer-events: none;
+}
+
+.pdf-page {
+  position: relative;
+  border: 1px solid #34406e;
+  border-radius: 16px;
+  padding: 18px;
+  background: linear-gradient(160deg, #131a35 0%, #10162d 100%);
+  box-shadow: 0 24px 50px rgba(8, 10, 27, 0.45);
+}
+
+.pdf-page-muted {
+  background: linear-gradient(160deg, #10152b 0%, #0d1224 100%);
+}
+
+.pdf-label {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
 }
 
 .card p {
@@ -209,6 +344,18 @@ h3 {
   color: var(--muted);
 }
 
+@keyframes breatheGlow {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.06);
+  }
+}
+
 @media (max-width: 840px) {
   .grid {
     grid-template-columns: 1fr;
@@ -217,11 +364,22 @@ h3 {
   .grid-2 {
     grid-template-columns: 1fr;
   }
+
+  .grid-3-premium,
+  .journey {
+    grid-template-columns: 1fr;
+  }
+
+  .pdf-preview {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .reveal,
-  .btn {
+  .btn,
+  .hero::before {
     transition: none;
+    animation: none;
   }
 }
