@@ -53,25 +53,29 @@
 
   .space-girl {
     position: absolute;
-    width: clamp(140px, 18vw, 260px);
-    opacity: 0.34;
-    filter: saturate(1.08) contrast(1.04) drop-shadow(0 10px 35px rgba(201,169,110,0.12));
+    width: clamp(220px, 26vw, 420px);
+    opacity: 0.5;
+    filter: saturate(1.1) contrast(1.06) drop-shadow(0 20px 52px rgba(201,169,110,0.2));
     will-change: transform;
+    transform-style: preserve-3d;
+    transform-origin: 50% 50%;
   }
 
   .space-girl img {
     width: 100%;
     height: auto;
     display: block;
-    border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 18px;
+    border: none;
+    mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 64%, rgba(0,0,0,0) 100%);
+    -webkit-mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 64%, rgba(0,0,0,0) 100%);
   }
 
-  .girl-1 { top: 12vh; left: -2.5vw; }
-  .girl-2 { top: 35vh; right: -3vw; width: clamp(150px, 20vw, 280px); }
-  .girl-3 { top: 72vh; left: 1vw; width: clamp(120px, 15vw, 220px); }
-  .girl-4 { top: 120vh; right: 2vw; width: clamp(130px, 16vw, 240px); }
-  .girl-5 { top: 182vh; left: -1vw; width: clamp(150px, 19vw, 290px); }
+  .girl-1 { top: 8vh; left: -6vw; width: clamp(280px, 32vw, 520px); }
+  .girl-2 { top: 32vh; right: -8vw; width: clamp(260px, 30vw, 480px); }
+  .girl-3 { top: 74vh; left: -4vw; width: clamp(240px, 26vw, 420px); }
+  .girl-4 { top: 124vh; right: -6vw; width: clamp(250px, 28vw, 450px); }
+  .girl-5 { top: 178vh; left: -5vw; width: clamp(290px, 33vw, 540px); }
 
   section, .divider, footer, nav {
     position: relative;
@@ -595,8 +599,8 @@
 
   @media (max-width: 768px) {
     .space-girl {
-      opacity: 0.18;
-      width: clamp(100px, 30vw, 150px);
+      opacity: 0.24;
+      width: clamp(150px, 44vw, 240px);
     }
     .girl-2, .girl-4 { display: none; }
     .space-inline {
@@ -619,20 +623,20 @@
 </nav>
 
 <div class="space-parallax" aria-hidden="true">
-  <figure class="space-girl girl-1" data-parallax="0.08" data-rotate="2">
-    <img src="/site/media/cosmos-1.png" alt="">
+  <figure class="space-girl girl-1" data-parallax="0.06" data-rotate="2" data-depth="18">
+    <img src="/site/media/cosmos-cutout-1.png" alt="">
   </figure>
-  <figure class="space-girl girl-2" data-parallax="0.12" data-rotate="-3">
-    <img src="/site/media/cosmos-2.png" alt="">
+  <figure class="space-girl girl-2" data-parallax="0.1" data-rotate="-3" data-depth="24">
+    <img src="/site/media/cosmos-cutout-2.png" alt="">
   </figure>
-  <figure class="space-girl girl-3" data-parallax="0.06" data-rotate="1.5">
-    <img src="/site/media/cosmos-3.png" alt="">
+  <figure class="space-girl girl-3" data-parallax="0.05" data-rotate="1.5" data-depth="14">
+    <img src="/site/media/cosmos-cutout-3.png" alt="">
   </figure>
-  <figure class="space-girl girl-4" data-parallax="0.1" data-rotate="-2.5">
-    <img src="/site/media/cosmos-4.png" alt="">
+  <figure class="space-girl girl-4" data-parallax="0.09" data-rotate="-2.5" data-depth="22">
+    <img src="/site/media/cosmos-cutout-4.png" alt="">
   </figure>
-  <figure class="space-girl girl-5" data-parallax="0.09" data-rotate="2.2">
-    <img src="/site/media/cosmos-5.png" alt="">
+  <figure class="space-girl girl-5" data-parallax="0.07" data-rotate="2.2" data-depth="20">
+    <img src="/site/media/cosmos-cutout-5.png" alt="">
   </figure>
 </div>
 
@@ -764,14 +768,28 @@
 
   if (!reduceMotion && parallaxItems.length) {
     let ticking = false;
+    let mouseX = 0;
+    let mouseY = 0;
+    const viewportW = () => window.innerWidth || 1;
+    const viewportH = () => window.innerHeight || 1;
+
+    window.addEventListener('mousemove', (event) => {
+      mouseX = (event.clientX / viewportW() - 0.5) * 2;
+      mouseY = (event.clientY / viewportH() - 0.5) * 2;
+    }, { passive: true });
+
     const updateParallax = () => {
       const y = window.scrollY || window.pageYOffset || 0;
       parallaxItems.forEach((item) => {
         const speed = parseFloat(item.getAttribute('data-parallax') || '0');
         const baseRotate = parseFloat(item.getAttribute('data-rotate') || '0');
+        const depth = parseFloat(item.getAttribute('data-depth') || '0');
         const shift = y * speed;
-        const rotate = baseRotate + y * 0.002;
-        item.style.transform = `translate3d(0, ${shift}px, 0) rotate(${rotate}deg)`;
+        const rotate = baseRotate + y * 0.002 + mouseX * 1.4;
+        const tiltX = mouseY * (depth * 0.08);
+        const tiltY = -mouseX * (depth * 0.08);
+        const zMove = depth + (mouseY * depth * 0.28);
+        item.style.transform = `translate3d(${mouseX * depth * 0.18}px, ${shift}px, ${zMove}px) rotate(${rotate}deg) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
       });
       ticking = false;
     };
