@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Паспорт Души — Навигация по воплощению</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0a0a0f;
@@ -18,24 +18,18 @@
     --accent-soft: rgba(201,169,110,0.12);
     --accent-glow: rgba(201,169,110,0.06);
     --white: #f5f1eb;
-    --font-display: "Space Grotesk", "Inter", sans-serif;
-    --font-text: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
 
   body {
-    background:
-      radial-gradient(1200px 700px at 12% -8%, rgba(201,169,110,0.08), transparent 60%),
-      radial-gradient(900px 540px at 88% 12%, rgba(120,108,180,0.1), transparent 58%),
-      var(--bg);
+    background: var(--bg);
     color: var(--text);
-    font-family: var(--font-text);
-    font-weight: 400;
-    font-size: 18px;
-    line-height: 1.8;
-    letter-spacing: -0.01em;
+    font-family: 'Jost', sans-serif;
+    font-weight: 300;
+    font-size: 17px;
+    line-height: 1.7;
     overflow-x: hidden;
   }
 
@@ -49,18 +43,6 @@
     opacity: 0.5;
   }
 
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(500px 340px at 18% 28%, rgba(201,169,110,0.08), transparent 70%),
-      radial-gradient(460px 320px at 78% 72%, rgba(160,120,220,0.08), transparent 72%);
-    pointer-events: none;
-    z-index: 1;
-    opacity: 0.7;
-  }
-
   .hero {
     min-height: 100vh;
     display: flex;
@@ -71,18 +53,6 @@
     padding: 6rem 2rem 4rem;
     position: relative;
     overflow: hidden;
-    isolation: isolate;
-  }
-
-  .hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(680px 440px at 50% 42%, rgba(201,169,110,0.1), transparent 70%),
-      radial-gradient(720px 460px at 50% 62%, rgba(125,110,190,0.08), transparent 72%);
-    z-index: 0;
-    pointer-events: none;
   }
 
   .hero-orb {
@@ -107,35 +77,34 @@
   }
 
   .hero-symbol {
-    font-family: var(--font-display);
-    font-size: 4rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 5rem;
     color: var(--accent);
-    opacity: 0.3;
-    letter-spacing: 0.2em;
+    opacity: 0.25;
+    letter-spacing: 0.5em;
     margin-bottom: 2.5rem;
     animation: fadeUp 1.2s ease both;
   }
 
   .hero-label {
-    font-family: var(--font-text);
-    font-weight: 500;
-    font-size: 0.72rem;
-    letter-spacing: 0.28em;
+    font-family: 'Jost', sans-serif;
+    font-weight: 400;
+    font-size: 0.68rem;
+    letter-spacing: 0.35em;
     text-transform: uppercase;
     color: var(--accent);
     opacity: 0.8;
-    margin-bottom: 2rem;
+    margin-bottom: 1.8rem;
     animation: fadeUp 1.2s 0.15s ease both;
   }
 
   .hero h1 {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: clamp(3.2rem, 8vw, 6.2rem);
-    line-height: 1.02;
-    letter-spacing: -0.03em;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: clamp(2.8rem, 7vw, 5.5rem);
+    line-height: 1.1;
     color: var(--white);
-    max-width: 920px;
+    max-width: 780px;
     animation: fadeUp 1.2s 0.3s ease both;
   }
 
@@ -145,16 +114,16 @@
   }
 
   .hero-sub {
-    margin-top: 2.2rem;
-    max-width: 620px;
+    margin-top: 1.8rem;
+    max-width: 520px;
     color: var(--muted);
-    font-size: 1.04rem;
+    font-size: 1rem;
     line-height: 1.8;
     animation: fadeUp 1.2s 0.45s ease both;
   }
 
   .hero-cta {
-    margin-top: 3.6rem;
+    margin-top: 3rem;
     animation: fadeUp 1.2s 0.6s ease both;
   }
 
@@ -164,18 +133,16 @@
     gap: 0.6rem;
     background: var(--accent);
     color: #0a0a0f;
-    font-family: var(--font-text);
+    font-family: 'Jost', sans-serif;
     font-weight: 500;
-    font-size: 0.76rem;
-    letter-spacing: 0.16em;
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
     text-decoration: none;
     padding: 1rem 2.4rem;
     border-radius: 0;
     transition: all 0.3s ease;
     position: relative;
-    box-shadow: 0 0 0 rgba(201,169,110,0), 0 14px 32px rgba(201,169,110,0.28);
-    animation: ctaPulse 2.8s ease-in-out infinite;
   }
 
   .btn-primary::after {
@@ -191,8 +158,6 @@
   .btn-primary:hover {
     background: transparent;
     color: var(--accent);
-    box-shadow: 0 0 34px rgba(201,169,110,0.34), 0 18px 40px rgba(201,169,110,0.14);
-    transform: translateY(-1px) scale(1.015);
   }
 
   .btn-primary:hover::after {
@@ -203,12 +168,7 @@
   .btn-arrow { font-size: 1rem; transition: transform 0.3s; }
   .btn-primary:hover .btn-arrow { transform: translateX(4px); }
 
-  @keyframes ctaPulse {
-    0%, 100% { box-shadow: 0 0 0 rgba(201,169,110,0), 0 14px 32px rgba(201,169,110,0.25); }
-    50% { box-shadow: 0 0 24px rgba(201,169,110,0.28), 0 16px 36px rgba(201,169,110,0.2); }
-  }
-
-  section { padding: 9.2rem 2rem; }
+  section { padding: 7rem 2rem; }
   .container { max-width: 900px; margin: 0 auto; }
   .container-wide { max-width: 1100px; margin: 0 auto; }
 
@@ -221,12 +181,12 @@
   }
 
   .section-label {
-    font-size: 0.66rem;
-    letter-spacing: 0.3em;
+    font-size: 0.65rem;
+    letter-spacing: 0.35em;
     text-transform: uppercase;
     color: var(--accent);
     opacity: 0.7;
-    margin-bottom: 1.4rem;
+    margin-bottom: 1.2rem;
     display: block;
   }
 
@@ -234,27 +194,18 @@
     background: var(--surface);
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
-    position: relative;
-  }
-
-  .pain::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(600px 280px at 50% -10%, rgba(201,169,110,0.06), transparent 72%);
-    pointer-events: none;
   }
 
   .pain-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 0;
-    margin-top: 4rem;
+    margin-top: 3.5rem;
     border: 1px solid var(--border);
   }
 
   .pain-item {
-    padding: 2.8rem;
+    padding: 2.4rem;
     border-right: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
     transition: background 0.3s;
@@ -272,7 +223,7 @@
   }
 
   .pain-text {
-    font-size: 0.98rem;
+    font-size: 0.95rem;
     color: var(--muted);
     line-height: 1.7;
   }
@@ -281,29 +232,28 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 4rem;
-    margin-top: 4.4rem;
+    margin-top: 4rem;
     align-items: start;
   }
 
   .what-left h2 {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: clamp(2.4rem, 5vw, 4rem);
-    line-height: 1.08;
-    letter-spacing: -0.02em;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: clamp(2.2rem, 4vw, 3.4rem);
+    line-height: 1.15;
     color: var(--white);
   }
 
   .what-left h2 em { font-style: italic; color: var(--accent); }
 
   .what-desc {
-    margin-top: 1.9rem;
+    margin-top: 1.6rem;
     color: var(--muted);
-    font-size: 0.99rem;
+    font-size: 0.95rem;
     line-height: 1.85;
   }
 
-  .what-right { display: flex; flex-direction: column; gap: 1.4rem; }
+  .what-right { display: flex; flex-direction: column; gap: 1.2rem; }
 
   .sphere-row {
     display: flex;
@@ -330,7 +280,7 @@
   }
 
   .sphere-name {
-    font-size: 0.74rem;
+    font-size: 0.78rem;
     letter-spacing: 0.1em;
     color: var(--accent);
     opacity: 0.8;
@@ -338,7 +288,7 @@
     margin-bottom: 0.2rem;
   }
 
-  .sphere-desc { font-size: 0.93rem; color: var(--muted); line-height: 1.7; }
+  .sphere-desc { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
 
   .quote-section {
     text-align: center;
@@ -348,8 +298,6 @@
     border-bottom: 1px solid var(--border);
     position: relative;
     overflow: hidden;
-    background-image:
-      radial-gradient(460px 220px at 50% 0%, rgba(201,169,110,0.08), transparent 75%);
   }
 
   .quote-section::before {
@@ -372,10 +320,10 @@
   }
 
   .quote-text {
-    font-family: var(--font-display);
+    font-family: 'Cormorant Garamond', serif;
     font-style: italic;
-    font-size: clamp(1.9rem, 4vw, 3rem);
-    font-weight: 500;
+    font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+    font-weight: 300;
     line-height: 1.4;
     color: var(--white);
     max-width: 700px;
@@ -393,12 +341,12 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0;
-    margin-top: 4.3rem;
+    margin-top: 4rem;
     border: 1px solid var(--border);
   }
 
   .how-step {
-    padding: 3.1rem 2.7rem;
+    padding: 2.8rem 2.4rem;
     border-right: 1px solid var(--border);
     position: relative;
   }
@@ -415,27 +363,26 @@
   }
 
   .how-step h3 {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: 1.5rem;
-    letter-spacing: -0.01em;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 400;
+    font-size: 1.35rem;
     color: var(--white);
     margin-bottom: 0.8rem;
   }
 
-  .how-step p { font-size: 0.95rem; color: var(--muted); line-height: 1.8; }
+  .how-step p { font-size: 0.88rem; color: var(--muted); line-height: 1.75; }
 
   .test-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 1.5rem;
-    margin-top: 4rem;
+    margin-top: 3.5rem;
   }
 
   .test-card {
     background: var(--card);
     border: 1px solid var(--border);
-    padding: 2.5rem;
+    padding: 2.2rem;
     position: relative;
     transition: border-color 0.3s;
   }
@@ -454,7 +401,7 @@
   }
 
   .test-text {
-    font-size: 0.98rem;
+    font-size: 0.92rem;
     color: var(--text);
     line-height: 1.75;
     margin-bottom: 1.5rem;
@@ -463,8 +410,8 @@
   }
 
   .test-author {
-    font-size: 0.7rem;
-    letter-spacing: 0.16em;
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--accent);
     opacity: 0.6;
@@ -472,11 +419,9 @@
 
   .cta-section {
     text-align: center;
-    padding: 9rem 2rem;
+    padding: 8rem 2rem;
     position: relative;
     overflow: hidden;
-    background-image:
-      radial-gradient(680px 320px at 50% 70%, rgba(201,169,110,0.07), transparent 72%);
   }
 
   .cta-orb {
@@ -492,10 +437,9 @@
   }
 
   .cta-section h2 {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: clamp(2.6rem, 6vw, 4.7rem);
-    letter-spacing: -0.02em;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: clamp(2.2rem, 5vw, 4rem);
     color: var(--white);
     max-width: 650px;
     margin: 0 auto 1.2rem;
@@ -506,7 +450,7 @@
 
   .cta-sub {
     color: var(--muted);
-    font-size: 1rem;
+    font-size: 0.95rem;
     margin-bottom: 3rem;
     max-width: 440px;
     margin-left: auto;
@@ -525,19 +469,18 @@
     border-top: 1px solid var(--border);
     padding: 2.5rem 2rem;
     text-align: center;
-    font-size: 0.73rem;
+    font-size: 0.75rem;
     color: var(--muted);
     opacity: 0.5;
     letter-spacing: 0.1em;
   }
 
   .section-title {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: clamp(2.35rem, 5vw, 3.8rem);
-    letter-spacing: -0.02em;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: clamp(2rem, 4vw, 3rem);
     color: var(--white);
-    line-height: 1.08;
+    line-height: 1.2;
   }
 
   .section-title em { font-style: italic; color: var(--accent); }
@@ -568,18 +511,18 @@
   }
 
   .nav-logo {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: 1.02rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: 1.1rem;
     color: var(--white);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.08em;
     text-decoration: none;
   }
 
   .nav-logo span { color: var(--accent); }
 
   .nav-cta {
-    font-family: var(--font-text);
+    font-family: 'Jost', sans-serif;
     font-size: 0.7rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
@@ -599,7 +542,6 @@
     .how-step:last-child { border-bottom: none; }
     .pain-item { border-right: none; }
     nav { padding: 1.2rem 1.5rem; }
-    .btn-primary { animation: none; }
   }
 </style>
 </head>
@@ -614,14 +556,14 @@
   <div class="hero-orb"></div>
   <div class="hero-symbol">✦</div>
   <span class="hero-label">Навигация по воплощению</span>
-  <h1>Ты уже чувствуешь, что пора менять вектор.<br>Нужно только <em>услышать</em> себя.</h1>
+  <h1>Ты уже знаешь ответ.<br>Просто ещё не <em>слышишь</em> себя.</h1>
   <p class="hero-sub">
-    Ты перестаёшь метаться. Видишь, куда идти сейчас.<br>
-    И почему это важно именно для тебя.
+    Паспорт Души — это не прогноз и не предсказание.<br>
+    Это карта, которую ты уже несёшь внутри.
   </p>
   <div class="hero-cta">
     <a href="https://t.me/GodStatistics_bot" class="btn-primary" target="_blank">
-      Оформить свой Паспорт Души
+      Получить Паспорт Души
     </a>
   </div>
 </section>
@@ -631,14 +573,14 @@
 <section class="pain">
   <div class="container">
     <span class="section-label reveal">Что привело тебя сюда</span>
-    <h2 class="section-title reveal">Если это про тебя — пора действовать.</h2>
+    <h2 class="section-title reveal">Знакомо хотя бы одно из этого?</h2>
     <div class="pain-grid">
-      <div class="pain-item reveal"><div class="pain-num">01</div><p class="pain-text">Снаружи всё правильно. Внутри — пусто.</p></div>
-      <div class="pain-item reveal"><div class="pain-num">02</div><p class="pain-text">Сценарии повторяются. Ты снова в той же точке.</p></div>
-      <div class="pain-item reveal"><div class="pain-num">03</div><p class="pain-text">Трудно объяснить, кто ты. И себе тоже.</p></div>
-      <div class="pain-item reveal"><div class="pain-num">04</div><p class="pain-text">Чувствуешь разворот жизни, но не видишь шаг.</p></div>
-      <div class="pain-item reveal"><div class="pain-num">05</div><p class="pain-text">Надоели общие советы. Нужна личная опора.</p></div>
-      <div class="pain-item reveal"><div class="pain-num">06</div><p class="pain-text">Интуиция есть. Доверия к ней пока нет.</p></div>
+      <div class="pain-item reveal"><div class="pain-num">01</div><p class="pain-text">Ощущение, что живёшь чужую жизнь — правильную снаружи, но пустую внутри.</p></div>
+      <div class="pain-item reveal"><div class="pain-num">02</div><p class="pain-text">Одни и те же ситуации повторяются снова и снова, как будто ты ходишь по кругу.</p></div>
+      <div class="pain-item reveal"><div class="pain-num">03</div><p class="pain-text">Сложно объяснить другим, кто ты есть. Иногда сложно объяснить это себе.</p></div>
+      <div class="pain-item reveal"><div class="pain-num">04</div><p class="pain-text">Чувствуешь, что стоишь на пороге чего-то важного — но не понимаешь, куда именно идти.</p></div>
+      <div class="pain-item reveal"><div class="pain-num">05</div><p class="pain-text">Устал(а) от инструментов, которые дают ответы без глубины. Нужна настоящая точка опоры.</p></div>
+      <div class="pain-item reveal"><div class="pain-num">06</div><p class="pain-text">Интуиция есть. Но не всегда знаешь, как ей доверять — и можно ли вообще.</p></div>
     </div>
   </div>
 </section>
@@ -649,8 +591,8 @@
       <div class="what-left">
         <span class="section-label reveal">Что такое Паспорт Души</span>
         <h2 class="reveal">Не нумерология.<br>Не астрология.<br><em>Карта тебя.</em></h2>
-        <p class="what-desc reveal">Паспорт Души соединяет имя, дату рождения, родовую линию и цикл в одну ясную карту.</p>
-        <p class="what-desc reveal">Ты видишь главное: кто ты сейчас, на что опереться и куда двигаться дальше.</p>
+        <p class="what-desc reveal">Паспорт Души — это многослойная модель, которая объединяет имя, дату рождения, родовую линию, планетарные энергии и циклы развития в единую структуру.</p>
+        <p class="what-desc reveal">Результат — не набор характеристик, а живая навигация: кто ты, что тебе важно, где твои ресурсы и куда сейчас ведёт твой путь.</p>
         <p class="what-desc reveal" style="margin-top: 1rem; color: rgba(201,169,110,0.7); font-style: italic;">Самая чистая истина — та, что исходит из тебя самого.</p>
       </div>
       <div class="what-right">
@@ -668,7 +610,7 @@
 
 <div class="quote-section">
   <div class="quote-mark">"</div>
-  <p class="quote-text reveal">Твоя внутренняя ясность — не редкий дар.<br>Это твоя опора. Паспорт Души<br>помогает включить её в жизни.</p>
+  <p class="quote-text reveal">Связь с Высшим Я — это не дар избранных.<br>Это право каждого. И твой Паспорт Души<br>— первый шаг к этой связи.</p>
   <p class="quote-sub reveal">Паспорт Души</p>
 </div>
 
@@ -679,9 +621,9 @@
       <h2 class="section-title reveal">Три шага к своему паспорту</h2>
     </div>
     <div class="how-steps" style="margin-top: 3rem;">
-      <div class="how-step reveal"><div class="how-step-num">1</div><h3>Введи ФИО</h3><p>Имя открывает личный код и базовую структуру.</p></div>
-      <div class="how-step reveal"><div class="how-step-num">2</div><h3>Введи дату рождения</h3><p>Дата задаёт ритм периода и точку твоего фокуса.</p></div>
-      <div class="how-step reveal"><div class="how-step-num">3</div><h3>Получи Паспорт Души</h3><p>Получи карту по ключевым сферам и действуй с опорой.</p></div>
+      <div class="how-step reveal"><div class="how-step-num">1</div><h3>Введи ФИО</h3><p>Имя — это первый ключ. Именно в нём закодирована часть твоей структуры.</p></div>
+      <div class="how-step reveal"><div class="how-step-num">2</div><h3>Введи дату рождения</h3><p>Дата задаёт ритм. Система соединит её с именем и рассчитает твой многослойный профиль.</p></div>
+      <div class="how-step reveal"><div class="how-step-num">3</div><h3>Получи Паспорт Души</h3><p>Разбор по восьми сферам — от физического до уровня Высшего Я.</p></div>
     </div>
     <p class="reveal" style="text-align: center; margin-top: 3rem; max-width: 560px; margin-left: auto; margin-right: auto; color: var(--muted); font-style: italic; font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; line-height: 1.7;">Используй его не как предсказание, а как карту — которую всегда можно открыть. Даже если кажется, что ориентиры потеряны.</p>
   </div>
@@ -707,7 +649,7 @@
   <p class="cta-sub reveal">Только твоё имя и дата рождения.</p>
   <div class="reveal">
     <a href="https://t.me/GodStatistics_bot" class="btn-primary" target="_blank">
-      Оформить свой Паспорт Души <span class="btn-arrow">→</span>
+      Открыть в Telegram <span class="btn-arrow">→</span>
     </a>
     <p class="cta-note">@GodStatistics_bot · доступно прямо сейчас</p>
   </div>
