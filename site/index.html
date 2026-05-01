@@ -43,8 +43,69 @@
     inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
     pointer-events: none;
-    z-index: 999;
+    z-index: 40;
     opacity: 0.35;
+  }
+
+  .cosmos-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    background:
+      radial-gradient(1100px 620px at 55% 8%, rgba(123, 108, 219, 0.28), transparent 62%),
+      radial-gradient(900px 540px at 84% 62%, rgba(71, 141, 220, 0.2), transparent 64%),
+      radial-gradient(1200px 700px at 20% 88%, rgba(183, 115, 210, 0.15), transparent 66%),
+      linear-gradient(180deg, #060812 0%, #070914 52%, #070914 100%);
+  }
+
+  .cosmos-nebula {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(28px);
+    opacity: 0.5;
+    animation: nebulaFloat 18s ease-in-out infinite;
+  }
+
+  .nebula-1 {
+    width: 42vw;
+    height: 42vw;
+    min-width: 420px;
+    min-height: 420px;
+    left: -8vw;
+    top: -10vh;
+    background: radial-gradient(circle at 38% 42%, rgba(213, 178, 119, 0.26), rgba(144, 98, 208, 0.08) 55%, transparent 74%);
+  }
+
+  .nebula-2 {
+    width: 36vw;
+    height: 36vw;
+    min-width: 360px;
+    min-height: 360px;
+    right: -6vw;
+    top: 20vh;
+    background: radial-gradient(circle at 40% 40%, rgba(92, 144, 244, 0.26), rgba(153, 92, 230, 0.1) 58%, transparent 76%);
+    animation-delay: -6s;
+  }
+
+  .nebula-3 {
+    width: 48vw;
+    height: 48vw;
+    min-width: 460px;
+    min-height: 460px;
+    left: 24vw;
+    bottom: -26vh;
+    background: radial-gradient(circle at 54% 46%, rgba(200, 118, 225, 0.2), rgba(81, 125, 225, 0.08) 56%, transparent 74%);
+    animation-delay: -10s;
+  }
+
+  #stars-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.66;
   }
 
   .space-parallax {
@@ -52,17 +113,29 @@
     inset: 0;
     overflow: hidden;
     pointer-events: none;
-    z-index: 1;
+    z-index: 2;
   }
 
   .space-girl {
     position: absolute;
     width: clamp(220px, 26vw, 420px);
-    opacity: 0.44;
-    filter: saturate(1.12) contrast(1.08) drop-shadow(0 24px 70px rgba(213, 178, 119, 0.24));
+    opacity: 0.5;
+    filter: saturate(1.12) contrast(1.08) drop-shadow(0 24px 70px rgba(213, 178, 119, 0.28));
     will-change: transform;
     transform-style: preserve-3d;
     transform-origin: 50% 50%;
+    mix-blend-mode: screen;
+  }
+
+  .space-girl::before {
+    content: '';
+    position: absolute;
+    inset: 12% 12%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(212, 172, 110, 0.38), rgba(130, 98, 230, 0.18) 42%, transparent 72%);
+    filter: blur(34px);
+    z-index: -1;
+    opacity: 0.78;
   }
 
   .space-girl img {
@@ -71,8 +144,8 @@
     display: block;
     border-radius: 24px;
     border: none;
-    mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 64%, rgba(0,0,0,0) 100%);
-    -webkit-mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 64%, rgba(0,0,0,0) 100%);
+    mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%);
+    -webkit-mask-image: radial-gradient(circle at center, rgba(0,0,0,1) 62%, rgba(0,0,0,0) 100%);
   }
 
   .girl-1 { top: 10vh; left: -8vw; width: clamp(260px, 29vw, 470px); }
@@ -81,34 +154,9 @@
   .girl-4 { top: 58vh; right: -6vw; width: clamp(230px, 25vw, 420px); }
   .girl-5 { top: 140vh; right: -9vw; width: clamp(290px, 34vw, 560px); }
 
-  section, .divider, footer, nav {
+  section, .divider, footer {
     position: relative;
     z-index: 5;
-  }
-
-  .space-inline {
-    margin-top: 2.8rem;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
-
-  .space-inline-card {
-    border: 1px solid rgba(214, 182, 122, 0.26);
-    background: rgba(8, 14, 28, 0.72);
-    overflow: hidden;
-    min-height: 260px;
-    border-radius: 18px;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02), 0 22px 56px rgba(3, 5, 14, 0.5);
-  }
-
-  .space-inline-card img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    opacity: 0.82;
-    transform: scale(1.02);
   }
 
   .hero {
@@ -143,6 +191,16 @@
   @keyframes breathe {
     0%, 100% { transform: translate(-50%, -52%) scale(1); opacity: 0.7; }
     50% { transform: translate(-50%, -52%) scale(1.08); opacity: 1; }
+  }
+
+  @keyframes nebulaFloat {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.52; }
+    50% { transform: translate3d(0, -2.4vh, 0) scale(1.04); opacity: 0.72; }
+  }
+
+  @keyframes characterFloat {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    50% { transform: translate3d(0, -12px, 0) rotate(0.35deg); }
   }
 
   .hero-symbol {
@@ -621,11 +679,9 @@
     .space-girl {
       opacity: 0.24;
       width: clamp(150px, 44vw, 240px);
+      mix-blend-mode: lighten;
     }
     .girl-2, .girl-4 { display: none; }
-    .space-inline {
-      grid-template-columns: 1fr;
-    }
     section { width: min(100%, 96vw); padding: 3.2rem 1rem; }
     .what-grid { grid-template-columns: 1fr; gap: 2rem; }
     .how-steps { grid-template-columns: 1fr; }
@@ -637,6 +693,13 @@
 </style>
 </head>
 <body>
+
+<div class="cosmos-bg" aria-hidden="true">
+  <canvas id="stars-canvas"></canvas>
+  <div class="cosmos-nebula nebula-1"></div>
+  <div class="cosmos-nebula nebula-2"></div>
+  <div class="cosmos-nebula nebula-3"></div>
+</div>
 
 <nav>
   <a href="#" class="nav-logo">Паспорт <span>Души</span></a>
@@ -714,10 +777,6 @@
         <div class="sphere-row reveal"><div class="sphere-dot"></div><div><div class="sphere-name">Текущий цикл развития</div><div class="sphere-desc">Что сейчас открывается в твоей жизни — и как с этим работать.</div></div></div>
       </div>
     </div>
-    <div class="space-inline reveal">
-      <div class="space-inline-card"><img src="/site/media/cosmos-2.png" alt="Космический образ"></div>
-      <div class="space-inline-card"><img src="/site/media/cosmos-5.png" alt="Космический образ"></div>
-    </div>
   </div>
 </section>
 
@@ -773,6 +832,45 @@
 </footer>
 
 <script>
+  const starsCanvas = document.getElementById('stars-canvas');
+  const starsCtx = starsCanvas ? starsCanvas.getContext('2d') : null;
+  const STAR_COUNT = 170;
+  const stars = [];
+
+  function resizeStars() {
+    if (!starsCanvas || !starsCtx) return;
+    starsCanvas.width = window.innerWidth;
+    starsCanvas.height = window.innerHeight;
+    stars.length = 0;
+    for (let i = 0; i < STAR_COUNT; i += 1) {
+      stars.push({
+        x: Math.random() * starsCanvas.width,
+        y: Math.random() * starsCanvas.height,
+        r: Math.random() * 1.4 + 0.25,
+        a: Math.random() * 0.6 + 0.16,
+        v: Math.random() * 0.012 + 0.003,
+      });
+    }
+  }
+
+  function drawStars() {
+    if (!starsCanvas || !starsCtx) return;
+    starsCtx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
+    for (const s of stars) {
+      s.a += s.v;
+      if (s.a > 0.9 || s.a < 0.12) s.v *= -1;
+      starsCtx.beginPath();
+      starsCtx.fillStyle = `rgba(255, 245, 225, ${s.a})`;
+      starsCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      starsCtx.fill();
+    }
+    requestAnimationFrame(drawStars);
+  }
+
+  resizeStars();
+  drawStars();
+  window.addEventListener('resize', resizeStars);
+
   const reveals = document.querySelectorAll('.reveal');
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry, i) => {
@@ -801,21 +899,32 @@
 
     const updateParallax = () => {
       const y = window.scrollY || window.pageYOffset || 0;
+      const t = performance.now() * 0.001;
       parallaxItems.forEach((item) => {
+        const idx = Number(item.getAttribute('data-idx') || '0');
         const speed = parseFloat(item.getAttribute('data-parallax') || '0');
         const baseRotate = parseFloat(item.getAttribute('data-rotate') || '0');
         const depth = parseFloat(item.getAttribute('data-depth') || '0');
-        const shift = y * speed;
+        const drift = Math.sin(t + idx * 0.85) * (6 + idx * 1.4);
+        const shift = y * speed + drift;
         const rotate = baseRotate + y * 0.002 + mouseX * 1.4;
         const tiltX = mouseY * (depth * 0.08);
         const tiltY = -mouseX * (depth * 0.08);
         const zMove = depth + (mouseY * depth * 0.28);
-        item.style.transform = `translate3d(${mouseX * depth * 0.18}px, ${shift}px, ${zMove}px) rotate(${rotate}deg) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
+        item.style.transform = `translate3d(${mouseX * depth * 0.22}px, ${shift}px, ${zMove}px) rotate(${rotate}deg) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
       });
       ticking = false;
     };
 
+    parallaxItems.forEach((item, idx) => item.setAttribute('data-idx', String(idx)));
+
     window.addEventListener('scroll', () => {
+      if (!ticking) {
+        requestAnimationFrame(updateParallax);
+        ticking = true;
+      }
+    }, { passive: true });
+    window.addEventListener('mousemove', () => {
       if (!ticking) {
         requestAnimationFrame(updateParallax);
         ticking = true;
