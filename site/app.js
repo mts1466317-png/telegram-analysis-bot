@@ -1,4 +1,4 @@
-const BUTTON_IDS = ["ctaTop", "ctaMiddle", "ctaBottom", "channelTop"];
+const BUTTON_IDS = ["ctaTop", "ctaMiddle", "ctaFinal", "ctaBottom", "channelTop"];
 
 function applyLinks(config) {
   const botUrl = config.bot_url || "#";
@@ -20,7 +20,7 @@ async function initSite() {
   } catch (_error) {
     // Fallback if config endpoint is unavailable.
     applyLinks({
-      bot_url: "https://t.me/higherself_connection",
+      bot_url: "https://t.me/GodStatistics_bot",
       channel_url: "https://t.me/higherself_connection",
     });
   }

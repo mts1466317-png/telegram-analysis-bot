@@ -91,7 +91,10 @@ app = Flask(__name__)
 WEBAPP_DIR = os.path.join(os.path.dirname(__file__), "webapp")
 SITE_DIR = os.path.join(os.path.dirname(__file__), "site")
 BOT_USERNAME = tg_app.bot.username or ""
-DEFAULT_BOT_URL = f"https://t.me/{BOT_USERNAME}" if BOT_USERNAME else "https://t.me/higherself_connection"
+DEFAULT_BOT_URL = os.getenv(
+    "DEFAULT_SITE_BOT_URL",
+    f"https://t.me/{BOT_USERNAME}" if BOT_USERNAME else "https://t.me/GodStatistics_bot",
+).strip()
 PUBLIC_BOT_URL = os.getenv("PUBLIC_BOT_URL", DEFAULT_BOT_URL).strip() or DEFAULT_BOT_URL
 PUBLIC_CHANNEL_URL = os.getenv("PUBLIC_CHANNEL_URL", "https://t.me/higherself_connection").strip()
 
