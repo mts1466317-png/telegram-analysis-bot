@@ -17,6 +17,7 @@ from telegram.ext import (
 from env_token import env_token_hint, resolve_bot_token
 from snapshot_store import init_snapshot_store
 from snapshot_store import save_last_snapshot
+from practitioner_store import init_practitioner_store
 from telemetry import init_telemetry_store, track_event
 
 # По этому маркеру в логах видно, что задеплоена актуальная версия (не старый server.py:27)
@@ -29,6 +30,7 @@ print(
 TOKEN = resolve_bot_token()
 print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕТ'}")
 init_snapshot_store()
+init_practitioner_store()
 init_telemetry_store()
 
 if not TOKEN:

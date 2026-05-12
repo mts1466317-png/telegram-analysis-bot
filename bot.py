@@ -14,6 +14,15 @@ from urllib.parse import quote
 from env_token import resolve_bot_token
 from snapshot_store import load_last_snapshot, save_last_snapshot
 from telemetry import track_event
+from practitioner_store import (
+    extend_practitioner_subscription,
+    get_practitioner_stats,
+    get_practitioner_subscription_state,
+    has_practitioner_access,
+    increment_practitioner_usage_after_pdf,
+    init_practitioner_store,
+    practitioner_days_in_system,
+)
 
 # Не использовать insert(0): в .vendor лежит частичная копия PIL без бинарного _imaging —
 # она перекрывает Pillow из pip и ломает ReportLab (Railway).
@@ -1762,10 +1771,12 @@ async def send_pdf_report(
     birth_date: str,
     sections: list[dict],
     calc_snapshot: dict | None = None,
-):
+    *,
+    for_practitioner: bool = False,
+) -> bool:
     if not update.effective_chat:
         print("❌ Нет chat для отправки PDF")
-        return
+        return False
 
     status_msg = await update.effective_chat.send_message("⏳ Генерирую PDF...")
 
@@ -1778,23 +1789,23 @@ async def send_pdf_report(
         if not pdf_path:
             print("❌ build_pdf_report вернул None")
             await status_msg.edit_text("❌ Не удалось создать PDF")
-            return
+            return False
 
         if not os.path.exists(pdf_path):
             print(f"❌ Файл не найден: {pdf_path}")
             await status_msg.edit_text("❌ PDF не найден после генерации")
-            return
+            return False
 
         file_size = os.path.getsize(pdf_path)
         print(f"📦 Размер PDF: {file_size}")
 
         if file_size == 0:
             await status_msg.edit_text("❌ PDF пустой")
-            return
+            return False
 
         if file_size > 50 * 1024 * 1024:
             await status_msg.edit_text("❌ PDF слишком большой")
-            return
+            return False
 
         # ASCII-имя файла — кириллица в multipart filename часто ломает клиенты/API
         pdf_filename = f"SoulReport_{birth_date.replace('.', '')}.pdf"
@@ -1804,26 +1815,38 @@ async def send_pdf_report(
         with open(pdf_path, "rb") as pdf_file:
             pdf_bytes = pdf_file.read()
 
+        caption = (
+            "PDF Паспорта Души для клиента готов."
+            if for_practitioner
+            else "Ваш персональный PDF-разбор готов."
+        )
         await update.effective_chat.send_document(
             document=InputFile(pdf_bytes, filename=pdf_filename),
-            caption="Ваш персональный PDF-разбор готов.",
+            caption=caption,
         )
 
         await status_msg.edit_text("✅ PDF готов")
 
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔮 Новый разбор", callback_data="get_stats")],
-            [InlineKeyboardButton("💝 Поддержать проект", callback_data="support_project")],
-        ])
+        if for_practitioner:
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🕊 Пространство практика", callback_data="practitioner_dashboard")],
+                [InlineKeyboardButton("🔮 Следующий паспорт", callback_data="practitioner_create_passport")],
+            ])
+            follow = "Продолжай в своём ритме — система рядом."
+        else:
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔮 Новый разбор", callback_data="get_stats")],
+                [InlineKeyboardButton("💝 Поддержать проект", callback_data="support_project")],
+            ])
+            follow = "Хочешь разобрать ещё или пойти глубже?"
 
-        await update.effective_chat.send_message(
-            "Хочешь разобрать ещё или пойти глубже?",
-            reply_markup=keyboard
-        )
+        await update.effective_chat.send_message(follow, reply_markup=keyboard)
+        return True
 
     except Exception as e:
         print("ERROR:", e)
         await status_msg.edit_text(f"❌ Ошибка:\n{e}")
+        return False
 
     finally:
         if pdf_path and os.path.exists(pdf_path):
@@ -1889,13 +1912,28 @@ def cycle_description(num: int, cycle: dict) -> str:
 # =========================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.effective_user:
+    if not update.effective_user or not update.message:
         return
     user_id = update.effective_user.id
     track_event("start_entry", user_id, props={"entry": "/start"})
+    sub_state = get_practitioner_subscription_state(user_id)
+    if sub_state == "active":
+        touch_journey(user_id, "start", "practitioner_dashboard")
+        await update.message.reply_text(practitioner_dashboard_message(user_id), reply_markup=build_practitioner_dashboard_keyboard())
+        return
+    if sub_state == "expired":
+        touch_journey(user_id, "start", "practitioner_renew")
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("✨ Продлить статус практика", callback_data="practitioner_renew")],
+            [InlineKeyboardButton("💌 Паспорт для себя", callback_data="get_stats")],
+        ])
+        await update.message.reply_text(practitioner_renewal_message(user_id), reply_markup=keyboard)
+        return
+
     touch_journey(user_id, "start", "get_stats")
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("💌 Получить Паспорт Души 💌", callback_data="get_stats")],
+        [InlineKeyboardButton("🕊 Я специалист", callback_data="practitioner_entry")],
     ])
     await update.message.reply_text(
         "Инструмент «Паспорт Души» основан на нумерологических расчётах и формулах и позволяет получить доступ к данным, "
@@ -1921,6 +1959,65 @@ def build_portal_menu() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("✨ Практики", callback_data="practice_open")],
         [InlineKeyboardButton("💎 Поддержать проект", callback_data="support_open")],
     ])
+
+
+def build_practitioner_dashboard_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔮 Создать Паспорт Души", callback_data="practitioner_create_passport")],
+        [InlineKeyboardButton("👥 Мои клиенты", callback_data="practitioner_clients")],
+        [InlineKeyboardButton("📖 Методология", callback_data="practitioner_methodology")],
+        [InlineKeyboardButton("✨ Продлить статус практика", callback_data="practitioner_renew")],
+        [InlineKeyboardButton("🕊 Поддержка", callback_data="practitioner_support")],
+    ])
+
+
+def practitioner_dashboard_message(user_id: int) -> str:
+    st = get_practitioner_stats(user_id)
+    days = practitioner_days_in_system(user_id)
+    return (
+        "🕊 Пространство практика\n\n"
+        "Ты внутри системы «Паспорт Души» — здесь то, что нужно для глубокой работы с людьми.\n\n"
+        "Твой путь практика\n"
+        f"• Проведено людей: {st['users_processed']}\n"
+        f"• Создано паспортов: {st['passports_created']}\n"
+        f"• Дней в системе: {days}\n\n"
+        "Выбери следующий шаг — в своём темпе."
+    )
+
+
+def practitioner_renewal_message(user_id: int) -> str:
+    st = get_practitioner_stats(user_id)
+    return (
+        "Твой статус практика сейчас не активен.\n\n"
+        "За время работы с системой ты:\n"
+        f"— создал(а) {st['passports_created']} Паспорт(ов) Души\n"
+        f"— провёл(а) через проект {st['users_processed']} человек\n\n"
+        "Чтобы продолжить работу с системой, можно продлить доступ практика — спокойно и без спешки."
+    )
+
+
+def build_practitioner_payment_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📋 Скопировать номер карты", callback_data="copy_card")],
+        [InlineKeyboardButton("✨ Сообщить об оплате", callback_data="practitioner_paid")],
+        [InlineKeyboardButton("⬅️ Назад", callback_data="practitioner_entry")],
+    ])
+
+
+def practitioner_access_offer_text() -> str:
+    return (
+        "Доступ практика — месяц работы внутри системы «Паспорт Души».\n\n"
+        "Входит:\n"
+        "— спокойная работа без повторяющегося paywall\n"
+        "— создание PDF Паспорта Души для твоих клиентов\n"
+        "— пространство, заточенное под профессиональную практику\n\n"
+        "Стоимость и реквизиты — как у основного потока поддержки проекта.\n"
+        "Банк: Т-Банк\n"
+        "Карта: <code>2200 7008 8290 3809</code>\n"
+        "Нажми на номер карты, чтобы скопировать.\n"
+        "Получатель: Кристина Г\n\n"
+        "После перевода нажми «Сообщить об оплате» — мы подтвердим доступ вручную."
+    )
 
 
 def get_or_init_journey(user_id: int) -> dict:
@@ -2737,6 +2834,110 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if data == "get_stats":
         context.user_data["step"] = "fio_birth_line"
         await query.message.reply_text(build_birth_input_prompt())
+    elif data == "practitioner_entry":
+        intro = (
+            "Если ты ведёшь людей и создаёшь для них разборы,\n"
+            "пространство практика убирает лишний шум и удерживает фокус на работе.\n\n"
+            "Ниже — как активировать доступ на месяц."
+        )
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Об условиях доступа", callback_data="practitioner_access_show")],
+        ])
+        await query.message.reply_text(intro, reply_markup=keyboard)
+    elif data == "practitioner_access_show" or data == "practitioner_renew":
+        await query.message.reply_text(
+            practitioner_access_offer_text(),
+            reply_markup=build_practitioner_payment_keyboard(),
+            parse_mode="HTML",
+        )
+    elif data == "practitioner_paid":
+        user = query.from_user
+        user_id_str = str(user.id)
+        username_display = f"@{user.username}" if user.username else "без username"
+        _payment_pending[user_id_str] = {
+            "kind": "practitioner_subscription",
+            "chat_id": query.message.chat_id,
+        }
+        await query.message.reply_text(
+            "Запрос принят. Мы вручную подтвердим оплату — обычно в течение пары минут.\n"
+            "Когда доступ будет готов, ты получишь сообщение здесь."
+        )
+        admin_keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("✅ Подтвердить", callback_data=f"approve_{user_id_str}"),
+                InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_{user_id_str}"),
+            ]
+        ])
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                f"💳 Доступ практика (30 дней)\n\n"
+                f"Имя: {user.full_name}\n"
+                f"Username: {username_display}\n"
+                f"ID: {user.id}\n"
+                f"План: practitioner_monthly"
+            ),
+            reply_markup=admin_keyboard,
+        )
+    elif data == "practitioner_dashboard":
+        uid = query.from_user.id if query.from_user else 0
+        if not has_practitioner_access(uid):
+            await query.message.reply_text(
+                practitioner_renewal_message(uid),
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✨ Продлить статус практика", callback_data="practitioner_renew")],
+                    [InlineKeyboardButton("💌 Паспорт для себя", callback_data="get_stats")],
+                ]),
+            )
+            return
+        await query.message.reply_text(
+            practitioner_dashboard_message(uid),
+            reply_markup=build_practitioner_dashboard_keyboard(),
+        )
+    elif data == "practitioner_create_passport":
+        uid = query.from_user.id if query.from_user else 0
+        if not has_practitioner_access(uid):
+            await query.message.reply_text(
+                practitioner_renewal_message(uid),
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✨ Продлить статус практика", callback_data="practitioner_renew")],
+                ]),
+            )
+            return
+        if uid:
+            touch_journey(uid, "practitioner_create_passport", "fio_birth_line")
+        context.user_data["step"] = "fio_birth_line"
+        await query.message.reply_text(
+            "Введи данные клиента одной строкой — как в обычном расчёте:\n\n" + build_birth_input_prompt()
+        )
+    elif data == "practitioner_clients":
+        await query.message.reply_text(
+            "👥 Мои клиенты\n\n"
+            "Здесь позже появится аккуратная история сопровождения.\n"
+            "Пока держи контекст у себя — и возвращайся к пространству практика, когда будет удобно.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🕊 В пространство практика", callback_data="practitioner_dashboard")],
+            ]),
+        )
+    elif data == "practitioner_methodology":
+        await query.message.reply_text(
+            "📖 Методология\n\n"
+            "Мы соберём здесь спокойные опоры для твоей практики: шаги, внимание, этика сопровождения.\n"
+            "Пока раздел раскрывается — продолжай опираться на свой опыт и чувство меры.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🕊 В пространство практика", callback_data="practitioner_dashboard")],
+            ]),
+        )
+    elif data == "practitioner_support":
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Написать проводнику", url="https://t.me/octaviachi")],
+            [InlineKeyboardButton("🕊 В пространство практика", callback_data="practitioner_dashboard")],
+        ])
+        await query.message.reply_text(
+            "🕊 Поддержка\n\n"
+            "Если нужен человек на связи — напиши проводнику. Мы ответим без суеты.",
+            reply_markup=keyboard,
+        )
     elif data == "restart_calc":
         context.user_data.clear()
         context.user_data["step"] = "fio_birth_line"
@@ -2914,6 +3115,18 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await show_action_menu(update, context)
     elif data == "unlock_full_report":
         user = query.from_user
+        if user and has_practitioner_access(user.id):
+            track_event("pdf_cta_click", user.id, props={"source": "chat_callback"})
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🕊 Пространство практика", callback_data="practitioner_dashboard")],
+                [InlineKeyboardButton("🔮 Следующий паспорт", callback_data="practitioner_create_passport")],
+            ])
+            await query.message.reply_text(
+                "Статус практика активен: PDF к расчёту формируется автоматически после ввода данных.\n\n"
+                "Можно сразу перейти к следующему паспорту или открыть пространство практика.",
+                reply_markup=keyboard,
+            )
+            return
         track_event("pdf_cta_click", user.id if user else None, props={"source": "chat_callback"})
         pending = context.user_data.get("pending_pdf")
         if pending:
@@ -3062,11 +3275,45 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     action, user_id_str = query.data.split("_", 1)
     user_id = int(user_id_str)
-
-    # user_storage — основной источник; _payment_pending — фолбэк
-    data = user_storage.get(user_id) or _payment_pending.get(user_id_str)
+    pending = _payment_pending.get(user_id_str)
 
     if action == "approve":
+        if pending and pending.get("kind") == "practitioner_subscription":
+            admin_uid = query.from_user.id if query.from_user else None
+            new_end = extend_practitioner_subscription(
+                user_id,
+                approved_by=admin_uid,
+                payment_ref="manual",
+            )
+            _payment_pending.pop(user_id_str, None)
+            if not new_end:
+                await context.bot.send_message(
+                    chat_id=user_id,
+                    text=(
+                        "Не удалось активировать доступ автоматически.\n"
+                        "Напиши в поддержку — разберёмся спокойно."
+                    ),
+                )
+                try:
+                    await query.edit_message_text("❌ Ошибка записи доступа")
+                except Exception:
+                    pass
+                return
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=(
+                    "Доступ практика продлён на 30 дней.\n\n"
+                    "Ты снова внутри пространства системы — можно продолжать работу."
+                ),
+                reply_markup=build_practitioner_dashboard_keyboard(),
+            )
+            try:
+                await query.edit_message_text("✅ Доступ практика подтверждён")
+            except Exception:
+                pass
+            return
+
+        data = pending if (pending and pending.get("sections")) else user_storage.get(user_id)
         if not data:
             print(f"⚠️ user_storage miss for {user_id}")
             await context.bot.send_message(
@@ -3144,11 +3391,15 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
             pass
 
     elif action == "reject":
-        await context.bot.send_message(
-            chat_id=user_id,
-            text="❌ Платёж не подтверждён. Проверь перевод и попробуй снова.",
-        )
-        _payment_pending.pop(user_id_str, None)
+        rej = _payment_pending.pop(user_id_str, None)
+        if rej and rej.get("kind") == "practitioner_subscription":
+            reject_text = (
+                "Пока не удалось подтвердить оплату.\n"
+                "Если перевод уже ушёл — напиши проводнику, мы разберёмся без суеты."
+            )
+        else:
+            reject_text = "❌ Платёж не подтверждён. Проверь перевод и попробуй снова."
+        await context.bot.send_message(chat_id=user_id, text=reject_text)
         try:
             await query.edit_message_text("❌ Платёж отклонён")
         except Exception:
@@ -3402,6 +3653,22 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         track_event("calculation_completed", _uid, props={"cycle_number": calc_snapshot.get("cycle_number")})
         # Сохраняем базу для последующей ручной верификации оплаты.
         context.user_data["pending_pdf"]["delivery_format"] = "pdf"
+
+        if has_practitioner_access(_uid):
+            await update.message.reply_text(
+                "Разбор готов. Собираю PDF в рамках доступа практика — без отдельного шага оплаты."
+            )
+            ok = await send_pdf_report(
+                update,
+                fio,
+                birth_date,
+                pdf_sections,
+                calc_snapshot,
+                for_practitioner=True,
+            )
+            if ok:
+                increment_practitioner_usage_after_pdf(_uid)
+            return
 
         payment_text = (
             "💌 Ваш Паспорт Души готов\n\n"
@@ -3699,6 +3966,8 @@ def main():
         raise RuntimeError(
             "Токен бота не задан. Установите переменную BOT_TOKEN (или TOKEN) с токеном от @BotFather."
         )
+
+    init_practitioner_store()
 
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
