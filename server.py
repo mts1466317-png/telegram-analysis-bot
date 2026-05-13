@@ -51,6 +51,10 @@ from bot import (
     admin_payment_callback,
     portal_callback_router,
     get_cached_webapp_payload,
+    practitioner_grant_cmd,
+    practitioner_revoke_cmd,
+    practitioner_status_cmd,
+    practitioner_list_cmd,
 )
 
 # Один event loop в отдельном потоке (Flask воркеры в разных потоках).
@@ -75,6 +79,10 @@ if _app_loop is None:
 
 tg_app = ApplicationBuilder().token(TOKEN).build()
 tg_app.add_handler(CommandHandler("start", start))
+tg_app.add_handler(CommandHandler("practitioner_grant", practitioner_grant_cmd))
+tg_app.add_handler(CommandHandler("practitioner_revoke", practitioner_revoke_cmd))
+tg_app.add_handler(CommandHandler("practitioner_status", practitioner_status_cmd))
+tg_app.add_handler(CommandHandler("practitioner_list", practitioner_list_cmd))
 tg_app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
 tg_app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|launcher_|map_|library_|path_|community_|circle_|practice_|support_|daily_|guide_|channel_|continue_)"))
 tg_app.add_handler(CallbackQueryHandler(main_menu_callback))

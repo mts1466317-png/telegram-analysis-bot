@@ -138,12 +138,15 @@ def extend_practitioner_subscription(
     *,
     approved_by: int | None,
     payment_ref: str | None = None,
+    days: int = 30,
 ) -> Optional[datetime]:
     """
-    Sets or extends subscription by 30 days from max(existing_end, now).
+    Sets or extends subscription by `days` days from max(existing_end, now).
     Returns new current_period_end (aware UTC) or None on failure / disabled store.
     """
     if not _STORE_ENABLED or not user_id:
+        return None
+    if days <= 0:
         return None
     now = _now_utc()
     try:
@@ -163,7 +166,7 @@ def extend_practitioner_subscription(
                 base = now
                 if old_end is not None:
                     base = max(old_end, now)
-                new_end = base + timedelta(days=30)
+                new_end = base + timedelta(days=days)
 
                 cur.execute(
                     """
@@ -269,6 +272,96 @@ def increment_practitioner_usage_after_pdf(user_id: int) -> None:
             conn.commit()
     except Exception as exc:
         print(f"⚠️ practitioner_store: increment_practitioner_usage_after_pdf failed ({exc})")
+
+
+def revoke_practitioner_subscription(user_id: int) -> bool:
+    """Hard-delete subscription row. Stats are preserved. Returns True if a row was deleted."""
+    if not _STORE_ENABLED or not user_id:
+        return False
+    try:
+        with psycopg2.connect(_database_url(), connect_timeout=3) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM practitioner_subscription WHERE telegram_user_id = %s",
+                    (user_id,),
+                )
+                deleted = cur.rowcount or 0
+            conn.commit()
+        return deleted > 0
+    except Exception as exc:
+        print(f"⚠️ practitioner_store: revoke_practitioner_subscription failed ({exc})")
+        return False
+
+
+def get_practitioner_subscription_details(user_id: int) -> Optional[dict[str, Any]]:
+    if not _STORE_ENABLED or not user_id:
+        return None
+    try:
+        with psycopg2.connect(_database_url(), connect_timeout=3) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT plan, status, current_period_end, created_at, updated_at,
+                           payment_ref, approved_by
+                    FROM practitioner_subscription
+                    WHERE telegram_user_id = %s
+                    """,
+                    (user_id,),
+                )
+                row = cur.fetchone()
+        if not row:
+            return None
+        end = row[2]
+        if end is not None and getattr(end, "tzinfo", None) is None:
+            end = end.replace(tzinfo=timezone.utc)
+        return {
+            "plan": row[0],
+            "status": row[1],
+            "current_period_end": end,
+            "created_at": row[3],
+            "updated_at": row[4],
+            "payment_ref": row[5],
+            "approved_by": row[6],
+            "active": bool(end and end > _now_utc()),
+        }
+    except Exception as exc:
+        print(f"⚠️ practitioner_store: get_practitioner_subscription_details failed ({exc})")
+        return None
+
+
+def list_active_practitioner_subscriptions(limit: int = 50) -> list[dict[str, Any]]:
+    if not _STORE_ENABLED:
+        return []
+    try:
+        with psycopg2.connect(_database_url(), connect_timeout=3) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT telegram_user_id, plan, current_period_end
+                    FROM practitioner_subscription
+                    WHERE current_period_end > NOW()
+                    ORDER BY current_period_end ASC
+                    LIMIT %s
+                    """,
+                    (limit,),
+                )
+                rows = cur.fetchall() or []
+        result: list[dict[str, Any]] = []
+        for r in rows:
+            end = r[2]
+            if end is not None and getattr(end, "tzinfo", None) is None:
+                end = end.replace(tzinfo=timezone.utc)
+            result.append(
+                {
+                    "telegram_user_id": int(r[0]),
+                    "plan": r[1],
+                    "current_period_end": end,
+                }
+            )
+        return result
+    except Exception as exc:
+        print(f"⚠️ practitioner_store: list_active_practitioner_subscriptions failed ({exc})")
+        return []
 
 
 def practitioner_days_in_system(user_id: int) -> int:

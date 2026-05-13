@@ -17,11 +17,14 @@ from telemetry import track_event
 from practitioner_store import (
     extend_practitioner_subscription,
     get_practitioner_stats,
+    get_practitioner_subscription_details,
     get_practitioner_subscription_state,
     has_practitioner_access,
     increment_practitioner_usage_after_pdf,
     init_practitioner_store,
+    list_active_practitioner_subscriptions,
     practitioner_days_in_system,
+    revoke_practitioner_subscription,
 )
 
 # Не использовать insert(0): в .vendor лежит частичная копия PIL без бинарного _imaging —
@@ -3417,6 +3420,139 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
             pass
 
 
+def _is_admin(update: Update) -> bool:
+    user = update.effective_user
+    return bool(user and user.id == ADMIN_ID)
+
+
+def _format_subscription_line(user_id: int, end, status: str | None = None) -> str:
+    end_str = end.strftime("%d.%m.%Y %H:%M UTC") if end else "—"
+    label = status or "active"
+    return f"• {user_id} — {label} до {end_str}"
+
+
+async def practitioner_grant_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not _is_admin(update):
+        return
+    args = context.args or []
+    if not args:
+        await update.message.reply_text(
+            "Использование: /practitioner_grant <user_id> [days]\n"
+            "По умолчанию выдаётся 30 дней. Если подписка уже активна — продлевается от max(old_end, now)."
+        )
+        return
+    try:
+        target_id = int(args[0])
+        days = int(args[1]) if len(args) > 1 else 30
+    except ValueError:
+        await update.message.reply_text("user_id и days должны быть числами.")
+        return
+    if days <= 0 or days > 3650:
+        await update.message.reply_text("days должно быть в диапазоне 1..3650.")
+        return
+    admin_uid = update.effective_user.id if update.effective_user else None
+    new_end = extend_practitioner_subscription(
+        target_id,
+        approved_by=admin_uid,
+        payment_ref=f"admin:{admin_uid}",
+        days=days,
+    )
+    if not new_end:
+        await update.message.reply_text("Не удалось записать подписку (проверь DATABASE_URL и логи).")
+        return
+    end_str = new_end.strftime("%d.%m.%Y %H:%M UTC")
+    await update.message.reply_text(
+        f"Доступ практика для {target_id} активен до {end_str} (+{days} дн)."
+    )
+    try:
+        await context.bot.send_message(
+            chat_id=target_id,
+            text=(
+                "Благодарим тебя 🤍\n\n"
+                "Оплата подтверждена и твой доступ практика активирован. "
+                "Пусть каждый разбор приносит ясность и свет.\n\n"
+                "Если понадобится помощь или возникнут вопросы — "
+                "всегда можешь написать нам — @AngeleonOfficial\n\n"
+                "Чтобы начать, просто введи данные клиента 👇"
+            ),
+        )
+    except Exception as exc:
+        print(f"⚠️ practitioner_grant_cmd: failed to notify user ({exc})")
+
+
+async def practitioner_revoke_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not _is_admin(update):
+        return
+    args = context.args or []
+    if not args:
+        await update.message.reply_text("Использование: /practitioner_revoke <user_id>")
+        return
+    try:
+        target_id = int(args[0])
+    except ValueError:
+        await update.message.reply_text("user_id должен быть числом.")
+        return
+    deleted = revoke_practitioner_subscription(target_id)
+    if deleted:
+        await update.message.reply_text(f"Подписка {target_id} отозвана (запись удалена).")
+    else:
+        await update.message.reply_text(f"Активной подписки для {target_id} не найдено.")
+
+
+async def practitioner_status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not _is_admin(update):
+        return
+    args = context.args or []
+    target_id: int | None = None
+    if args:
+        try:
+            target_id = int(args[0])
+        except ValueError:
+            await update.message.reply_text("user_id должен быть числом.")
+            return
+    else:
+        target_id = update.effective_user.id if update.effective_user else None
+    if not target_id:
+        await update.message.reply_text("Не удалось определить user_id.")
+        return
+    details = get_practitioner_subscription_details(target_id)
+    stats = get_practitioner_stats(target_id)
+    if not details:
+        await update.message.reply_text(
+            f"Подписки для {target_id} нет.\n"
+            f"Статистика: паспортов {stats['passports_created']}, людей {stats['users_processed']}."
+        )
+        return
+    end = details.get("current_period_end")
+    end_str = end.strftime("%d.%m.%Y %H:%M UTC") if end else "—"
+    active = "активна" if details.get("active") else "истекла"
+    await update.message.reply_text(
+        f"User {target_id}\n"
+        f"План: {details.get('plan')}\n"
+        f"Статус: {details.get('status')} ({active})\n"
+        f"Действует до: {end_str}\n"
+        f"Approved by: {details.get('approved_by')}\n"
+        f"Payment ref: {details.get('payment_ref')}\n"
+        f"Паспортов создано: {stats['passports_created']}, людей: {stats['users_processed']}"
+    )
+
+
+async def practitioner_list_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not _is_admin(update):
+        return
+    rows = list_active_practitioner_subscriptions(limit=100)
+    if not rows:
+        await update.message.reply_text("Активных подписок нет.")
+        return
+    lines = ["Активные подписки практиков:"]
+    for r in rows:
+        lines.append(_format_subscription_line(r["telegram_user_id"], r["current_period_end"]))
+    text = "\n".join(lines)
+    if len(text) > 3800:
+        text = text[:3800] + "\n…"
+    await update.message.reply_text(text)
+
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         text = update.message.text.strip()
@@ -3982,6 +4118,10 @@ def main():
 
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("practitioner_grant", practitioner_grant_cmd))
+    app.add_handler(CommandHandler("practitioner_revoke", practitioner_revoke_cmd))
+    app.add_handler(CommandHandler("practitioner_status", practitioner_status_cmd))
+    app.add_handler(CommandHandler("practitioner_list", practitioner_list_cmd))
     app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
     app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|circle_|practice_|support_|daily_|guide_|channel_|continue_)"))
     app.add_handler(CallbackQueryHandler(main_menu_callback))
