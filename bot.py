@@ -2871,8 +2871,8 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "chat_id": query.message.chat_id,
         }
         await query.message.reply_text(
-            "Запрос принят. Мы вручную подтвердим оплату — обычно в течение пары минут.\n"
-            "Когда доступ будет готов, ты получишь сообщение здесь."
+            "Приняли твой запрос 🤍\n"
+            "Дай нам немного времени, и совсем скоро ты получишь доступ к инструменту."
         )
         admin_keyboard = InlineKeyboardMarkup([
             [
