@@ -1965,9 +1965,6 @@ def build_portal_menu() -> InlineKeyboardMarkup:
 
 def build_practitioner_dashboard_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔮 Создать Паспорт Души", callback_data="practitioner_create_passport")],
-        [InlineKeyboardButton("👥 Мои клиенты", callback_data="practitioner_clients")],
-        [InlineKeyboardButton("📖 Методология", callback_data="practitioner_methodology")],
         [InlineKeyboardButton("✨ Продлить статус практика", callback_data="practitioner_renew")],
         [InlineKeyboardButton("🕊 Поддержка", callback_data="practitioner_support")],
     ])
@@ -2921,35 +2918,15 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             touch_journey(uid, "practitioner_create_passport", "fio_birth_line")
         context.user_data["step"] = "fio_birth_line"
         await query.message.reply_text(
-            "Введи данные клиента одной строкой — как в обычном расчёте:\n\n" + build_birth_input_prompt()
-        )
-    elif data == "practitioner_clients":
-        await query.message.reply_text(
-            "👥 Мои клиенты\n\n"
-            "Здесь позже появится аккуратная история сопровождения.\n"
-            "Пока держи контекст у себя — и возвращайся к пространству практика, когда будет удобно.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🕊 В пространство практика", callback_data="practitioner_dashboard")],
-            ]),
-        )
-    elif data == "practitioner_methodology":
-        await query.message.reply_text(
-            "📖 Методология\n\n"
-            "Мы соберём здесь спокойные опоры для твоей практики: шаги, внимание, этика сопровождения.\n"
-            "Пока раздел раскрывается — продолжай опираться на свой опыт и чувство меры.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🕊 В пространство практика", callback_data="practitioner_dashboard")],
-            ]),
+            "Введи ФИО и дату рождения человека, для которого хочешь сделать разбор."
         )
     elif data == "practitioner_support":
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("Написать проводнику", url="https://t.me/octaviachi")],
-            [InlineKeyboardButton("🕊 В пространство практика", callback_data="practitioner_dashboard")],
-        ])
         await query.message.reply_text(
-            "🕊 Поддержка\n\n"
-            "Если нужен человек на связи — напиши проводнику. Мы ответим без суеты.",
-            reply_markup=keyboard,
+            "Если возник вопрос, нужна помощь или хочется поделиться обратной связью по работе с инструментом — "
+            "мы рядом. Ты не один в этом пути.\n\n"
+            "Напиши нам: @AngeleonOfficial\n\n"
+            "С чистым сердцем и намерением,\n"
+            "команда Паспорта Души"
         )
     elif data == "restart_calc":
         context.user_data.clear()
