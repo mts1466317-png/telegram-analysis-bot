@@ -1965,6 +1965,7 @@ def build_portal_menu() -> InlineKeyboardMarkup:
 
 def build_practitioner_dashboard_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔮 Следующий паспорт", callback_data="practitioner_create_passport")],
         [InlineKeyboardButton("✨ Продлить статус практика", callback_data="practitioner_renew")],
         [InlineKeyboardButton("🕊 Поддержка", callback_data="practitioner_support")],
     ])
