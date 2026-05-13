@@ -3314,15 +3314,14 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
             await context.bot.send_message(
                 chat_id=user_id,
                 text=(
-                    "Доступ практика продлён на 30 дней.\n\n"
-                    "Ты снова внутри пространства системы — можно продолжать работу."
+                    "Благодарим тебя 🤍\n\n"
+                    "Оплата подтверждена и твой доступ практика активирован. "
+                    "Пусть каждый разбор приносит ясность и свет.\n\n"
+                    "Если понадобится помощь или возникнут вопросы — "
+                    "всегда можешь написать нам — @AngeleonOfficial\n\n"
+                    "Чтобы начать, просто введи данные клиента 👇"
                 ),
-                reply_markup=build_practitioner_dashboard_keyboard(),
             )
-            try:
-                await query.edit_message_text("✅ Доступ практика подтверждён")
-            except Exception:
-                pass
             return
 
         data = pending if (pending and pending.get("sections")) else user_storage.get(user_id)
