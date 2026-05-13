@@ -1932,8 +1932,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     touch_journey(user_id, "start", "get_stats")
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("💌 Получить Паспорт Души 💌", callback_data="get_stats")],
-        [InlineKeyboardButton("🕊 Я специалист", callback_data="practitioner_entry")],
+        [InlineKeyboardButton("💌 Получить мой Паспорт 💌", callback_data="get_stats")],
+        [InlineKeyboardButton("🌛Партнерам и практикам🌜", callback_data="practitioner_entry")],
     ])
     await update.message.reply_text(
         "В твоих инициалах и дате рождения уже хранятся все ответы🌟\n\n"
