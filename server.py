@@ -97,6 +97,41 @@ def _run_on_loop(coro, timeout: float = 180.0):
 _run_on_loop(tg_app.initialize())
 _run_on_loop(tg_app.start())
 
+
+def _resolve_public_webhook_url() -> str:
+    """Final URL Telegram should POST updates to. Empty -> skip auto-setup."""
+    explicit = os.getenv("PUBLIC_WEBHOOK_URL", "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    domain = (
+        os.getenv("RAILWAY_PUBLIC_DOMAIN")
+        or os.getenv("RAILWAY_STATIC_URL")
+        or ""
+    ).strip().rstrip("/")
+    if not domain:
+        return ""
+    if "://" not in domain:
+        domain = f"https://{domain}"
+    return domain
+
+
+_webhook_url = _resolve_public_webhook_url()
+if _webhook_url:
+    _target = _webhook_url.rstrip("/") + "/"
+    try:
+        _run_on_loop(
+            tg_app.bot.set_webhook(url=_target, allowed_updates=Update.ALL_TYPES),
+            timeout=15.0,
+        )
+        print(f"✅ webhook auto-set to {_target}")
+    except Exception as _wh_exc:
+        print(f"⚠️ webhook auto-setup failed ({_wh_exc}); set it manually via setWebhook")
+else:
+    print(
+        "ℹ️ webhook URL not configured (PUBLIC_WEBHOOK_URL / RAILWAY_PUBLIC_DOMAIN); "
+        "Telegram setWebhook must be done manually"
+    )
+
 app = Flask(__name__)
 WEBAPP_DIR = os.path.join(os.path.dirname(__file__), "webapp")
 SITE_DIR = os.path.join(os.path.dirname(__file__), "site")
