@@ -2234,14 +2234,25 @@ def build_mini_app_keyboard(user_id: int) -> InlineKeyboardMarkup:
     )
 
 
-async def send_mini_app_offer(update: Update, user_id: int, *, prefix: str | None = None) -> None:
-    if not update.effective_chat or not user_id:
+async def send_mini_app_offer(
+    user_id: int,
+    *,
+    update: Update | None = None,
+    bot=None,
+    chat_id: int | None = None,
+    prefix: str | None = None,
+) -> None:
+    if not user_id:
         return
     text = prefix or (
         "Интерактивный Паспорт Души готов — откройте мини-приложение, "
         "чтобы пройти по сферам, циклу и персональной матрице."
     )
-    await update.effective_chat.send_message(text, reply_markup=build_mini_app_keyboard(user_id))
+    markup = build_mini_app_keyboard(user_id)
+    if update and update.effective_chat:
+        await update.effective_chat.send_message(text, reply_markup=markup)
+    elif bot is not None and chat_id is not None:
+        await bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
 
 def build_webapp_compact_payload(
@@ -3414,6 +3425,7 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
                     os.remove(pdf_path)
                 except Exception:
                     pass
+                await send_mini_app_offer(user_id, bot=context.bot, chat_id=user_id)
             else:
                 await context.bot.send_message(
                     chat_id=user_id,
@@ -3865,10 +3877,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             if ok:
                 increment_practitioner_usage_after_pdf(_uid)
-                await send_mini_app_offer(update, _uid)
+                await send_mini_app_offer(_uid, update=update)
             return
-
-        await send_mini_app_offer(update, _uid)
 
         payment_text = (
             "💌 Твоя душа знала, что ты придёшь. "
