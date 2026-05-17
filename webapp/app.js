@@ -31,6 +31,9 @@ const TABS = [
   { id: "matrix", label: "Матрица", special: "matrix" },
 ];
 
+const COVER_SUMMARY =
+  "Персональный разбор внутренних сфер, жизненных задач и текущего цикла";
+
 const SPHERE_LABELS = {
   physical: "Физическое тело",
   astral: "Астральное тело",
@@ -63,7 +66,6 @@ const uidParam = params.get("uid");
 const tgUserId = tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : "";
 
 function showScreen(name) {
-  document.body.classList.toggle("cover-active", name === "cover");
   Object.entries(SCREENS).forEach(([key, el]) => {
     if (!el) return;
     el.classList.toggle("hidden", key !== name);
@@ -355,28 +357,12 @@ function renderTabs() {
   bindTabPanelEvents();
 }
 
-function formatCoverBirthDate(raw) {
-  if (!raw || raw === "—") return "";
-  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(raw).trim());
-  if (iso) return `${iso[3]}.${iso[2]}.${iso[1]}`;
-  return String(raw).trim();
-}
-
 function renderCover() {
   const profile = contentData?.profile || {};
-  const fio =
-    profile.fio && profile.fio !== "—"
-      ? profile.fio
-      : tg?.initDataUnsafe?.user?.first_name || "Ваш паспорт";
-  const birthDate = formatCoverBirthDate(profile.birth_date);
-
-  if (coverName) coverName.textContent = fio;
-  if (coverDate) coverDate.textContent = birthDate;
-  if (coverSummary) {
-    coverSummary.textContent = "";
-    coverSummary.hidden = true;
-    coverSummary.classList.add("hidden");
-  }
+  const fio = profile.fio && profile.fio !== "—" ? profile.fio : tg?.initDataUnsafe?.user?.first_name || "Ваш паспорт";
+  coverName.textContent = fio;
+  coverDate.textContent = profile.birth_date && profile.birth_date !== "—" ? profile.birth_date : "";
+  coverSummary.textContent = COVER_SUMMARY;
 }
 
 function renderApp() {
