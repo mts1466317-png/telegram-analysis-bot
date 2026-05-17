@@ -31,6 +31,9 @@ const TABS = [
   { id: "matrix", label: "Матрица", special: "matrix" },
 ];
 
+const COVER_SUMMARY =
+  "Персональный разбор внутренних сфер, жизненных задач и текущего цикла";
+
 const SPHERE_LABELS = {
   physical: "Физическое тело",
   astral: "Астральное тело",
@@ -41,6 +44,7 @@ const SPHERE_LABELS = {
   program: "Родовая программа",
   social: "Социальная задача",
   combo: "Сочетание задач",
+  cycle: "Текущий цикл",
 };
 
 const MARKERS = [
@@ -263,7 +267,7 @@ function renderCycleTab() {
 
   return `
     <div class="cycle-hero">
-      <h3>${escapeHtml(section?.title || `Цикл ${cycleNum}`)}</h3>
+      <h3>Текущий 7-летний цикл</h3>
       <p class="cycle-meta">Возраст ${profile.age ?? "—"} · полоса ${startAge}–${endAge} лет</p>
       ${focus ? `<p class="cycle-meta">${escapeHtml(firstSentence(focus))}</p>` : ""}
       <div class="timeline">${timeline}</div>
@@ -358,7 +362,7 @@ function renderCover() {
   const fio = profile.fio && profile.fio !== "—" ? profile.fio : tg?.initDataUnsafe?.user?.first_name || "Ваш паспорт";
   coverName.textContent = fio;
   coverDate.textContent = profile.birth_date && profile.birth_date !== "—" ? profile.birth_date : "";
-  coverSummary.textContent = contentData?.summary || "Персональный разбор по сферам воплощения.";
+  coverSummary.textContent = COVER_SUMMARY;
 }
 
 function renderApp() {
