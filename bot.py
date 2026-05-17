@@ -1598,7 +1598,7 @@ def build_pdf_report(
 
     # Титульная страница
     story.append(Spacer(1, 3.2 * cm))
-    story.append(Paragraph(_pdf_flowable_text("Статистика Души"), title_style))
+    story.append(Paragraph(_pdf_flowable_text("Паспорт Души"), title_style))
     story.append(
         Paragraph(
             _pdf_flowable_text("Персональный нумерологический отчёт"),
@@ -1614,7 +1614,7 @@ def build_pdf_report(
     story.append(
         Paragraph(
             _pdf_flowable_text(
-                "Документ сформирован на основе расчёта «Древа жизни» по ФИО и дате рождения. "
+                "Документ сформирован на основе ФИО и дате рождения. "
                 "Ниже приведены схема вычислений, сводная матрица сфер и развёрнутый текстовый разбор."
             ),
             body_style,
