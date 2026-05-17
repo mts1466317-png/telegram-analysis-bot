@@ -1177,12 +1177,28 @@ def _pdf_flowable_text(raw: object) -> str:
     return t.replace("\n", "<br/>")
 
 
+def _pdf_clean_section_text(raw_text: str) -> str:
+    """Текст сферы для PDF без планет/служебных пометок (цифры остаются в матрице)."""
+    text = (raw_text or "").strip()
+    if not text:
+        return ""
+    text = re.sub(r"^Планета:\s*[^\n]+\n+", "", text, flags=re.MULTILINE)
+    for phrase in (
+        "✨ Мастер-вибрация усиливает влияние.",
+        "✨ Мастер-цикл — судьбоносный период.",
+    ):
+        text = text.replace(phrase, "").replace(f"{phrase}\n", "")
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+
 def _pdf_split_section_blocks(raw_text: str) -> list[tuple[str, str]]:
     markers = [
         ("🔹 Как проявляется:", "ПРОЯВЛЕННОСТЬ"),
+        ("🔹 Как задача реализуется в социуме:", "РЕАЛИЗАЦИЯ В СОЦИУМЕ"),
         ("🎯 Фокус периода:", "ФОКУС ПЕРИОДА"),
         ("⚠️ Риски:", "РИСКИ"),
         ("✅ Рекомендации:", "РЕКОМЕНДАЦИИ"),
+        ("💼 Профессии и сферы реализации:", "ПРОФЕССИИ И СФЕРЫ"),
     ]
     prepared = raw_text
     for source, label in markers:
@@ -1658,25 +1674,13 @@ def build_pdf_report(
     story.append(summary_table)
     story.append(PageBreak())
 
-    # Разбор сфер
+    # Разбор сфер — «чистый» текст; цифры и планеты только в персональной матрице выше
     for idx, section in enumerate(sections):
         if idx:
             story.append(PageBreak())
-        story.append(
-            Paragraph(
-                _pdf_flowable_text(_pdf_planet_label_with_emoji(section["planet"])),
-                planet_kicker_style,
-            )
-        )
         story.append(Paragraph(_pdf_flowable_text(section["title"]), section_style))
-        if section.get("vibration") is not None:
-            story.append(
-                Paragraph(
-                    f"<b>Вибрация:</b> {html.escape(str(section['vibration']), quote=False)}",
-                    highlight_style,
-                )
-            )
-        for part_title, part_text in _pdf_split_section_blocks(section["text"]):
+        clean_text = _pdf_clean_section_text(section.get("text", "") or "")
+        for part_title, part_text in _pdf_split_section_blocks(clean_text):
             story.append(Paragraph(_pdf_flowable_text(part_title), block_heading_style))
             if part_text:
                 text_paragraphs = [p.strip() for p in part_text.split("\n\n") if p.strip()]
