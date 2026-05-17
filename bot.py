@@ -64,6 +64,7 @@ ADMIN_ID = 7471303897
 CHANNEL_LINK = "https://t.me/higherself_connection"
 DISCUSSION_GROUP_LINK = "https://t.me/DISCUSSION_GROUP_LINK"
 MINI_APP_URL = os.getenv("MINI_APP_URL", "https://web-production-bff199.up.railway.app/webapp").rstrip("/")
+APPSS_VERIFY_CODE = os.getenv("APPSS_VERIFY_CODE", "appss_265e7d")
 
 # Хранилище результатов расчётов пользователей (в памяти)
 results = {}
@@ -3474,6 +3475,12 @@ def _format_subscription_line(user_id: int, end, status: str | None = None) -> s
     return f"• {user_id} — {label} до {end_str}"
 
 
+async def appss_verify_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+    await update.message.reply_text(APPSS_VERIFY_CODE)
+
+
 async def practitioner_grant_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not _is_admin(update):
         return
@@ -4173,6 +4180,7 @@ def main():
 
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("appss_verify", appss_verify_cmd))
     app.add_handler(CommandHandler("practitioner_grant", practitioner_grant_cmd))
     app.add_handler(CommandHandler("practitioner_revoke", practitioner_revoke_cmd))
     app.add_handler(CommandHandler("practitioner_status", practitioner_status_cmd))

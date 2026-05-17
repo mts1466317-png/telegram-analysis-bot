@@ -51,6 +51,7 @@ from bot import (
     admin_payment_callback,
     portal_callback_router,
     get_cached_webapp_payload,
+    appss_verify_cmd,
     practitioner_grant_cmd,
     practitioner_revoke_cmd,
     practitioner_status_cmd,
@@ -79,6 +80,7 @@ if _app_loop is None:
 
 tg_app = ApplicationBuilder().token(TOKEN).build()
 tg_app.add_handler(CommandHandler("start", start))
+tg_app.add_handler(CommandHandler("appss_verify", appss_verify_cmd))
 tg_app.add_handler(CommandHandler("practitioner_grant", practitioner_grant_cmd))
 tg_app.add_handler(CommandHandler("practitioner_revoke", practitioner_revoke_cmd))
 tg_app.add_handler(CommandHandler("practitioner_status", practitioner_status_cmd))
