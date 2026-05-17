@@ -3,57 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <title>Паспорт Души</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <base href="/webapp/">
-
-  <!-- Telegram Web App -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,300&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-  <link rel="stylesheet" href="style.css?v=7" />
+  <link rel="stylesheet" href="style.css?v=8" />
 </head>
 <body>
-
-  <div class="container">
-
-    <div id="screen-passport">
-      <h1>Паспорт Души</h1>
-      <p class="subtitle">Навигация по вашему воплощению</p>
-
-      <div class="hero-card">
-        <p id="hero-cycle" class="hero-chip"></p>
-        <h2 id="hero-title"></h2>
-        <p id="hero-subtitle"></p>
-      </div>
-      <p id="page-indicator" class="page-indicator"></p>
-
-      <div id="page-content" class="page-card"></div>
-      <div id="editor-panel" class="editor-panel hidden">
-        <p id="editor-label"></p>
-        <input id="editor-input" type="text" />
-        <div class="editor-actions">
-          <button id="editor-cancel-btn">Отмена</button>
-          <button id="editor-save-btn">Сохранить</button>
-        </div>
-      </div>
-
-      <div class="pager">
-        <button id="passport-prev-btn">◀ Предыдущая</button>
-        <button id="passport-next-btn">Следующая ▶</button>
-      </div>
-
-      <button id="pdf-cta-btn">💎 Полный PDF-разбор</button>
-    </div>
-
-    <div id="screen-content" class="hidden">
-      <button id="back-btn">← Назад</button>
-      <h2 id="content-title"></h2>
-      <div id="content-text"></div>
-    </div>
-
+  <div class="cosmos-bg" aria-hidden="true">
+    <div class="cosmos-nebula nebula-1"></div>
+    <div class="cosmos-nebula nebula-2"></div>
+    <div class="cosmos-nebula nebula-3"></div>
   </div>
 
-  <script src="app.js?v=7"></script>
+  <div id="screen-loading" class="screen">
+    <p class="loading-text">Загружаем ваш паспорт…</p>
+  </div>
 
+  <div id="screen-error" class="screen hidden">
+    <h1>Разбор недоступен</h1>
+    <p id="error-text" class="muted"></p>
+  </div>
+
+  <div id="screen-cover" class="screen hidden">
+    <div class="cover-inner">
+      <p class="cover-label">Паспорт Души</p>
+      <h1 id="cover-name" class="cover-name"></h1>
+      <p id="cover-date" class="cover-date"></p>
+      <p id="cover-summary" class="cover-summary"></p>
+      <button type="button" id="open-passport-btn" class="btn-primary">Открыть паспорт</button>
+    </div>
+  </div>
+
+  <div id="screen-app" class="screen hidden">
+    <header class="app-header">
+      <button type="button" id="back-cover-btn" class="btn-ghost" aria-label="Назад">←</button>
+      <h2 class="app-header-title">Паспорт Души</h2>
+    </header>
+
+    <nav class="tab-bar" id="tab-bar" role="tablist"></nav>
+
+    <main id="tab-panel" class="tab-panel" role="tabpanel"></main>
+  </div>
+
+  <script src="app.js?v=8"></script>
 </body>
 </html>
-

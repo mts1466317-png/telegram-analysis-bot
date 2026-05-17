@@ -1,391 +1,410 @@
-const passportScreen = document.getElementById("screen-passport");
-const contentScreen = document.getElementById("screen-content");
-const pageContentEl = document.getElementById("page-content");
-const pageIndicatorEl = document.getElementById("page-indicator");
-const prevPageBtn = document.getElementById("passport-prev-btn");
-const nextPageBtn = document.getElementById("passport-next-btn");
-const editorPanelEl = document.getElementById("editor-panel");
-const editorLabelEl = document.getElementById("editor-label");
-const editorInputEl = document.getElementById("editor-input");
-const editorCancelBtn = document.getElementById("editor-cancel-btn");
-const editorSaveBtn = document.getElementById("editor-save-btn");
-const titleEl = document.getElementById("content-title");
-const textEl = document.getElementById("content-text");
-const backBtn = document.getElementById("back-btn");
-const pdfCtaBtn = document.getElementById("pdf-cta-btn");
-const heroCycleEl = document.getElementById("hero-cycle");
-const heroTitleEl = document.getElementById("hero-title");
-const heroSubtitleEl = document.getElementById("hero-subtitle");
-
-let contentData = null;
-let currentPage = 1;
-const TOTAL_PAGES = 6;
-let editingKey = null;
-let effectiveUid = "";
-let passportForm = {
-  fio: "",
-  birth_date: "",
-  birth_place: "",
-  spiritual_name: "",
-  spiritual_level: "",
-};
-
 const tg = window.Telegram?.WebApp;
 if (tg) {
   tg.ready();
+  tg.expand();
+  if (tg.themeParams?.bg_color) {
+    document.documentElement.style.setProperty("--tg-bg", tg.themeParams.bg_color);
+  }
+}
+
+const SCREENS = {
+  loading: document.getElementById("screen-loading"),
+  error: document.getElementById("screen-error"),
+  cover: document.getElementById("screen-cover"),
+  app: document.getElementById("screen-app"),
+};
+
+const coverName = document.getElementById("cover-name");
+const coverDate = document.getElementById("cover-date");
+const coverSummary = document.getElementById("cover-summary");
+const errorText = document.getElementById("error-text");
+const tabBar = document.getElementById("tab-bar");
+const tabPanel = document.getElementById("tab-panel");
+const openPassportBtn = document.getElementById("open-passport-btn");
+const backCoverBtn = document.getElementById("back-cover-btn");
+
+const TABS = [
+  { id: "bodies", label: "Тела", spheres: ["physical", "astral", "mental", "higher"] },
+  { id: "tasks", label: "Задачи", spheres: ["life", "social", "combo"] },
+  { id: "rod", label: "Род", spheres: ["egregor", "program"] },
+  { id: "cycle", label: "Цикл", special: "cycle" },
+  { id: "matrix", label: "Матрица", special: "matrix" },
+];
+
+const SPHERE_LABELS = {
+  physical: "Физическое тело",
+  astral: "Астральное тело",
+  mental: "Ментальное тело",
+  higher: "Высшее Я",
+  life: "Жизненная задача",
+  egregor: "Родовой эгрегор",
+  program: "Родовая программа",
+  social: "Социальная задача",
+  combo: "Сочетание задач",
+};
+
+const MARKERS = [
+  { marker: "🔹 Как проявляется:\n", pill: "Проявленность", key: "manifest" },
+  { marker: "🔹 Как задача реализуется в социуме:\n", pill: "Реализация", key: "social_impl" },
+  { marker: "🎯 Фокус периода:\n", pill: "Фокус", key: "focus" },
+  { marker: "⚠️ Риски:\n", pill: "Риски", key: "risks" },
+  { marker: "✅ Рекомендации:\n", pill: "Рекомендации", key: "rec" },
+  { marker: "💼 Профессии и сферы реализации:\n", pill: "Профессии", key: "professions" },
+];
+
+let contentData = null;
+let activeTab = "bodies";
+let effectiveUid = "";
+
+const params = new URLSearchParams(window.location.search);
+const dataParam = params.get("data");
+const uidParam = params.get("uid");
+const tgUserId = tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : "";
+
+function showScreen(name) {
+  Object.entries(SCREENS).forEach(([key, el]) => {
+    if (!el) return;
+    el.classList.toggle("hidden", key !== name);
+  });
 }
 
 function showError(text) {
-  titleEl.textContent = "Разбор недоступен";
-  textEl.textContent = text || "Ошибка загрузки данных";
-  passportScreen.classList.add("hidden");
-  contentScreen.classList.remove("hidden");
+  if (errorText) errorText.textContent = text || "Ошибка загрузки данных";
+  showScreen("error");
 }
 
-const params = new URLSearchParams(window.location.search);
-const data = params.get("data");
-const uid = params.get("uid");
-const tgUserId = tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : "";
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
-if (data) {
-  try {
-    contentData = JSON.parse(decodeURIComponent(data));
-    console.log("✅ Данные получены из URL:", contentData);
-  } catch (error) {
-    console.error("❌ Ошибка парсинга данных:", error);
-    showError("Ошибка формата данных");
+function cleanSectionText(raw) {
+  let text = String(raw || "").trim();
+  if (!text) return "";
+  text = text.replace(/^Планета:\s*[^\n]+\n+/gm, "");
+  text = text.replace(/✨ Мастер-вибрация усиливает влияние\./g, "");
+  text = text.replace(/✨ Мастер-цикл — судьбоносный период\./g, "");
+  text = text.replace(/\n{3,}/g, "\n\n");
+  return text.trim();
+}
+
+function extractMarker(text, marker) {
+  const idx = text.indexOf(marker);
+  if (idx === -1) return "";
+  const start = idx + marker.length;
+  const markers = MARKERS.map((m) => m.marker).sort((a, b) => b.length - a.length);
+  let end = text.length;
+  for (const m of markers) {
+    if (m === marker) continue;
+    const pos = text.indexOf(m, start);
+    if (pos !== -1 && pos < end) end = pos;
   }
+  return text.slice(start, end).trim();
 }
 
-function hydrateFormFromPayload(result) {
-  const profile = result?.profile || {};
-  const passportProfile = result?.passport_profile || {};
-  passportForm = {
-    fio: profile.fio || "—",
-    birth_date: profile.birth_date || "—",
-    birth_place: passportProfile.birth_place || "—",
-    spiritual_name: passportProfile.spiritual_name || "—",
-    spiritual_level: passportProfile.spiritual_level || "—",
+function parseSectionPills(rawText) {
+  const text = cleanSectionText(rawText);
+  const pills = {};
+  for (const { marker, key } of MARKERS) {
+    const chunk = extractMarker(text, marker);
+    if (chunk) pills[key] = chunk;
+  }
+  if (!Object.keys(pills).length && text) {
+    pills.manifest = text;
+  }
+  return pills;
+}
+
+function firstSentence(text, fallback = "") {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return fallback;
+  const dot = clean.indexOf(".");
+  return dot === -1 ? clean : clean.slice(0, dot + 1);
+}
+
+function sphereSubtitle(sectionKey, pills) {
+  if (pills.manifest) return firstSentence(pills.manifest);
+  const staticHints = {
+    physical: "Ресурсы тела, границы и точки силы.",
+    astral: "Эмоции, чувствительность и отклик на среду.",
+    mental: "Мышление, убеждения и способ принимать решения.",
+    higher: "Внутренний компас и опыт души.",
+    life: "Главный смысл и задача воплощения.",
+    egregor: "Родовые вибрации и поддержка рода.",
+    program: "Задача рода и наследуемые сценарии.",
+    social: "Ожидания социума и реализация в мире.",
+    combo: "Сочетание жизненной и социальной линии.",
   };
-  if (!profile.fio || profile.fio === "—") {
-    const userName = tg?.initDataUnsafe?.user?.first_name || "";
-    passportForm.fio = userName || "—";
+  return staticHints[sectionKey] || "";
+}
+
+function formatPlanet(planetRaw) {
+  const raw = String(planetRaw || "—");
+  if (raw.includes("(мастер)")) {
+    return `Мастер ${raw.replace(" (мастер)", "")}`;
   }
+  return raw;
+}
+
+function getSection(key) {
+  if (key === "cycle") return contentData?.cycle;
+  return contentData?.[key];
+}
+
+function buildMatrixRows() {
+  if (Array.isArray(contentData?.matrix) && contentData.matrix.length) {
+    return contentData.matrix;
+  }
+  const profile = contentData?.profile || {};
+  const keys = [
+    ["physical", "Физическое тело"],
+    ["astral", "Астральное тело"],
+    ["mental", "Ментальное тело"],
+    ["life", "Жизненная задача"],
+    ["egregor", "Родовой эгрегор"],
+    ["higher", "Высшее Я"],
+    ["program", "Родовая программа"],
+    ["social", "Социальная задача"],
+    ["combo", "Сочетание задач"],
+    ["cycle", "Текущий цикл"],
+  ];
+  return keys.map(([key, label]) => {
+    const section = getSection(key);
+    const raw = section?.text || "";
+    const vibMatch = raw.match(/вибраци[яи]\s*(\d+)/i);
+    const planetMatch = raw.match(/^Планета:\s*([^\n]+)/m);
+    let vibration = vibMatch ? vibMatch[1] : "—";
+    let planet = planetMatch ? planetMatch[1].trim() : "—";
+    if (key === "cycle") {
+      vibration = profile.cycle_energy ?? "—";
+      planet = profile.cycle_planet ?? "—";
+    }
+    if (key === "higher") {
+      vibration = profile.higher_self ?? vibration;
+      planet = profile.higher_planet ?? planet;
+    }
+    return { key, label, vibration, planet };
+  });
+}
+
+function renderSphereCard(sectionKey, openByDefault = false) {
+  const section = getSection(sectionKey);
+  if (!section) return "";
+  const pills = parseSectionPills(section.text || "");
+  const pillKeys = MARKERS.map((m) => m.key).filter((k) => pills[k]);
+  if (!pillKeys.length) return "";
+
+  const title = SPHERE_LABELS[sectionKey] || section.title || sectionKey;
+  const subtitle = sphereSubtitle(sectionKey, pills);
+  const firstPill = pillKeys[0];
+  const pillButtons = pillKeys
+    .map((key) => {
+      const meta = MARKERS.find((m) => m.key === key);
+      return `<button type="button" class="pill-tab${key === firstPill ? " active" : ""}" data-pill="${key}">${meta?.pill || key}</button>`;
+    })
+    .join("");
+
+  const pillPanels = pillKeys
+    .map((key) => {
+      const hidden = key !== firstPill ? ' style="display:none"' : "";
+      return `<div class="pill-content" data-pill-panel="${key}"${hidden}>${escapeHtml(pills[key])}</div>`;
+    })
+    .join("");
+
+  return `
+    <article class="sphere-card${openByDefault ? " open" : ""}" data-sphere="${sectionKey}">
+      <button type="button" class="sphere-head" aria-expanded="${openByDefault}">
+        <div>
+          <div class="sphere-title">${escapeHtml(title)}</div>
+          <p class="sphere-subtitle">${escapeHtml(subtitle)}</p>
+        </div>
+        <span class="sphere-chevron">▼</span>
+      </button>
+      <div class="sphere-body">
+        <div class="pill-tabs">${pillButtons}</div>
+        ${pillPanels}
+      </div>
+    </article>
+  `;
+}
+
+function renderCycleTab() {
+  const profile = contentData?.profile || {};
+  const cycleNum = Number(profile.cycle_number) || 1;
+  const startAge = profile.cycle_start_age ?? (cycleNum - 1) * 7;
+  const endAge = profile.cycle_end_age ?? cycleNum * 7 - 1;
+  const section = contentData?.cycle;
+  const pills = parseSectionPills(section?.text || "");
+  const focus = pills.focus || pills.manifest || "";
+  const maxCycles = Math.max(cycleNum + 2, 12);
+
+  const timeline = Array.from({ length: maxCycles }, (_, i) => {
+    const n = i + 1;
+    const from = (n - 1) * 7;
+    const to = n * 7 - 1;
+    const current = n === cycleNum;
+    return `
+      <div class="timeline-item${current ? " current" : ""}">
+        <div class="timeline-dot"></div>
+        <div>
+          <div class="timeline-label">${n}-й цикл${current ? " · сейчас" : ""}</div>
+          <div class="timeline-age">${from}–${to} лет</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  const cycleCard = section
+    ? renderSphereCard("cycle", true)
+    : `<p class="empty-tab">Данные цикла пока недоступны.</p>`;
+
+  return `
+    <div class="cycle-hero">
+      <h3>${escapeHtml(section?.title || `Цикл ${cycleNum}`)}</h3>
+      <p class="cycle-meta">Возраст ${profile.age ?? "—"} · полоса ${startAge}–${endAge} лет</p>
+      ${focus ? `<p class="cycle-meta">${escapeHtml(firstSentence(focus))}</p>` : ""}
+      <div class="timeline">${timeline}</div>
+    </div>
+    ${cycleCard}
+  `;
+}
+
+function renderMatrixTab() {
+  const rows = buildMatrixRows();
+  const cycleKey = "cycle";
+  const body = rows
+    .map((row) => {
+      const highlight = row.key === cycleKey ? " highlight" : "";
+      return `<tr class="${highlight.trim()}">
+        <td>${escapeHtml(row.label)}</td>
+        <td>${escapeHtml(String(row.vibration))}</td>
+        <td>${escapeHtml(formatPlanet(row.planet))}</td>
+      </tr>`;
+    })
+    .join("");
+
+  return `
+    <div class="matrix-wrap">
+      <p class="matrix-note">Персональная матрица — вибрации и планеты по всем сферам паспорта.</p>
+      <table class="matrix-table">
+        <thead>
+          <tr><th>Сфера</th><th>Вибрация</th><th>Планета</th></tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderTabContent(tabId) {
+  const tab = TABS.find((t) => t.id === tabId) || TABS[0];
+  if (tab.special === "cycle") return renderCycleTab();
+  if (tab.special === "matrix") return renderMatrixTab();
+
+  const cards = (tab.spheres || [])
+    .map((key, idx) => renderSphereCard(key, idx === 0))
+    .filter(Boolean)
+    .join("");
+  return cards || `<p class="empty-tab">Раздел пока пуст.</p>`;
+}
+
+function bindTabPanelEvents() {
+  tabPanel.querySelectorAll(".sphere-head").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const card = btn.closest(".sphere-card");
+      if (!card) return;
+      const open = card.classList.toggle("open");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  });
+
+  tabPanel.querySelectorAll(".sphere-card").forEach((card) => {
+    card.querySelectorAll(".pill-tab").forEach((pillBtn) => {
+      pillBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const key = pillBtn.dataset.pill;
+        const cardEl = pillBtn.closest(".sphere-card");
+        if (!cardEl || !key) return;
+        cardEl.querySelectorAll(".pill-tab").forEach((b) => b.classList.toggle("active", b === pillBtn));
+        cardEl.querySelectorAll("[data-pill-panel]").forEach((panel) => {
+          panel.style.display = panel.dataset.pillPanel === key ? "block" : "none";
+        });
+      });
+    });
+  });
+}
+
+function renderTabs() {
+  tabBar.innerHTML = TABS.map(
+    (t) => `<button type="button" class="tab-btn${t.id === activeTab ? " active" : ""}" data-tab="${t.id}" role="tab">${t.label}</button>`
+  ).join("");
+
+  tabBar.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      activeTab = btn.dataset.tab || "bodies";
+      renderTabs();
+    });
+  });
+
+  tabPanel.innerHTML = renderTabContent(activeTab);
+  bindTabPanelEvents();
+}
+
+function renderCover() {
+  const profile = contentData?.profile || {};
+  const fio = profile.fio && profile.fio !== "—" ? profile.fio : tg?.initDataUnsafe?.user?.first_name || "Ваш паспорт";
+  coverName.textContent = fio;
+  coverDate.textContent = profile.birth_date && profile.birth_date !== "—" ? profile.birth_date : "";
+  coverSummary.textContent = contentData?.summary || "Персональный разбор по сферам воплощения.";
+}
+
+function renderApp() {
+  renderTabs();
+  showScreen("app");
 }
 
 async function loadPayloadByUid() {
-  effectiveUid = uid || tgUserId;
+  effectiveUid = uidParam || tgUserId;
   if (!effectiveUid) {
-    showError("Нет данных от Telegram");
+    showError("Откройте мини-приложение из чата с ботом после расчёта.");
     return false;
   }
   try {
     const response = await fetch(`data/${effectiveUid}`, { method: "GET" });
     if (!response.ok) {
-      showError("Данные для пользователя пока недоступны. Повтори запуск из чата.");
+      showError("Данные пока недоступны. Сначала пройдите расчёт в боте.");
       return false;
     }
     contentData = await response.json();
     return true;
-  } catch (error) {
-    console.error("❌ Ошибка загрузки payload по uid:", error);
-    showError("Ошибка загрузки данных");
+  } catch (err) {
+    console.error(err);
+    showError("Ошибка загрузки данных.");
     return false;
   }
 }
 
-function renderResult(result) {
-  if (!result || typeof result !== "object") {
-    showError("Данные разбора пусты");
-    return;
-  }
-
-  contentData = result;
-  hydrateFormFromPayload(result);
-  renderHero(result);
-  renderPage(currentPage);
-  console.log("✅ Данные готовы к отображению");
-}
-
-function renderHero(result) {
-  const profile = result.profile || {};
-  heroCycleEl.textContent = formatCycleLine(profile);
-  heroSubtitleEl.textContent = "Паспорт Души помогает понять ваши сильные стороны, текущие задачи и ближайший фокус. Ниже — страницы с простыми пояснениями и вашим персональным разбором.";
-}
-
-function formatPlanetName(planetRaw) {
-  const raw = String(planetRaw || "—");
-  const isMaster = raw.includes("(мастер)");
-  const clean = raw.replace(" (мастер)", "");
-  return isMaster ? `Мастер ${clean}` : clean;
-}
-
-function formatCycleLine(profile) {
-  const cycle = profile?.cycle_number || "—";
-  const energy = profile?.cycle_energy || "—";
-  const planet = formatPlanetName(profile?.cycle_planet || "—");
-  return `Цикл ${cycle} • Энергия ${energy} • ${planet}`;
-}
-
-function extractMarker(text, marker) {
-  if (!text) return "";
-  const idx = text.indexOf(marker);
-  if (idx === -1) return "";
-  const start = idx + marker.length;
-  const end = text.indexOf("\n\n", start);
-  return (end === -1 ? text.slice(start) : text.slice(start, end)).trim();
-}
-
-function buildFriendlyMeaning(sectionText) {
-  const focus = extractMarker(sectionText, "🎯 Фокус периода:\n");
-  const recommendation = extractMarker(sectionText, "✅ Рекомендации:\n");
-  if (focus || recommendation) {
-    const parts = [];
-    if (focus) parts.push(`Сейчас важно: ${focus}`);
-    if (recommendation) parts.push(`Практично: ${recommendation}`);
-    return parts.join("\n");
-  }
-  const plain = String(sectionText || "").replace(/Планета:[^\n]*\n?/g, "").replace(/🔹 Как проявляется:\n?/g, "").trim();
-  return plain.slice(0, 280);
-}
-
-function openSection(sectionKey, fallbackTitle) {
-  if (!contentData) {
-    showError("Данные для разбора не найдены.");
-    return;
-  }
-  const section = contentData[sectionKey];
-  titleEl.textContent = section?.title || fallbackTitle;
-  const main = buildFriendlyMeaning(section?.text || "");
-  textEl.textContent = `${main || "Данные этого раздела пока недоступны."}\n\nЧто это вам дает:\n— понимание, где вы в ресурсе\n— где нужен фокус на рост\n— что можно улучшить уже сейчас`;
-  passportScreen.classList.add("hidden");
-  contentScreen.classList.remove("hidden");
-}
-
-function buildPlanetSummary(profile) {
-  const items = [
-    ["Физическое тело", contentData?.physical?.text],
-    ["Астральное тело", contentData?.astral?.text],
-    ["Ментальное тело", contentData?.mental?.text],
-    ["Родовой эгрегор", contentData?.egregor?.text],
-    ["Высшее Я", contentData?.higher?.text],
-    ["Жизненная задача", contentData?.life?.text],
-    ["Родовая программа", contentData?.program?.text],
-    ["Социальная задача", contentData?.social?.text],
-    ["Текущий цикл", profile?.cycle_planet || "—"],
-  ];
-  const lines = items.map(([label, raw]) => {
-    let planet = "—";
-    if (typeof raw === "string") {
-      const m = raw.match(/Планета:\s*([^\n]+)/);
-      planet = m ? formatPlanetName(m[1].trim()) : "—";
-    } else if (typeof raw === "number" || typeof raw === "object") {
-      planet = formatPlanetName(String(raw || "—"));
-    } else if (label === "Текущий цикл") {
-      planet = formatPlanetName(String(raw || "—"));
-    }
-    return `• ${label} — ${planet}`;
-  });
-  return lines.join("\n");
-}
-
-async function savePassportProfile() {
-  if (!effectiveUid) return;
-  const payload = {
-    birth_place: passportForm.birth_place === "—" ? "" : passportForm.birth_place,
-    spiritual_name: passportForm.spiritual_name === "—" ? "" : passportForm.spiritual_name,
-    spiritual_level: passportForm.spiritual_level === "—" ? "" : passportForm.spiritual_level,
-  };
-  try {
-    await fetch(`data/${effectiveUid}/profile`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-  } catch (e) {
-    console.error("profile save failed", e);
-  }
-}
-
-function renderPage(page) {
-  currentPage = Math.max(1, Math.min(TOTAL_PAGES, page));
-  prevPageBtn.disabled = currentPage === 1;
-  nextPageBtn.disabled = currentPage === TOTAL_PAGES;
-  pageIndicatorEl.textContent = `Страница ${currentPage} из ${TOTAL_PAGES}`;
-  const profile = contentData?.profile || {};
-
-  if (currentPage === 1) {
-    pageContentEl.innerHTML = `
-      <h3 class="page-title">Страница 1 — Данные воплощения</h3>
-      <p class="page-note">Заполните эти поля один раз: они помогают сделать ваш паспорт точнее и персональнее.</p>
-      <div class="field-list">
-        ${renderField("ФИО", "fio", "Имя из расчета по дате рождения.")}
-        ${renderField("Дата рождения", "birth_date", "Определяет расчет жизненных циклов и задач.")}
-        ${renderField("Место рождения", "birth_place", "Укажите город/страну рождения.")}
-        ${renderField("Духовное имя", "spiritual_name", "Напишите, как себя называет ваша душа. Имя может совпадать с паспортным или отличаться.")}
-        ${renderField("Духовный уровень", "spiritual_level", "Это личное поле. Есть уровни при рождении и текущие уровни развития. Если не знаете уровень — оставьте пусто и уточните у нас или на сессии сонастройки с Высшим Я.")}
-      </div>
-      <div class="field-explain">
-        <p class="page-note">Что это дает:</p>
-        <p class="page-note">• Духовное имя усиливает персональную настройку паспорта и помогает точнее считывать ваш внутренний отклик.</p>
-        <p class="page-note">• Место рождения (топоним и координаты) добавляет контекст воплощения: среду, в которой формировались базовые паттерны пути.</p>
-        <p class="page-note">• Духовный уровень динамичен: он может повышаться и снижаться в течение жизни. Поэтому паспорт нужен как инструмент осознанности — чтобы держать фокус и быть ближе к своему Абсолюту.</p>
-      </div>
-    `;
-  } else if (currentPage === 2) {
-    pageContentEl.innerHTML = `
-      <h3 class="page-title">Страница 2 — Что внутри Паспорта Души</h3>
-      <p class="page-note">Паспорт показывает 9 ключевых сфер: тело, эмоции, мышление, родовые и социальные задачи, Высшее Я и текущий цикл.</p>
-      <p class="page-note">Вы получаете не просто расчет, а понятную карту: где ваш ресурс, где зона роста и на чем сфокусироваться сейчас.</p>
-      <p class="page-note">Дальше идут персональные страницы с вашим текущим разбором.</p>
-    `;
-  } else if (currentPage === 3) {
-    const physical = buildFriendlyMeaning(contentData?.physical?.text || "");
-    const astral = buildFriendlyMeaning(contentData?.astral?.text || "");
-    const mental = buildFriendlyMeaning(contentData?.mental?.text || "");
-    pageContentEl.innerHTML = `
-      <h3 class="page-title">Страница 3 — Как вы проявляетесь</h3>
-      <p class="page-note">• Физический уровень: ${physical || "Собираем данные..."}</p>
-      <p class="page-note">• Эмоциональный уровень: ${astral || "Собираем данные..."}</p>
-      <p class="page-note">• Ментальный уровень: ${mental || "Собираем данные..."}</p>
-      <p class="page-note" style="margin-top:10px;">Это ваш текущий способ реагировать на нагрузку, отношения и решения.</p>
-    `;
-  } else if (currentPage === 4) {
-    pageContentEl.innerHTML = `
-      <h3 class="page-title">Страница 4 — Статистика Души</h3>
-      <div class="section-list">
-        <button class="section-btn" data-section="higher">Высшее Я</button>
-        <button class="section-btn" data-section="life">Задача жизни</button>
-        <button class="section-btn" data-section="program">Родовая программа</button>
-        <button class="section-btn" data-section="social">Социальная задача</button>
-      </div>
-      <p class="page-note" style="margin-top: 10px;">Нажмите на раздел, чтобы открыть персональный смысл и рекомендации.</p>
-    `;
-  } else if (currentPage === 5) {
-    const summary = buildPlanetSummary(profile);
-    pageContentEl.innerHTML = `
-      <h3 class="page-title">Страница 5 — Сводка управляющих планет</h3>
-      <p class="page-note" style="white-space: pre-line;">${summary}</p>
-    `;
-  } else {
-    pageContentEl.innerHTML = `
-      <h3 class="page-title">Страница 6 — Цикл воплощения</h3>
-      <p class="page-note">Текущий цикл: ${profile.cycle_number || "—"}</p>
-      <p class="page-note">Энергия цикла: ${profile.cycle_energy || "—"} • ${formatPlanetName(profile.cycle_planet || "—")}</p>
-      <p class="page-note">Фокус периода: что важно укрепить в ближайшие месяцы.</p>
-    `;
-  }
-
-  bindDynamicButtons();
-}
-
-function renderField(label, key, hint) {
-  const value = passportForm[key] || "—";
-  const editable = !["fio", "birth_date"].includes(key);
-  return `
-    <div class="field-row">
-      <div class="field-main">
-        <div class="field-label">${label}</div>
-        <div class="field-value">${value}</div>
-        <div class="field-hint">${hint || ""}</div>
-      </div>
-      ${editable ? `<button class="edit-btn" data-edit="${key}">Изменить</button>` : ""}
-    </div>
-  `;
-}
-
-function bindDynamicButtons() {
-  hideEditor();
-  pageContentEl.querySelectorAll("[data-edit]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const key = btn.dataset.edit;
-      const labelMap = {
-        fio: "ФИО",
-        birth_date: "Дата рождения",
-        birth_place: "Место рождения",
-        spiritual_name: "Духовное имя",
-        spiritual_level: "Духовный уровень",
-      };
-      const label = labelMap[key] || "Поле";
-      showEditor(key, label);
-    });
-  });
-
-  pageContentEl.querySelectorAll("[data-section]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const sectionKey = btn.dataset.section;
-      const titleMap = {
-        higher: "Высшее Я",
-        life: "Задача жизни",
-        program: "Родовая программа",
-        social: "Социальная задача",
-      };
-      openSection(sectionKey, titleMap[sectionKey] || "Раздел");
-    });
-  });
-}
-
-function showEditor(key, label) {
-  editingKey = key;
-  editorLabelEl.textContent = `Изменить: ${label}`;
-  editorInputEl.value = passportForm[key] === "—" ? "" : (passportForm[key] || "");
-  editorPanelEl.classList.remove("hidden");
-  editorInputEl.focus();
-}
-
-function hideEditor() {
-  editingKey = null;
-  editorPanelEl.classList.add("hidden");
-}
-
 async function init() {
-  if (!contentData) {
-    const loaded = await loadPayloadByUid();
-    if (!loaded) {
+  if (dataParam) {
+    try {
+      contentData = JSON.parse(decodeURIComponent(dataParam));
+    } catch {
+      showError("Ошибка формата данных в ссылке.");
       return;
     }
+  } else {
+    const ok = await loadPayloadByUid();
+    if (!ok) return;
   }
-  renderResult(contentData);
 
-  prevPageBtn.addEventListener("click", () => renderPage(currentPage - 1));
-  nextPageBtn.addEventListener("click", () => renderPage(currentPage + 1));
-  editorCancelBtn.addEventListener("click", hideEditor);
-  editorSaveBtn.addEventListener("click", () => {
-    if (!editingKey) return;
-    const value = editorInputEl.value.trim();
-    if (!value) return;
-    passportForm[editingKey] = value;
-    hideEditor();
-    savePassportProfile();
-    renderPage(1);
-  });
+  renderCover();
+  showScreen("cover");
 
-  backBtn.addEventListener("click", () => {
-    contentScreen.classList.add("hidden");
-    passportScreen.classList.remove("hidden");
-  });
-
-  pdfCtaBtn.addEventListener("click", () => {
-    if (tg && typeof tg.showPopup === "function") {
-      tg.showPopup(
-        {
-          title: "Полный разбор",
-          message: "Полный Паспорт Души (PDF) доступен в чате после вклада в оформление от 222 ₽. Вернуться в чат сейчас?",
-          buttons: [
-            { id: "stay", type: "cancel", text: "Остаться в приложении" },
-            { id: "back_chat", type: "default", text: "Вернуться в чат" },
-          ],
-        },
-        (buttonId) => {
-          if (buttonId === "back_chat" && typeof tg.close === "function") {
-            tg.close();
-          }
-        }
-      );
-      return;
-    }
-    alert("Полный Паспорт Души (PDF) доступен в чате после вклада в оформление от 222 ₽. Закройте WebApp, чтобы вернуться в чат.");
-  });
+  openPassportBtn?.addEventListener("click", renderApp);
+  backCoverBtn?.addEventListener("click", () => showScreen("cover"));
 }
 
 if (document.readyState === "loading") {

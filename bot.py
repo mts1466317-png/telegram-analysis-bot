@@ -2191,6 +2191,58 @@ def build_passport_hook_message(calc_snapshot: dict) -> str:
     )
 
 
+def build_webapp_matrix_rows(calc_snapshot: dict) -> list[dict]:
+    cs = calc_snapshot or {}
+    rows = [
+        ("physical", "Физическое тело", "physical", "planet_physical"),
+        ("astral", "Астральное тело", "astral", "planet_astral"),
+        ("mental", "Ментальное тело", "mental", "planet_mental"),
+        ("life", "Жизненная задача", "life_task", "planet_life"),
+        ("egregor", "Родовой эгрегор", "ancestral_egregor", "planet_egregor"),
+        ("higher", "Высшее Я", "higher_self", "planet_higher"),
+        ("program", "Родовая программа", "ancestral_program", "planet_program"),
+        ("social", "Социальная задача", "social_task", "planet_social"),
+        ("combo", "Сочетание задач", "task_combo", "planet_combo"),
+        ("cycle", "Текущий 7-летний цикл", "cycle_energy", "planet_cycle"),
+    ]
+    matrix = []
+    for key, label, vib_key, planet_key in rows:
+        vibration = cs.get(vib_key, "—")
+        planet = cs.get(planet_key, "—")
+        matrix.append(
+            {
+                "key": key,
+                "label": label,
+                "vibration": vibration if vibration is not None else "—",
+                "planet": planet if planet else "—",
+            }
+        )
+    return matrix
+
+
+def build_mini_app_keyboard(user_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "✨ Открыть Паспорт Души",
+                    web_app=WebAppInfo(url=f"{MINI_APP_URL}?uid={user_id}"),
+                )
+            ]
+        ]
+    )
+
+
+async def send_mini_app_offer(update: Update, user_id: int, *, prefix: str | None = None) -> None:
+    if not update.effective_chat or not user_id:
+        return
+    text = prefix or (
+        "Интерактивный Паспорт Души готов — откройте мини-приложение, "
+        "чтобы пройти по сферам, циклу и персональной матрице."
+    )
+    await update.effective_chat.send_message(text, reply_markup=build_mini_app_keyboard(user_id))
+
+
 def build_webapp_compact_payload(
     result: dict,
     calc_snapshot: dict | None = None,
@@ -2204,15 +2256,31 @@ def build_webapp_compact_payload(
         block = result.get(key) or {}
         compact[key] = {
             "title": block.get("title", ""),
-            "text": _trim_for_webapp(block.get("text", "")),
+            "text": (block.get("text", "") or "").strip(),
         }
+    cycle_number = calc_snapshot.get("cycle_number", "—")
+    cycle_energy = calc_snapshot.get("cycle_energy")
+    cycle_text = ""
+    if cycle_energy is not None:
+        try:
+            cycle_text = cycle_description(int(cycle_energy), CYCLE_BODY)
+        except (TypeError, ValueError):
+            cycle_text = ""
+    planet_cycle = calc_snapshot.get("planet_cycle", "—")
+    compact["cycle"] = {
+        "title": f"Текущий 7-летний цикл ({cycle_number}-й)",
+        "text": f"Планета: {planet_cycle}\n\n{cycle_text}".strip(),
+    }
     compact["profile"] = {
         "fio": fio or "—",
         "birth_date": birth_date or "—",
         "life_task": calc_snapshot.get("life_task", "—"),
-        "cycle_number": calc_snapshot.get("cycle_number", "—"),
+        "cycle_number": cycle_number,
         "cycle_energy": calc_snapshot.get("cycle_energy", "—"),
-        "cycle_planet": calc_snapshot.get("planet_cycle", "—"),
+        "cycle_planet": planet_cycle,
+        "cycle_start_age": calc_snapshot.get("cycle_start_age", "—"),
+        "cycle_end_age": calc_snapshot.get("cycle_end_age", "—"),
+        "age": calc_snapshot.get("age", "—"),
         "higher_self": calc_snapshot.get("higher_self", "—"),
         "higher_planet": calc_snapshot.get("planet_higher", "—"),
     }
@@ -2221,6 +2289,7 @@ def build_webapp_compact_payload(
         "spiritual_name": "",
         "spiritual_level": "",
     }
+    compact["matrix"] = build_webapp_matrix_rows(calc_snapshot)
     compact["summary"] = build_miniapp_insight(calc_snapshot)
     return compact
 
@@ -3789,7 +3858,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             if ok:
                 increment_practitioner_usage_after_pdf(_uid)
+                await send_mini_app_offer(update, _uid)
             return
+
+        await send_mini_app_offer(update, _uid)
 
         payment_text = (
             "💌 Твоя душа знала, что ты придёшь. "
