@@ -1615,17 +1615,11 @@ def build_pdf_report(
         Paragraph(
             _pdf_flowable_text(
                 "Документ сформирован на основе ФИО и дате рождения. "
-                "Ниже приведены схема вычислений, сводная матрица сфер и развёрнутый текстовый разбор."
+                "Ниже — сводная матрица сфер и развёрнутый текстовый разбор."
             ),
             body_style,
         )
     )
-    story.append(PageBreak())
-
-    # Данные пользователя
-    story.append(Paragraph(_pdf_flowable_text("Данные для расчёта"), section_style))
-    story.append(Paragraph(_pdf_flowable_text(f"ФИО: {fio}"), body_style))
-    story.append(Paragraph(_pdf_flowable_text(f"Дата рождения: {birth_date}"), body_style))
     story.append(PageBreak())
 
     # Персональная матрица
