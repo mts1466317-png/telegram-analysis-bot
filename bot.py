@@ -1167,7 +1167,6 @@ def reduce_number(n: int) -> int:
     return n
 
 def letters_sum(text: str) -> int:
-    text = text.replace("ё", "е").replace("Ё", "Е")
     return sum(LETTER_MAP.get(ch.upper(), 0) for ch in text if ch.upper() in LETTER_MAP)
 
 
