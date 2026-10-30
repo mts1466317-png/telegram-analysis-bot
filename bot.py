@@ -163,10 +163,27 @@ LETTER_VALUES = {
     9: "ЗРЩ",
 }
 
+ENGLISH_LETTER_VALUES = {
+    1: "AJS",
+    2: "BKT",
+    3: "CLU",
+    4: "DMV",
+    5: "ENW",
+    6: "FOX",
+    7: "GPY",
+    8: "HQZ",
+    9: "IR",
+}
+
 LETTER_MAP = {}
 for num, letters in LETTER_VALUES.items():
     for l in letters:
         LETTER_MAP[l] = num
+
+ENGLISH_LETTER_MAP = {}
+for num, letters in ENGLISH_LETTER_VALUES.items():
+    for l in letters:
+        ENGLISH_LETTER_MAP[l] = num
 
 # =========================
 # Планеты + мастер-числа
@@ -1166,8 +1183,40 @@ def reduce_number(n: int) -> int:
         n = sum(int(d) for d in str(n))
     return n
 
+def _letter_value(ch: str) -> int:
+    upper = ch.upper()
+    if upper in LETTER_MAP:
+        return LETTER_MAP[upper]
+    if upper in ENGLISH_LETTER_MAP:
+        return ENGLISH_LETTER_MAP[upper]
+    return 0
+
+
+def detect_alphabet(text: str) -> str:
+    """Определяет алфавит по буквам в тексте: кириллица, латиница или смешанный."""
+    has_cyrillic = False
+    has_latin = False
+    for ch in text:
+        if not ch.isalpha():
+            continue
+        if "\u0400" <= ch <= "\u04FF":
+            has_cyrillic = True
+        elif "A" <= ch.upper() <= "Z":
+            has_latin = True
+    if has_cyrillic and has_latin:
+        return "mixed"
+    if has_latin:
+        return "english"
+    return "russian"
+
+
 def letters_sum(text: str) -> int:
-    return sum(LETTER_MAP.get(ch.upper(), 0) for ch in text if ch.upper() in LETTER_MAP)
+    total = 0
+    for ch in text:
+        val = _letter_value(ch)
+        if val:
+            total += val
+    return total
 
 
 def _pdf_flowable_text(raw: object) -> str:
@@ -1243,8 +1292,9 @@ def _pdf_planet_label_with_emoji(planet_name: str) -> str:
 def _pdf_build_calc_scheme_paragraphs(cs: dict) -> str:
     """Тот же контент формул, что и раньше (бизнес-логика без изменений)."""
     lines = [
-        "Буквы русского алфавита суммируются по таблице Пифагора (как в боте). Число сводится "
-        "(reduce): если больше 9 и не мастер (11, 22, …), суммируются цифры результата.",
+        "Буквы суммируются по таблице Пифагора (русский или английский алфавит — "
+        "автоматически по введённым буквам). Число сводится (reduce): если больше 9 "
+        "и не мастер (11, 22, …), суммируются цифры результата.",
         "",
         "━━ Исходные данные ━━",
         f"Фамилия «{cs['surname']}»: Σ букв = {cs['letters_surname']}",
@@ -2097,7 +2147,9 @@ def build_birth_input_prompt() -> str:
     return (
         "Введите данные одной строкой:\n"
         "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
-        "Пример:\nИванов Иван Иванович 12.05.1991"
+        "Пример (русский алфавит):\nИванов Иван Иванович 12.05.1991\n\n"
+        "Пример (английский алфавит):\nSmith John Michael 12.05.1991\n\n"
+        "Алфавит определяется автоматически по буквам в ФИО."
     )
 
 
@@ -3011,11 +3063,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif data == "restart_calc":
         context.user_data.clear()
         context.user_data["step"] = "fio_birth_line"
-        await query.message.reply_text(
-            "Введите данные одной строкой:\n"
-            "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
-            "Пример:\nИванов Иван Иванович 12.05.1991"
-        )
+        await query.message.reply_text(build_birth_input_prompt())
     elif data == "view_physical":
         last_result = context.user_data.get("last_result")
         if not last_result:
@@ -3213,7 +3261,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             "Карта: <code>2200 7008 8290 3809</code>\n"
             "Нажми на номер карты, чтобы скопировать 👆\n"
             "Получатель: Кристина Г\n\n"
-            "Минимальный донат — 555 ₽.\n"
+            "Минимальный донат — 3333 ₽.\n"
             "После перевода нажми «Я оплатил» — и сразу получишь PDF."
         )
         keyboard = InlineKeyboardMarkup([
@@ -3622,11 +3670,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Используем единый ввод: Фамилия Имя Отчество ДД.ММ.ГГГГ
         if step in {"last_name", "first_name", "middle_name", "birth_date"}:
             context.user_data["step"] = "fio_birth_line"
-            await update.message.reply_text(
-                "Теперь ввод в одну строку:\n"
-                "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
-                "Пример:\nИванов Иван Иванович 12.05.1991"
-            )
+            await update.message.reply_text(build_birth_input_prompt())
             return
 
         parts = text.split()
@@ -3635,7 +3679,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "❌ Неверный формат.\n\n"
                 "Введи одной строкой:\n"
                 "Имя Фамилия ДД.ММ.ГГГГ\n\n"
-                "Пример:\nИван Иванов 12.05.1991"
+                "Пример:\nИван Иванов 12.05.1991\n"
+                "Или:\nJohn Smith 12.05.1991"
             )
             return
 
@@ -3894,7 +3939,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• Родовая программа\n"
             "• Социальная задача души\n\n"
             "🤍 Донат от сердца 🤍\n"
-            "Базовый порог — 555 ₽. Как обед в кафе, только вместо короткого удовольствия — "
+            "Базовый порог — 3333 ₽. Как обед в кафе, только вместо короткого удовольствия — "
             "ясность на весь жизненный путь. Если чувствуешь отклик дать больше — примем его с благодарностью. "
             "Твой вклад помогает проекту расти и бережно касаться других душ, готовых проснуться.\n\n"
             "Но любое твоё решение — правильное.\n\n"
