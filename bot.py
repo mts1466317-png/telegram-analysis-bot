@@ -1984,17 +1984,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     touch_journey(user_id, "start", "get_stats")
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("💌 Получить мой Паспорт 💌", callback_data="get_stats")],
+        [InlineKeyboardButton("Получить мой Паспорт Души", callback_data="get_stats")],
         [InlineKeyboardButton("🌛Партнерам и практикам🌜", callback_data="practitioner_entry")],
     ])
     await update.message.reply_text(
-        "В твоих инициалах и дате рождения уже хранятся все ответы🌟\n\n"
-        "Здесь нет места случайностям. То, с какими талантами ты пришел, какие уроки проходит твоя душа "
-        "и где ты можешь свернуть не туда — всё это зашифровано в энергиях букв и цифр.\n\n"
-        "Мы объединили точные нумерологические формулы с глубоким контактом и знанием тонких уровней сознания. "
-        "Этот метод проверен на личном опыте и в работе с сотнями людей.\n\n"
-        "Это не просто расчет. Это Паспорт твоей Души. Твой проводник.\n\n"
-        "👇 Получи Паспорт Души, если готов к ясности, гармонии и истинной реализации.",
+        "В твоих инициалах и дате рождения уже хранятся все ответы🌟",
         reply_markup=keyboard,
     )
 
