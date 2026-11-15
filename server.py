@@ -11,6 +11,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     CallbackQueryHandler,
+    PreCheckoutQueryHandler,
     filters,
 )
 
@@ -59,6 +60,8 @@ from bot import (
     practitioner_revoke_cmd,
     practitioner_status_cmd,
     practitioner_list_cmd,
+    stars_precheckout,
+    stars_successful_payment,
 )
 
 # Один event loop в отдельном потоке (Flask воркеры в разных потоках).
@@ -91,6 +94,8 @@ tg_app.add_handler(CommandHandler("practitioner_list", practitioner_list_cmd))
 tg_app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
 tg_app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|launcher_|map_|library_|path_|community_|circle_|practice_|support_|daily_|guide_|channel_|continue_)"))
 tg_app.add_handler(CallbackQueryHandler(main_menu_callback))
+tg_app.add_handler(PreCheckoutQueryHandler(stars_precheckout))
+tg_app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, stars_successful_payment))
 tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
 

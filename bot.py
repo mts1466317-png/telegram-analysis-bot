@@ -1,5 +1,5 @@
-from telegram import InputFile, Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, CallbackQueryHandler, filters
+from telegram import InputFile, LabeledPrice, Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, CallbackQueryHandler, PreCheckoutQueryHandler, filters
 import re
 import random
 import asyncio
@@ -2348,6 +2348,94 @@ async def send_mini_app_offer(
         await bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
 
+def passport_star_price() -> int:
+    raw = os.getenv("PASSPORT_STARS", "2500").strip()
+    try:
+        stars = int(raw)
+    except ValueError:
+        stars = 2500
+    return max(1, stars)
+
+
+async def send_passport_stars_invoice(bot, chat_id: int) -> None:
+    stars = passport_star_price()
+    await bot.send_invoice(
+        chat_id=chat_id,
+        title=t("pdf_title"),
+        description=t("stars_invoice_description"),
+        payload="soul_passport",
+        provider_token="",
+        currency="XTR",
+        prices=[LabeledPrice(t("pdf_title"), stars)],
+    )
+
+
+_stars_delivered: set[str] = set()
+
+
+async def stars_precheckout(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.pre_checkout_query
+    if not query:
+        return
+    if not is_en():
+        await query.answer(ok=False, error_message="Stars checkout is only enabled for this bot.")
+        return
+    user_id = query.from_user.id if query.from_user else None
+    if not user_id or not user_storage.get(user_id):
+        await query.answer(ok=False, error_message=t("stars_no_calc"))
+        return
+    await query.answer(ok=True)
+
+
+async def stars_successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+    user = update.effective_user
+    if not message or not message.successful_payment or not user:
+        return
+    charge_id = message.successful_payment.telegram_payment_charge_id or ""
+    if charge_id and charge_id in _stars_delivered:
+        return
+    if charge_id:
+        _stars_delivered.add(charge_id)
+
+    data = user_storage.get(user.id)
+    if not data or not data.get("sections"):
+        await message.reply_text(t("stars_no_calc"))
+        return
+
+    await message.reply_text(t("payment_confirmed"))
+    try:
+        pdf_path = await asyncio.to_thread(
+            build_pdf_report,
+            data["fio"],
+            data["birth_date"],
+            data["sections"],
+            data.get("calc_snapshot"),
+        )
+        if not pdf_path or not os.path.exists(pdf_path):
+            await message.reply_text(t("pdf_create_failed"))
+            return
+        raw_fio = str(data.get("fio", "")).strip()
+        safe_fio = re.sub(r"[\\/:*?\"<>|]+", "", raw_fio)
+        safe_fio = re.sub(r"\s+", " ", safe_fio).strip() or t("pdf_title")
+        pdf_filename = f"{safe_fio}, {t('pdf_filename_suffix')}"
+        with open(pdf_path, "rb") as pdf_file:
+            await message.reply_document(document=InputFile(pdf_file.read(), filename=pdf_filename), caption=t("pdf_caption"))
+        try:
+            os.remove(pdf_path)
+        except Exception:
+            pass
+        await send_mini_app_offer(user.id, update=update)
+        track_event(
+            "stars_payment_completed",
+            user.id,
+            props={"stars": message.successful_payment.total_amount, "charge_id": charge_id},
+        )
+    except Exception as exc:
+        print("ERROR stars payment delivery:", exc)
+        await message.reply_text(t("pdf_error"))
+
+
 def build_webapp_compact_payload(
     result: dict,
     calc_snapshot: dict | None = None,
@@ -3291,6 +3379,10 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         pending = context.user_data.get("pending_pdf")
         if pending:
             pending["delivery_format"] = "pdf"
+        if is_en():
+            await query.message.reply_text(t("stars_paywall").format(stars=passport_star_price()))
+            await send_passport_stars_invoice(context.bot, query.message.chat_id)
+            return
         text = t("paywall")
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(t("btn_copy_card"), callback_data="copy_card")],
@@ -3950,6 +4042,11 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_mini_app_offer(_uid, update=update)
             return
 
+        if is_en():
+            await update.message.reply_text(t("stars_paywall").format(stars=passport_star_price()))
+            await send_passport_stars_invoice(context.bot, update.effective_chat.id)
+            return
+
         payment_text = t("paywall")
         payment_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(t("btn_copy_card"), callback_data="copy_card")],
@@ -4245,6 +4342,8 @@ def main():
     app.add_handler(CallbackQueryHandler(admin_payment_callback, pattern=r"^(approve|reject)_\d+$"))
     app.add_handler(CallbackQueryHandler(portal_callback_router, pattern=r"^(portal_|map_|library_|path_|community_|circle_|practice_|support_|daily_|guide_|channel_|continue_)"))
     app.add_handler(CallbackQueryHandler(main_menu_callback))
+    app.add_handler(PreCheckoutQueryHandler(stars_precheckout))
+    app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, stars_successful_payment))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     print("🤖 Бот запущен")
     app.run_polling()

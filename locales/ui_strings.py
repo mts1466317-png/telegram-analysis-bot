@@ -244,6 +244,9 @@ UI = {
             "Your interactive Soul Passport is ready. Open the mini app "
             "to move through the spheres, the cycle, and your personal matrix."
         ),
+        "stars_paywall": "Your Soul Passport is ready.\nPay {stars} Telegram Stars to receive the PDF and open the app.",
+        "stars_invoice_description": "Personal Soul Passport: full reading, PDF, and mini app.",
+        "stars_no_calc": "The calculation was not found. Enter your name and date again, then pay.",
     },
 }
 
