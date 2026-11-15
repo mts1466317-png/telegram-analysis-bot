@@ -1933,21 +1933,33 @@ async def send_pdf_report(
             caption=caption,
         )
 
-        await status_msg.edit_text(t("pdf_ready_status"))
-
         if for_practitioner:
+            await status_msg.edit_text(t("pdf_ready_status"))
             keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("🕊 Пространство практика", callback_data="practitioner_dashboard")],
                 [InlineKeyboardButton("🔮 Следующий паспорт", callback_data="practitioner_create_passport")],
             ])
             follow = "Продолжай в своём ритме — система рядом."
-        else:
-            keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton(t("btn_new_reading"), callback_data="get_stats")],
-                [InlineKeyboardButton(t("btn_support_project"), callback_data="support_project")],
-            ])
-            follow = t("after_pdf_follow")
+            await update.effective_chat.send_message(follow, reply_markup=keyboard)
+            return True
 
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton(t("btn_new_reading"), callback_data="get_stats")],
+            [InlineKeyboardButton(t("btn_support_project"), callback_data="support_project")],
+        ])
+        follow = t("after_pdf_follow")
+        if is_en():
+            try:
+                await status_msg.delete()
+            except Exception:
+                pass
+            uid = update.effective_user.id if update.effective_user else None
+            if uid:
+                await send_mini_app_offer(uid, update=update)
+            await update.effective_chat.send_message(follow, reply_markup=keyboard)
+            return True
+
+        await status_msg.edit_text(t("pdf_ready_status"))
         await update.effective_chat.send_message(follow, reply_markup=keyboard)
         return True
 
@@ -2443,6 +2455,13 @@ async def stars_successful_payment(update: Update, context: ContextTypes.DEFAULT
         except Exception:
             pass
         await send_mini_app_offer(user.id, update=update)
+        await message.reply_text(
+            t("after_pdf_follow"),
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(t("btn_new_reading"), callback_data="get_stats")],
+                [InlineKeyboardButton(t("btn_support_project"), callback_data="support_project")],
+            ]),
+        )
         track_event(
             "stars_payment_completed",
             user.id,
@@ -3397,8 +3416,6 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     stored["sections"],
                     stored.get("calc_snapshot"),
                 )
-                if ok:
-                    await send_mini_app_offer(user.id, update=update)
             return
         if is_en():
             await query.message.reply_text(t("stars_paywall").format(stars=passport_star_price()))
@@ -4072,8 +4089,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pdf_sections,
                 calc_snapshot,
             )
-            if ok:
-                await send_mini_app_offer(_uid, update=update)
             return
 
         if is_en():
