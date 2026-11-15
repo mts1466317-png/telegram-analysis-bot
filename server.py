@@ -21,7 +21,10 @@ from practitioner_store import init_practitioner_store
 from telemetry import init_telemetry_store, track_event
 
 # По этому маркеру в логах видно, что задеплоена актуальная версия (не старый server.py:27)
+from app_locale import get_locale
+
 print("📌 boot server.py (env_token resolver v2026-04-19)")
+print(f"📌 APP_LOCALE={get_locale()}")
 print(
     f"📌 env check: PORT={'yes' if os.getenv('PORT') else 'no'}, "
     f"RAILWAY_ENVIRONMENT={os.getenv('RAILWAY_ENVIRONMENT', '')!r}"

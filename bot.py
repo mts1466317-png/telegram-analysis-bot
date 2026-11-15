@@ -12,6 +12,7 @@ import tempfile
 from urllib.parse import quote
 
 from env_token import resolve_bot_token
+from locales import t
 from snapshot_store import load_last_snapshot, save_last_snapshot
 from telemetry import track_event
 from practitioner_store import (
@@ -1916,18 +1917,18 @@ def block_description(num: int, block: dict) -> str:
         if master_data:
             # Используем специальное описание для мастер-числа
             text = (
-                f"🔹 Как проявляется:\n{master_data['manifestation']}\n\n"
+                f"{t('label_manifestation')}\n{master_data['manifestation']}\n\n"
             )
             # Добавляем "Как задача реализуется в социуме" для социальной задачи
             if 'social_implementation' in master_data:
-                text += f"🔹 Как задача реализуется в социуме:\n{master_data['social_implementation']}\n\n"
+                text += f"{t('label_social_impl')}\n{master_data['social_implementation']}\n\n"
             text += (
-                f"⚠️ Риски:\n{master_data['risks']}\n\n"
-                f"✅ Рекомендации:\n{master_data['recommendations']}"
+                f"{t('label_risks')}\n{master_data['risks']}\n\n"
+                f"{t('label_recommendations')}\n{master_data['recommendations']}"
             )
             # Добавляем профессии для социальной задачи
             if 'professions' in master_data:
-                text += f"\n\n💼 Профессии и сферы реализации:\n{master_data['professions']}"
+                text += f"\n\n{t('label_professions')}\n{master_data['professions']}"
             return text
     
     # Если мастер-описания нет или это не мастер-число, используем базовое
@@ -1936,12 +1937,12 @@ def block_description(num: int, block: dict) -> str:
     if not data:
         return ""
     text = (
-        f"🔹 Как проявляется:\n{data['manifestation']}\n\n"
-        f"⚠️ Риски:\n{data['risks']}\n\n"
-        f"✅ Рекомендации:\n{data['recommendations']}"
+        f"{t('label_manifestation')}\n{data['manifestation']}\n\n"
+        f"{t('label_risks')}\n{data['risks']}\n\n"
+        f"{t('label_recommendations')}\n{data['recommendations']}"
     )
     if num in MASTER_NUMBERS:
-        text += "\n\n✨ Мастер-вибрация усиливает влияние."
+        text += t("master_boost")
     return text
 
 def cycle_description(num: int, cycle: dict) -> str:
@@ -1950,13 +1951,13 @@ def cycle_description(num: int, cycle: dict) -> str:
     if not data:
         return ""
     text = (
-        f"🔹 Как проявляется:\n{data['manifestation']}\n\n"
-        f"🎯 Фокус периода:\n{data['focus']}\n\n"
-        f"⚠️ Риски:\n{data['risks']}\n\n"
-        f"✅ Рекомендации:\n{data['recommendations']}"
+        f"{t('label_manifestation')}\n{data['manifestation']}\n\n"
+        f"{t('label_focus')}\n{data['focus']}\n\n"
+        f"{t('label_risks')}\n{data['risks']}\n\n"
+        f"{t('label_recommendations')}\n{data['recommendations']}"
     )
     if num in MASTER_NUMBERS:
-        text += "\n\n✨ Мастер-цикл — судьбоносный период."
+        text += t("master_cycle")
     return text
 
 # =========================
@@ -1984,11 +1985,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     touch_journey(user_id, "start", "get_stats")
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("Получить мой Паспорт Души", callback_data="get_stats")],
-        [InlineKeyboardButton("🌛Партнерам и практикам🌜", callback_data="practitioner_entry")],
+        [InlineKeyboardButton(t("btn_get_passport"), callback_data="get_stats")],
+        [InlineKeyboardButton(t("btn_partners"), callback_data="practitioner_entry")],
     ])
     await update.message.reply_text(
-        "В твоих инициалах и дате рождения уже хранятся все ответы🌟",
+        t("start_welcome"),
         reply_markup=keyboard,
     )
 
@@ -2138,13 +2139,7 @@ async def show_stub_section(query, text: str):
 
 
 def build_birth_input_prompt() -> str:
-    return (
-        "Введите данные одной строкой из актуального паспорта:\n"
-        "Фамилия Имя Отчество ДД.ММ.ГГГГ\n\n"
-        "Пример (русский алфавит):\nИванов Иван Иванович 12.05.1991\n\n"
-        "Пример (английский алфавит):\nSmith John Michael 12.05.1991\n\n"
-        "Алфавит определяется автоматически по буквам в ФИО."
-    )
+    return t("birth_prompt")
 
 
 def _trim_for_webapp(text: str, limit: int = 480) -> str:
@@ -3243,17 +3238,10 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         pending = context.user_data.get("pending_pdf")
         if pending:
             pending["delivery_format"] = "pdf"
-        text = (
-            "К оплате 3333 рублей - за лучший инструмент для самопознания на всю жизнь\n"
-            "Реквизиты:\n"
-            "💳 Т-Банк: <code>2200 7008 8290 3809</code>\n"
-            "💸 СБП: <code>89990238238</code>\n"
-            "Получатель: Кристина Г.\n\n"
-            "После перевода нажми «Я оплатил» — и мы сразу пришлем твой Паспорт."
-        )
+        text = t("paywall")
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📋 Скопировать номер карты", callback_data="copy_card")],
-            [InlineKeyboardButton("✅ Я оплатил", callback_data="donate_paid")],
+            [InlineKeyboardButton(t("btn_copy_card"), callback_data="copy_card")],
+            [InlineKeyboardButton(t("btn_i_paid"), callback_data="donate_paid")],
             [InlineKeyboardButton("⬅️ Назад", callback_data="back_menu")],
         ])
         await query.message.reply_text(text, reply_markup=keyboard, parse_mode="HTML")
@@ -3662,13 +3650,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         parts = text.split()
         if len(parts) not in {3, 4}:
-            await update.message.reply_text(
-                "❌ Неверный формат.\n\n"
-                "Введи одной строкой:\n"
-                "Имя Фамилия ДД.ММ.ГГГГ\n\n"
-                "Пример:\nИван Иванов 12.05.1991\n"
-                "Или:\nJohn Smith 12.05.1991"
-            )
+            await update.message.reply_text(t("input_format_error"))
             return
 
         if len(parts) == 3:
@@ -3912,17 +3894,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_mini_app_offer(_uid, update=update)
             return
 
-        payment_text = (
-            "К оплате 3333 рублей - за лучший инструмент для самопознания на всю жизнь\n"
-            "Реквизиты:\n"
-            "💳 Т-Банк: <code>2200 7008 8290 3809</code>\n"
-            "💸 СБП: <code>89990238238</code>\n"
-            "Получатель: Кристина Г.\n\n"
-            "После перевода нажми «Я оплатил» — и мы сразу пришлем твой Паспорт."
-        )
+        payment_text = t("paywall")
         payment_keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📋 Скопировать номер карты", callback_data="copy_card")],
-            [InlineKeyboardButton("✅ Я оплатил", callback_data="donate_paid")],
+            [InlineKeyboardButton(t("btn_copy_card"), callback_data="copy_card")],
+            [InlineKeyboardButton(t("btn_i_paid"), callback_data="donate_paid")],
         ])
         await update.message.reply_text(payment_text, reply_markup=payment_keyboard, parse_mode="HTML")
         return
