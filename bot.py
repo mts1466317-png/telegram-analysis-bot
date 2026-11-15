@@ -1943,9 +1943,13 @@ async def send_pdf_report(
             await update.effective_chat.send_message(follow, reply_markup=keyboard)
             return True
 
+        if is_en():
+            second_button = InlineKeyboardButton(t("btn_consult_contact"), url=t("consult_url"))
+        else:
+            second_button = InlineKeyboardButton(t("btn_support_project"), callback_data="support_project")
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(t("btn_new_reading"), callback_data="get_stats")],
-            [InlineKeyboardButton(t("btn_support_project"), callback_data="support_project")],
+            [second_button],
         ])
         follow = t("after_pdf_follow")
         if is_en():
@@ -2459,7 +2463,7 @@ async def stars_successful_payment(update: Update, context: ContextTypes.DEFAULT
             t("after_pdf_follow"),
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton(t("btn_new_reading"), callback_data="get_stats")],
-                [InlineKeyboardButton(t("btn_support_project"), callback_data="support_project")],
+                [InlineKeyboardButton(t("btn_consult_contact"), url=t("consult_url"))],
             ]),
         )
         track_event(

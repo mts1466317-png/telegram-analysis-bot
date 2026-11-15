@@ -254,6 +254,8 @@ UI = {
         "after_pdf_follow": "Want another reading, or to go a little deeper?",
         "btn_new_reading": "🔮 New reading",
         "btn_support_project": "💝 Support the project",
+        "btn_consult_contact": "💬 Contact for a consultation",
+        "consult_url": "https://t.me/AngeleonOfficial",
         "btn_back": "⬅️ Back",
         "support_text": (
             "💝 Support the project\n\n"
