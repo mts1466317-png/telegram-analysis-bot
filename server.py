@@ -5,7 +5,7 @@ import traceback
 from typing import Optional
 
 from flask import Flask, request, send_from_directory, jsonify
-from telegram import Update
+from telegram import MenuButtonWebApp, Update, WebAppInfo
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -22,7 +22,7 @@ from practitioner_store import init_practitioner_store
 from telemetry import init_telemetry_store, track_event
 
 # По этому маркеру в логах видно, что задеплоена актуальная версия (не старый server.py:27)
-from app_locale import get_locale
+from app_locale import get_locale, is_en
 
 print("📌 boot server.py (env_token resolver v2026-04-19)")
 print(f"📌 APP_LOCALE={get_locale()}")
@@ -62,6 +62,7 @@ from bot import (
     practitioner_list_cmd,
     stars_precheckout,
     stars_successful_payment,
+    MINI_APP_URL,
 )
 
 # Один event loop в отдельном потоке (Flask воркеры в разных потоках).
@@ -141,6 +142,21 @@ else:
         "ℹ️ webhook URL not configured (PUBLIC_WEBHOOK_URL / RAILWAY_PUBLIC_DOMAIN); "
         "Telegram setWebhook must be done manually"
     )
+
+if is_en():
+    try:
+        _run_on_loop(
+            tg_app.bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(
+                    text="Open",
+                    web_app=WebAppInfo(url=MINI_APP_URL),
+                )
+            ),
+            timeout=15.0,
+        )
+        print(f"✅ chat menu button set to {MINI_APP_URL}")
+    except Exception as _menu_exc:
+        print(f"⚠️ chat menu button setup failed ({_menu_exc})")
 
 app = Flask(__name__)
 WEBAPP_DIR = os.path.join(os.path.dirname(__file__), "webapp")
