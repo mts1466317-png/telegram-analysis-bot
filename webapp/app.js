@@ -381,7 +381,7 @@ function renderCycleTab() {
   }).join("");
 
   const cycleCard = section
-    ? renderSphereCard("cycle", true)
+    ? renderSphereCard("cycle", false)
     : `<p class="empty-tab">${L.cycleEmpty}</p>`;
 
   return `
@@ -429,7 +429,7 @@ function renderTabContent(tabId) {
   if (tab.special === "matrix") return renderMatrixTab();
 
   const cards = (tab.spheres || [])
-    .map((key, idx) => renderSphereCard(key, idx === 0))
+    .map((key) => renderSphereCard(key, false))
     .filter(Boolean)
     .join("");
   return cards || `<p class="empty-tab">${L.emptyTab}</p>`;
