@@ -117,6 +117,11 @@ UI = {
         "btn_consult": "🕊 Записаться на личный разбор",
         "section_cycle_n": "Текущий 7-летний цикл ({n}-й)",
         "latin_only_error": "",
+        "btn_open_passport": "✨ Открыть Паспорт Души",
+        "miniapp_offer": (
+            "Интерактивный Паспорт Души готов — откройте мини-приложение, "
+            "чтобы пройти по сферам, циклу и персональной матрице."
+        ),
     },
     "en": {
         "start_welcome": "Your initials and date of birth already hold all the answers🌟",
@@ -234,6 +239,11 @@ UI = {
         "btn_consult": "🕊 Book a personal reading",
         "section_cycle_n": "Current 7-year cycle ({n})",
         "latin_only_error": "❌ Please use Latin letters only (English spelling of the name).",
+        "btn_open_passport": "✨ Open Soul Passport",
+        "miniapp_offer": (
+            "Your interactive Soul Passport is ready. Open the mini app "
+            "to move through the spheres, the cycle, and your personal matrix."
+        ),
     },
 }
 

@@ -65,7 +65,19 @@ print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕ�
 ADMIN_ID = 7471303897
 CHANNEL_LINK = "https://t.me/higherself_connection"
 DISCUSSION_GROUP_LINK = "https://t.me/DISCUSSION_GROUP_LINK"
-MINI_APP_URL = os.getenv("MINI_APP_URL", "https://web-production-bff199.up.railway.app/webapp").rstrip("/")
+def _default_mini_app_url() -> str:
+    explicit = os.getenv("MINI_APP_URL", "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    domain = (os.getenv("RAILWAY_PUBLIC_DOMAIN") or os.getenv("RAILWAY_STATIC_URL") or "").strip().rstrip("/")
+    if domain:
+        if "://" not in domain:
+            domain = f"https://{domain}"
+        return f"{domain}/webapp"
+    return "https://web-production-bff199.up.railway.app/webapp"
+
+
+MINI_APP_URL = _default_mini_app_url()
 APPSS_VERIFY_CODE = os.getenv("APPSS_VERIFY_CODE", "appss_265e7d")
 
 # Хранилище результатов расчётов пользователей (в памяти)
@@ -2279,16 +2291,16 @@ def build_passport_hook_message(calc_snapshot: dict) -> str:
 def build_webapp_matrix_rows(calc_snapshot: dict) -> list[dict]:
     cs = calc_snapshot or {}
     rows = [
-        ("physical", "Физическое тело", "physical", "planet_physical"),
-        ("astral", "Астральное тело", "astral", "planet_astral"),
-        ("mental", "Ментальное тело", "mental", "planet_mental"),
-        ("life", "Жизненная задача", "life_task", "planet_life"),
-        ("egregor", "Родовой эгрегор", "ancestral_egregor", "planet_egregor"),
-        ("higher", "Высшее Я", "higher_self", "planet_higher"),
-        ("program", "Родовая программа", "ancestral_program", "planet_program"),
-        ("social", "Социальная задача", "social_task", "planet_social"),
-        ("combo", "Сочетание задач", "task_combo", "planet_combo"),
-        ("cycle", "Текущий 7-летний цикл", "cycle_energy", "planet_cycle"),
+        ("physical", t("section_physical"), "physical", "planet_physical"),
+        ("astral", t("section_astral"), "astral", "planet_astral"),
+        ("mental", t("section_mental"), "mental", "planet_mental"),
+        ("life", t("section_life"), "life_task", "planet_life"),
+        ("egregor", t("section_egregor"), "ancestral_egregor", "planet_egregor"),
+        ("higher", t("section_higher"), "higher_self", "planet_higher"),
+        ("program", t("section_program"), "ancestral_program", "planet_program"),
+        ("social", t("section_social"), "social_task", "planet_social"),
+        ("combo", t("section_combo"), "task_combo", "planet_combo"),
+        ("cycle", t("section_cycle"), "cycle_energy", "planet_cycle"),
     ]
     matrix = []
     for key, label, vib_key, planet_key in rows:
@@ -2310,7 +2322,7 @@ def build_mini_app_keyboard(user_id: int) -> InlineKeyboardMarkup:
         [
             [
                 InlineKeyboardButton(
-                    "✨ Открыть Паспорт Души",
+                    t("btn_open_passport"),
                     web_app=WebAppInfo(url=f"{MINI_APP_URL}?uid={user_id}"),
                 )
             ]
@@ -2326,13 +2338,9 @@ async def send_mini_app_offer(
     chat_id: int | None = None,
     prefix: str | None = None,
 ) -> None:
-    # English bot: mini app comes later. Do not offer it on the EN path.
-    if is_en() or not user_id:
+    if not user_id:
         return
-    text = prefix or (
-        "Интерактивный Паспорт Души готов — откройте мини-приложение, "
-        "чтобы пройти по сферам, циклу и персональной матрице."
-    )
+    text = prefix or t("miniapp_offer")
     markup = build_mini_app_keyboard(user_id)
     if update and update.effective_chat:
         await update.effective_chat.send_message(text, reply_markup=markup)
@@ -2365,8 +2373,8 @@ def build_webapp_compact_payload(
             cycle_text = ""
     planet_cycle = calc_snapshot.get("planet_cycle", "—")
     compact["cycle"] = {
-        "title": f"Текущий 7-летний цикл ({cycle_number}-й)",
-        "text": f"Планета: {planet_cycle}\n\n{cycle_text}".strip(),
+        "title": t("section_cycle_n").format(n=cycle_number),
+        "text": f"{t('planet_prefix')} {planet_cycle}\n\n{cycle_text}".strip(),
     }
     compact["profile"] = {
         "fio": fio or "—",
@@ -2388,6 +2396,7 @@ def build_webapp_compact_payload(
     }
     compact["matrix"] = build_webapp_matrix_rows(calc_snapshot)
     compact["summary"] = build_miniapp_insight(calc_snapshot)
+    compact["locale"] = "en" if is_en() else "ru"
     return compact
 
 

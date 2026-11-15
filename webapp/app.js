@@ -23,6 +23,129 @@ const tabPanel = document.getElementById("tab-panel");
 const openPassportBtn = document.getElementById("open-passport-btn");
 const backCoverBtn = document.getElementById("back-cover-btn");
 
+const I18N = {
+  ru: {
+    lang: "ru",
+    title: "Паспорт Души",
+    loading: "Загружаем ваш паспорт…",
+    errorTitle: "Разбор недоступен",
+    open: "Открыть паспорт",
+    back: "Назад",
+    coverSummary: "Персональный разбор внутренних сфер, жизненных задач и текущего цикла",
+    fallbackName: "Ваш паспорт",
+    emptyTab: "Раздел пока пуст.",
+    cycleEmpty: "Данные цикла пока недоступны.",
+    cycleTitle: "Текущий 7-летний цикл",
+    cycleNow: "сейчас",
+    cycleNth: (n) => `${n}-й цикл`,
+    years: "лет",
+    ageLine: (age, start, end) => `Возраст ${age ?? "—"} · полоса ${start}–${end} лет`,
+    matrixNote: "Персональная матрица — вибрации и планеты по всем сферам паспорта.",
+    colSphere: "Сфера",
+    colVibration: "Вибрация",
+    colPlanet: "Планета",
+    openFromChat: "Откройте мини-приложение из чата с ботом после расчёта.",
+    noData: "Данные пока недоступны. Сначала пройдите расчёт в боте.",
+    loadError: "Ошибка загрузки данных.",
+    badLink: "Ошибка формата данных в ссылке.",
+    genericError: "Ошибка загрузки данных",
+    tabs: { bodies: "Тела", tasks: "Задачи", rod: "Род", cycle: "Цикл", matrix: "Матрица" },
+    spheres: {
+      physical: "Физическое тело",
+      astral: "Астральное тело",
+      mental: "Ментальное тело",
+      higher: "Высшее Я",
+      life: "Жизненная задача",
+      egregor: "Родовой эгрегор",
+      program: "Родовая программа",
+      social: "Социальная задача",
+      combo: "Сочетание задач",
+      cycle: "Текущий цикл",
+    },
+    hints: {
+      physical: "Ресурсы тела, границы и точки силы.",
+      astral: "Эмоции, чувствительность и отклик на среду.",
+      mental: "Мышление, убеждения и способ принимать решения.",
+      higher: "Внутренний компас и опыт души.",
+      life: "Главный смысл и задача воплощения.",
+      egregor: "Родовые вибрации и поддержка рода.",
+      program: "Задача рода и наследуемые сценарии.",
+      social: "Ожидания социума и реализация в мире.",
+      combo: "Сочетание жизненной и социальной линии.",
+    },
+    markers: [
+      { marker: "🔹 Как проявляется:\n", pill: "Проявленность", key: "manifest" },
+      { marker: "🔹 Как задача реализуется в социуме:\n", pill: "Реализация", key: "social_impl" },
+      { marker: "🎯 Фокус периода:\n", pill: "Фокус", key: "focus" },
+      { marker: "⚠️ Риски:\n", pill: "Риски", key: "risks" },
+      { marker: "✅ Рекомендации:\n", pill: "Рекомендации", key: "rec" },
+      { marker: "💼 Профессии и сферы реализации:\n", pill: "Профессии", key: "professions" },
+    ],
+    masterWord: "Мастер",
+    masterMark: "(мастер)",
+  },
+  en: {
+    lang: "en",
+    title: "Soul Passport",
+    loading: "Loading your passport…",
+    errorTitle: "Reading unavailable",
+    open: "Open passport",
+    back: "Back",
+    coverSummary: "A personal reading of your inner spheres, life tasks, and current cycle",
+    fallbackName: "Your passport",
+    emptyTab: "This section is empty for now.",
+    cycleEmpty: "Cycle data is not available yet.",
+    cycleTitle: "Current 7-year cycle",
+    cycleNow: "now",
+    cycleNth: (n) => `Cycle ${n}`,
+    years: "years",
+    ageLine: (age, start, end) => `Age ${age ?? "—"} · ages ${start}–${end}`,
+    matrixNote: "Personal matrix — vibrations and planets across every sphere of the passport.",
+    colSphere: "Sphere",
+    colVibration: "Vibration",
+    colPlanet: "Planet",
+    openFromChat: "Open the mini app from the bot chat after your calculation.",
+    noData: "No reading yet. Finish the calculation in the bot first.",
+    loadError: "Could not load the data.",
+    badLink: "The link data is not valid.",
+    genericError: "Could not load the data",
+    tabs: { bodies: "Bodies", tasks: "Tasks", rod: "Lineage", cycle: "Cycle", matrix: "Matrix" },
+    spheres: {
+      physical: "Physical body",
+      astral: "Astral body",
+      mental: "Mental body",
+      higher: "Higher Self",
+      life: "Life task",
+      egregor: "Ancestral egregore",
+      program: "Ancestral program",
+      social: "Social task",
+      combo: "Task combination",
+      cycle: "Current cycle",
+    },
+    hints: {
+      physical: "Body resources, boundaries, and points of strength.",
+      astral: "Emotions, sensitivity, and how you respond to the world.",
+      mental: "Thinking, beliefs, and how decisions are made.",
+      higher: "Inner compass and the soul's accumulated experience.",
+      life: "The core meaning and task of this incarnation.",
+      egregor: "Ancestral vibrations and lineage support.",
+      program: "The family task and inherited patterns.",
+      social: "What the world expects and how you show up in it.",
+      combo: "Where the life task and the social task meet.",
+    },
+    markers: [
+      { marker: "🔹 How it shows up:\n", pill: "Expression", key: "manifest" },
+      { marker: "🔹 How the task plays out in society:\n", pill: "In society", key: "social_impl" },
+      { marker: "🎯 Focus of the period:\n", pill: "Focus", key: "focus" },
+      { marker: "⚠️ Risks:\n", pill: "Risks", key: "risks" },
+      { marker: "✅ Recommendations:\n", pill: "Guidance", key: "rec" },
+      { marker: "💼 Professions and fields of expression:\n", pill: "Professions", key: "professions" },
+    ],
+    masterWord: "Master",
+    masterMark: "(master)",
+  },
+};
+
 const TABS = [
   { id: "bodies", label: "Тела", spheres: ["physical", "astral", "mental", "higher"] },
   { id: "tasks", label: "Задачи", spheres: ["life", "social", "combo"] },
@@ -31,30 +154,34 @@ const TABS = [
   { id: "matrix", label: "Матрица", special: "matrix" },
 ];
 
-const COVER_SUMMARY =
-  "Персональный разбор внутренних сфер, жизненных задач и текущего цикла";
+let L = I18N.ru;
+let MARKERS = I18N.ru.markers;
+let SPHERE_LABELS = I18N.ru.spheres;
+let COVER_SUMMARY = I18N.ru.coverSummary;
 
-const SPHERE_LABELS = {
-  physical: "Физическое тело",
-  astral: "Астральное тело",
-  mental: "Ментальное тело",
-  higher: "Высшее Я",
-  life: "Жизненная задача",
-  egregor: "Родовой эгрегор",
-  program: "Родовая программа",
-  social: "Социальная задача",
-  combo: "Сочетание задач",
-  cycle: "Текущий цикл",
-};
+function applyLocale(locale) {
+  L = I18N[locale] || I18N.ru;
+  MARKERS = L.markers;
+  SPHERE_LABELS = L.spheres;
+  COVER_SUMMARY = L.coverSummary;
+  document.documentElement.lang = L.lang;
+  document.title = L.title;
+  const loading = document.querySelector(".loading-text");
+  if (loading) loading.textContent = L.loading;
+  const errorTitle = document.querySelector("#screen-error h1");
+  if (errorTitle) errorTitle.textContent = L.errorTitle;
+  const coverLabel = document.querySelector(".cover-label");
+  if (coverLabel) coverLabel.textContent = L.title;
+  const headerTitle = document.querySelector(".app-header-title");
+  if (headerTitle) headerTitle.textContent = L.title;
+  if (openPassportBtn) openPassportBtn.textContent = L.open;
+  if (backCoverBtn) backCoverBtn.setAttribute("aria-label", L.back);
+  TABS.forEach((tab) => {
+    tab.label = L.tabs[tab.id] || tab.label;
+  });
+}
 
-const MARKERS = [
-  { marker: "🔹 Как проявляется:\n", pill: "Проявленность", key: "manifest" },
-  { marker: "🔹 Как задача реализуется в социуме:\n", pill: "Реализация", key: "social_impl" },
-  { marker: "🎯 Фокус периода:\n", pill: "Фокус", key: "focus" },
-  { marker: "⚠️ Риски:\n", pill: "Риски", key: "risks" },
-  { marker: "✅ Рекомендации:\n", pill: "Рекомендации", key: "rec" },
-  { marker: "💼 Профессии и сферы реализации:\n", pill: "Профессии", key: "professions" },
-];
+applyLocale(location.hostname.startsWith("ps-") ? "en" : "ru");
 
 let contentData = null;
 let activeTab = "bodies";
@@ -73,7 +200,7 @@ function showScreen(name) {
 }
 
 function showError(text) {
-  if (errorText) errorText.textContent = text || "Ошибка загрузки данных";
+  if (errorText) errorText.textContent = text || L.genericError;
   showScreen("error");
 }
 
@@ -88,9 +215,11 @@ function escapeHtml(str) {
 function cleanSectionText(raw) {
   let text = String(raw || "").trim();
   if (!text) return "";
-  text = text.replace(/^Планета:\s*[^\n]+\n+/gm, "");
+  text = text.replace(/^(Планета|Planet):\s*[^\n]+\n+/gim, "");
   text = text.replace(/✨ Мастер-вибрация усиливает влияние\./g, "");
   text = text.replace(/✨ Мастер-цикл — судьбоносный период\./g, "");
+  text = text.replace(/✨ A master vibration amplifies the influence\./g, "");
+  text = text.replace(/✨ A master cycle is a destiny-level period\./g, "");
   text = text.replace(/\n{3,}/g, "\n\n");
   return text.trim();
 }
@@ -131,24 +260,14 @@ function firstSentence(text, fallback = "") {
 
 function sphereSubtitle(sectionKey, pills) {
   if (pills.manifest) return firstSentence(pills.manifest);
-  const staticHints = {
-    physical: "Ресурсы тела, границы и точки силы.",
-    astral: "Эмоции, чувствительность и отклик на среду.",
-    mental: "Мышление, убеждения и способ принимать решения.",
-    higher: "Внутренний компас и опыт души.",
-    life: "Главный смысл и задача воплощения.",
-    egregor: "Родовые вибрации и поддержка рода.",
-    program: "Задача рода и наследуемые сценарии.",
-    social: "Ожидания социума и реализация в мире.",
-    combo: "Сочетание жизненной и социальной линии.",
-  };
-  return staticHints[sectionKey] || "";
+  return (L.hints && L.hints[sectionKey]) || "";
 }
 
 function formatPlanet(planetRaw) {
   const raw = String(planetRaw || "—");
-  if (raw.includes("(мастер)")) {
-    return `Мастер ${raw.replace(" (мастер)", "")}`;
+  if (raw.includes(L.masterMark) || raw.includes("(мастер)") || raw.includes("(master)")) {
+    const base = raw.replace(" (мастер)", "").replace(" (master)", "").replace(` ${L.masterMark}`, "");
+    return `${L.masterWord} ${base}`;
   }
   return raw;
 }
@@ -164,22 +283,22 @@ function buildMatrixRows() {
   }
   const profile = contentData?.profile || {};
   const keys = [
-    ["physical", "Физическое тело"],
-    ["astral", "Астральное тело"],
-    ["mental", "Ментальное тело"],
-    ["life", "Жизненная задача"],
-    ["egregor", "Родовой эгрегор"],
-    ["higher", "Высшее Я"],
-    ["program", "Родовая программа"],
-    ["social", "Социальная задача"],
-    ["combo", "Сочетание задач"],
-    ["cycle", "Текущий цикл"],
+    ["physical", SPHERE_LABELS.physical],
+    ["astral", SPHERE_LABELS.astral],
+    ["mental", SPHERE_LABELS.mental],
+    ["life", SPHERE_LABELS.life],
+    ["egregor", SPHERE_LABELS.egregor],
+    ["higher", SPHERE_LABELS.higher],
+    ["program", SPHERE_LABELS.program],
+    ["social", SPHERE_LABELS.social],
+    ["combo", SPHERE_LABELS.combo],
+    ["cycle", SPHERE_LABELS.cycle],
   ];
   return keys.map(([key, label]) => {
     const section = getSection(key);
     const raw = section?.text || "";
     const vibMatch = raw.match(/вибраци[яи]\s*(\d+)/i);
-    const planetMatch = raw.match(/^Планета:\s*([^\n]+)/m);
+    const planetMatch = raw.match(/^(?:Планета|Planet):\s*([^\n]+)/im);
     let vibration = vibMatch ? vibMatch[1] : "—";
     let planet = planetMatch ? planetMatch[1].trim() : "—";
     if (key === "cycle") {
@@ -254,8 +373,8 @@ function renderCycleTab() {
       <div class="timeline-item${current ? " current" : ""}">
         <div class="timeline-dot"></div>
         <div>
-          <div class="timeline-label">${n}-й цикл${current ? " · сейчас" : ""}</div>
-          <div class="timeline-age">${from}–${to} лет</div>
+          <div class="timeline-label">${L.cycleNth(n)}${current ? ` · ${L.cycleNow}` : ""}</div>
+          <div class="timeline-age">${from}–${to} ${L.years}</div>
         </div>
       </div>
     `;
@@ -263,12 +382,12 @@ function renderCycleTab() {
 
   const cycleCard = section
     ? renderSphereCard("cycle", true)
-    : `<p class="empty-tab">Данные цикла пока недоступны.</p>`;
+    : `<p class="empty-tab">${L.cycleEmpty}</p>`;
 
   return `
     <div class="cycle-hero">
-      <h3>Текущий 7-летний цикл</h3>
-      <p class="cycle-meta">Возраст ${profile.age ?? "—"} · полоса ${startAge}–${endAge} лет</p>
+      <h3>${L.cycleTitle}</h3>
+      <p class="cycle-meta">${L.ageLine(profile.age, startAge, endAge)}</p>
       ${focus ? `<p class="cycle-meta">${escapeHtml(firstSentence(focus))}</p>` : ""}
       <div class="timeline">${timeline}</div>
     </div>
@@ -282,8 +401,9 @@ function renderMatrixTab() {
   const body = rows
     .map((row) => {
       const highlight = row.key === cycleKey ? " highlight" : "";
+      const label = SPHERE_LABELS[row.key] || row.label;
       return `<tr class="${highlight.trim()}">
-        <td>${escapeHtml(row.label)}</td>
+        <td>${escapeHtml(label)}</td>
         <td>${escapeHtml(String(row.vibration))}</td>
         <td>${escapeHtml(formatPlanet(row.planet))}</td>
       </tr>`;
@@ -292,10 +412,10 @@ function renderMatrixTab() {
 
   return `
     <div class="matrix-wrap">
-      <p class="matrix-note">Персональная матрица — вибрации и планеты по всем сферам паспорта.</p>
+      <p class="matrix-note">${L.matrixNote}</p>
       <table class="matrix-table">
         <thead>
-          <tr><th>Сфера</th><th>Вибрация</th><th>Планета</th></tr>
+          <tr><th>${L.colSphere}</th><th>${L.colVibration}</th><th>${L.colPlanet}</th></tr>
         </thead>
         <tbody>${body}</tbody>
       </table>
@@ -312,7 +432,7 @@ function renderTabContent(tabId) {
     .map((key, idx) => renderSphereCard(key, idx === 0))
     .filter(Boolean)
     .join("");
-  return cards || `<p class="empty-tab">Раздел пока пуст.</p>`;
+  return cards || `<p class="empty-tab">${L.emptyTab}</p>`;
 }
 
 function bindTabPanelEvents() {
@@ -359,7 +479,7 @@ function renderTabs() {
 
 function renderCover() {
   const profile = contentData?.profile || {};
-  const fio = profile.fio && profile.fio !== "—" ? profile.fio : tg?.initDataUnsafe?.user?.first_name || "Ваш паспорт";
+  const fio = profile.fio && profile.fio !== "—" ? profile.fio : tg?.initDataUnsafe?.user?.first_name || L.fallbackName;
   coverName.textContent = fio;
   coverDate.textContent = profile.birth_date && profile.birth_date !== "—" ? profile.birth_date : "";
   coverSummary.textContent = COVER_SUMMARY;
@@ -373,20 +493,20 @@ function renderApp() {
 async function loadPayloadByUid() {
   effectiveUid = uidParam || tgUserId;
   if (!effectiveUid) {
-    showError("Откройте мини-приложение из чата с ботом после расчёта.");
+    showError(L.openFromChat);
     return false;
   }
   try {
     const response = await fetch(`data/${effectiveUid}`, { method: "GET" });
     if (!response.ok) {
-      showError("Данные пока недоступны. Сначала пройдите расчёт в боте.");
+      showError(L.noData);
       return false;
     }
     contentData = await response.json();
     return true;
   } catch (err) {
     console.error(err);
-    showError("Ошибка загрузки данных.");
+    showError(L.loadError);
     return false;
   }
 }
@@ -396,7 +516,7 @@ async function init() {
     try {
       contentData = JSON.parse(decodeURIComponent(dataParam));
     } catch {
-      showError("Ошибка формата данных в ссылке.");
+      showError(L.badLink);
       return;
     }
   } else {
@@ -404,6 +524,7 @@ async function init() {
     if (!ok) return;
   }
 
+  applyLocale(contentData?.locale || (location.hostname.startsWith("ps-") ? "en" : "ru"));
   renderCover();
   showScreen("cover");
 
