@@ -62,6 +62,7 @@ UI = {
             "Дата должна быть в формате ДД.ММ.ГГГГ\n\n"
             "Пример:\nИванов Иван Иванович 12.05.1991"
         ),
+        "pdf_description_heading": "ОПИСАНИЕ",
         "pdf_title": "Паспорт Души",
         "pdf_subtitle": "Персональный нумерологический отчёт",
         "pdf_birth": "Дата рождения: {birth_date}",
@@ -200,6 +201,7 @@ UI = {
             "The date must be DD.MM.YYYY\n\n"
             "Example:\nSmith John 12.05.1991"
         ),
+        "pdf_description_heading": "DESCRIPTION",
         "pdf_title": "Soul Passport",
         "pdf_subtitle": "Personal numerological report",
         "pdf_birth": "Date of birth: {birth_date}",

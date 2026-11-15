@@ -1318,7 +1318,7 @@ def _pdf_split_section_blocks(raw_text: str) -> list[tuple[str, str]]:
                 title, _ = pieces[-1]
                 pieces[-1] = (title, chunk)
             else:
-                pieces.append(("ОПИСАНИЕ", chunk))
+                pieces.append((t("pdf_description_heading"), chunk))
     return pieces
 
 
