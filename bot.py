@@ -2348,6 +2348,11 @@ async def send_mini_app_offer(
         await bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
 
+def passport_is_free_for(user_id: int | None) -> bool:
+    """Owner account walks the English path without a Stars charge."""
+    return bool(user_id) and int(user_id) == ADMIN_ID
+
+
 def passport_star_price() -> int:
     raw = os.getenv("PASSPORT_STARS", "2500").strip()
     try:
@@ -3379,6 +3384,20 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         pending = context.user_data.get("pending_pdf")
         if pending:
             pending["delivery_format"] = "pdf"
+        if is_en() and user and passport_is_free_for(user.id):
+            await query.message.reply_text(t("owner_free_pass"))
+            stored = user_storage.get(user.id) or {}
+            if stored.get("sections"):
+                ok = await send_pdf_report(
+                    update,
+                    stored["fio"],
+                    stored["birth_date"],
+                    stored["sections"],
+                    stored.get("calc_snapshot"),
+                )
+                if ok:
+                    await send_mini_app_offer(user.id, update=update)
+            return
         if is_en():
             await query.message.reply_text(t("stars_paywall").format(stars=passport_star_price()))
             await send_passport_stars_invoice(context.bot, query.message.chat_id)
@@ -4039,6 +4058,19 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             if ok:
                 increment_practitioner_usage_after_pdf(_uid)
+                await send_mini_app_offer(_uid, update=update)
+            return
+
+        if is_en() and passport_is_free_for(_uid):
+            await update.message.reply_text(t("owner_free_pass"))
+            ok = await send_pdf_report(
+                update,
+                fio,
+                birth_date,
+                pdf_sections,
+                calc_snapshot,
+            )
+            if ok:
                 await send_mini_app_offer(_uid, update=update)
             return
 

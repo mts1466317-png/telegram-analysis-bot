@@ -247,6 +247,7 @@ UI = {
         "stars_paywall": "Your Soul Passport is ready.\nPay {stars} Telegram Stars to receive the PDF and open the app.",
         "stars_invoice_description": "Personal Soul Passport: full reading, PDF, and mini app.",
         "stars_no_calc": "The calculation was not found. Enter your name and date again, then pay.",
+        "owner_free_pass": "Owner access: sending your Soul Passport without a Stars payment.",
     },
 }
 
