@@ -58,6 +58,65 @@ UI = {
             "Используйте только русский или только английский алфавит."
         ),
         "alphabet_cyrillic_required_hint": "",
+        "date_format_error": (
+            "Дата должна быть в формате ДД.ММ.ГГГГ\n\n"
+            "Пример:\nИванов Иван Иванович 12.05.1991"
+        ),
+        "pdf_title": "Паспорт Души",
+        "pdf_subtitle": "Персональный нумерологический отчёт",
+        "pdf_birth": "Дата рождения: {birth_date}",
+        "pdf_intro": (
+            "Документ сформирован на основе ФИО и дате рождения. "
+            "Ниже — сводная матрица сфер и развёрнутый текстовый разбор."
+        ),
+        "pdf_matrix": "Персональная матрица",
+        "pdf_col_sphere": "СФЕРА",
+        "pdf_col_vibration": "ВИБРАЦИЯ",
+        "pdf_col_planet": "ПЛАНЕТА",
+        "pdf_profile": "Итоговый профиль",
+        "pdf_profile_intro": "Краткая карта вашего профиля по ключевым сферам и числовым акцентам:",
+        "pdf_profile_line": "• {title} — вибрация {v} ({planet})",
+        "pdf_profile_line_plain": "• {title} ({planet})",
+        "pdf_age_line": (
+            "Текущий расчётный возраст: {age} полных лет. "
+            "Номер 7-летнего цикла: {cycle_number} "
+            "(полоса {cycle_start_age}–{cycle_end_age} лет); "
+            "энергия цикла — {cycle_energy} ({planet_cycle})."
+        ),
+        "pdf_share": (
+            "Если разбор откликается, вы можете поделиться им с тем, кому сейчас важно "
+            "лучше понять себя.\n\n"
+            "Контакт: @GodStatistics_bot\n"
+            "Статистика Души"
+        ),
+        "pdf_footer": "Статистика Души",
+        "pdf_page": "Стр. {page}",
+        "pdf_generating": "⏳ Генерирую PDF...",
+        "pdf_ready_status": "✅ PDF готов",
+        "pdf_failed": "❌ Не удалось создать PDF",
+        "pdf_not_found": "❌ PDF не найден после генерации",
+        "pdf_empty": "❌ PDF пустой",
+        "pdf_too_big": "❌ PDF слишком большой",
+        "pdf_caption": "Ваш персональный PDF-разбор готов.",
+        "pdf_filename_suffix": "Паспорт Души.pdf",
+        "payment_checking": "⏳ Проверяем оплату, это займёт до 1–2 минут",
+        "payment_confirmed": "✅ Оплата подтверждена! Отправляю ваш Паспорт Души.",
+        "payment_rejected": "❌ Платёж не подтверждён. Проверь перевод и попробуй снова.",
+        "calc_not_found": "❌ Данные расчёта не найдены. Пожалуйста, сделай расчёт заново.",
+        "pdf_create_failed": "❌ Не удалось создать PDF. Обратитесь в поддержку.",
+        "pdf_error": "❌ Ошибка при генерации PDF. Обратитесь в поддержку.",
+        "after_pdf": (
+            "Запомни этот момент и воспользуйся полученной информацией со всей любовью и мудростью. "
+            "Сейчас ты прикоснулся к более глубокому пониманию себя. "
+            "Я рядом как проводник и понимаю, насколько ценно не потерять импульс 🤍\n\n"
+            "Если почувствуешь отклик — продолжим путь в удобном для тебя формате 🙏"
+        ),
+        "btn_new_calc": "🔮 Новый расчет Паспорта Души",
+        "btn_share": "📢 Поделиться с другом",
+        "btn_feedback": "💬 Оставить отзыв",
+        "btn_consult": "🕊 Записаться на личный разбор",
+        "section_cycle_n": "Текущий 7-летний цикл ({n}-й)",
+        "latin_only_error": "",
     },
     "en": {
         "start_welcome": "Your initials and date of birth already hold all the answers🌟",
@@ -116,6 +175,65 @@ UI = {
         "alphabet_cyrillic_required_hint": (
             "❌ Please use Latin letters only (English spelling of the name)."
         ),
+        "date_format_error": (
+            "The date must be DD.MM.YYYY\n\n"
+            "Example:\nSmith John 12.05.1991"
+        ),
+        "pdf_title": "Soul Passport",
+        "pdf_subtitle": "Personal numerological report",
+        "pdf_birth": "Date of birth: {birth_date}",
+        "pdf_intro": (
+            "This document is built from your legal name and date of birth. "
+            "Below is the sphere matrix and the full written reading."
+        ),
+        "pdf_matrix": "Personal matrix",
+        "pdf_col_sphere": "SPHERE",
+        "pdf_col_vibration": "VIBRATION",
+        "pdf_col_planet": "PLANET",
+        "pdf_profile": "Final profile",
+        "pdf_profile_intro": "A short map of your profile across the key spheres and number accents:",
+        "pdf_profile_line": "• {title} — vibration {v} ({planet})",
+        "pdf_profile_line_plain": "• {title} ({planet})",
+        "pdf_age_line": (
+            "Current calculated age: {age} full years. "
+            "7-year cycle number: {cycle_number} "
+            "(ages {cycle_start_age}–{cycle_end_age}); "
+            "cycle energy — {cycle_energy} ({planet_cycle})."
+        ),
+        "pdf_share": (
+            "If this reading resonates, you can share it with someone who needs "
+            "a clearer view of themselves right now.\n\n"
+            "Contact: @SoulPassportBot\n"
+            "Soul Passport"
+        ),
+        "pdf_footer": "Soul Passport",
+        "pdf_page": "Page {page}",
+        "pdf_generating": "⏳ Creating your PDF...",
+        "pdf_ready_status": "✅ PDF is ready",
+        "pdf_failed": "❌ Could not create the PDF",
+        "pdf_not_found": "❌ PDF was not found after generation",
+        "pdf_empty": "❌ The PDF is empty",
+        "pdf_too_big": "❌ The PDF is too large",
+        "pdf_caption": "Your personal Soul Passport PDF is ready.",
+        "pdf_filename_suffix": "Soul Passport.pdf",
+        "payment_checking": "⏳ We are checking the payment. This takes up to 1–2 minutes.",
+        "payment_confirmed": "✅ Payment confirmed. Sending your Soul Passport.",
+        "payment_rejected": "❌ Payment was not confirmed. Check the transfer and try again.",
+        "calc_not_found": "❌ The calculation was not found. Please enter your details again.",
+        "pdf_create_failed": "❌ Could not create the PDF. Please contact support.",
+        "pdf_error": "❌ PDF generation failed. Please contact support.",
+        "after_pdf": (
+            "Keep this moment and use what you received with care and clarity. "
+            "You just touched a deeper reading of yourself. "
+            "I am here as a guide, and the next step can wait until you are ready.\n\n"
+            "If it resonates, we can continue in a form that suits you."
+        ),
+        "btn_new_calc": "🔮 New Soul Passport",
+        "btn_share": "📢 Share with a friend",
+        "btn_feedback": "💬 Leave feedback",
+        "btn_consult": "🕊 Book a personal reading",
+        "section_cycle_n": "Current 7-year cycle ({n})",
+        "latin_only_error": "❌ Please use Latin letters only (English spelling of the name).",
     },
 }
 

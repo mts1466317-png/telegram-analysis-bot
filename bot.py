@@ -11,6 +11,7 @@ import json
 import tempfile
 from urllib.parse import quote
 
+from app_locale import is_en, planet_label
 from env_token import resolve_bot_token
 from locales import t
 from snapshot_store import load_last_snapshot, save_last_snapshot
@@ -1175,6 +1176,38 @@ CYCLE_BODY = {
     },
 }
 
+def _load_en_content_if_needed() -> None:
+    """EN service swaps interpretive texts. RU keys stay so lookups do not change."""
+    if not is_en():
+        return
+    try:
+        from locales import content_en
+    except Exception as exc:
+        print(f"⚠️ EN content pack missing, PDF bodies stay in Russian: {exc}")
+        return
+    names = (
+        "PHYSICAL_BODY",
+        "ASTRAL_BODY",
+        "MENTAL_BODY",
+        "LIFE_TASK_BODY",
+        "ANCESTRAL_EGREGOR_BODY",
+        "HIGHER_SELF_BODY",
+        "ANCESTRAL_PROGRAM_BODY",
+        "SOCIAL_TASK_BODY",
+        "TASK_COMBO_BODY",
+        "CYCLE_BODY",
+    )
+    loaded = 0
+    for name in names:
+        body = getattr(content_en, name, None)
+        if isinstance(body, dict) and body:
+            globals()[name] = body
+            loaded += 1
+    print(f"📌 EN content bodies loaded: {loaded}")
+
+
+_load_en_content_if_needed()
+
 # =========================
 # Математика
 # =========================
@@ -1212,8 +1245,13 @@ def detect_alphabet(text: str) -> str:
 
 
 def letters_sum(text: str) -> int:
+    """RU bot: Russian map, Latin as fallback. EN bot: American alphabet only."""
     total = 0
     for ch in text:
+        upper = ch.upper()
+        if is_en():
+            total += ENGLISH_LETTER_MAP.get(upper, 0)
+            continue
         val = _letter_value(ch)
         if val:
             total += val
@@ -1284,8 +1322,22 @@ def _pdf_planet_label_with_emoji(planet_name: str) -> str:
         "Уран": "♅",
         "Нептун": "♆",
         "Плутон": "♇",
+        "Sun": "☉",
+        "Moon": "☽",
+        "Mercury": "☿",
+        "Venus": "♀",
+        "Mars": "♂",
+        "Jupiter": "♃",
+        "Saturn": "♄",
+        "Uranus": "♅",
+        "Neptune": "♆",
+        "Pluto": "♇",
     }
-    base_name = planet_name.replace(" (мастер)", "").strip()
+    base_name = (
+        planet_name.replace(" (мастер)", "")
+        .replace(" (master)", "")
+        .strip()
+    )
     emoji = emoji_map.get(base_name, "🪐")
     return f"{emoji} {planet_name.upper()}"
 
@@ -1650,38 +1702,35 @@ def build_pdf_report(
 
     # Титульная страница
     story.append(Spacer(1, 3.2 * cm))
-    story.append(Paragraph(_pdf_flowable_text("Паспорт Души"), title_style))
+    story.append(Paragraph(_pdf_flowable_text(t("pdf_title")), title_style))
     story.append(
         Paragraph(
-            _pdf_flowable_text("Персональный нумерологический отчёт"),
+            _pdf_flowable_text(t("pdf_subtitle")),
             subtitle_style,
         )
     )
     story.append(Spacer(1, 1.4 * cm))
     story.append(Paragraph(f"<b>{html.escape(fio, quote=False)}</b>", fio_title_style))
     story.append(
-        Paragraph(_pdf_flowable_text(f"Дата рождения: {birth_date}"), body_center_style)
+        Paragraph(_pdf_flowable_text(t("pdf_birth").format(birth_date=birth_date)), body_center_style)
     )
     story.append(Spacer(1, 1.2 * cm))
     story.append(
         Paragraph(
-            _pdf_flowable_text(
-                "Документ сформирован на основе ФИО и дате рождения. "
-                "Ниже — сводная матрица сфер и развёрнутый текстовый разбор."
-            ),
+            _pdf_flowable_text(t("pdf_intro")),
             body_style,
         )
     )
     story.append(PageBreak())
 
     # Персональная матрица
-    story.append(Paragraph(_pdf_flowable_text("Персональная матрица"), section_style))
+    story.append(Paragraph(_pdf_flowable_text(t("pdf_matrix")), section_style))
     story.append(Spacer(1, 0.25 * cm))
     summary_rows = [
         [
-            Paragraph("<b>СФЕРА</b>", tbl_head),
-            Paragraph("<b>ВИБРАЦИЯ</b>", tbl_head),
-            Paragraph("<b>ПЛАНЕТА</b>", tbl_head),
+            Paragraph(f"<b>{html.escape(t('pdf_col_sphere'))}</b>", tbl_head),
+            Paragraph(f"<b>{html.escape(t('pdf_col_vibration'))}</b>", tbl_head),
+            Paragraph(f"<b>{html.escape(t('pdf_col_planet'))}</b>", tbl_head),
         ],
     ]
     for s in sections:
@@ -1739,36 +1788,30 @@ def build_pdf_report(
 
     # Итоговый профиль
     story.append(PageBreak())
-    story.append(Paragraph(_pdf_flowable_text("Итоговый профиль"), section_style))
+    story.append(Paragraph(_pdf_flowable_text(t("pdf_profile")), section_style))
     profile_lines: list[str] = []
     for s in sections:
         v = s.get("vibration")
         if v is not None and str(v).strip() != "":
-            profile_lines.append(f"• {s['title']} — вибрация {v} ({s.get('planet', '')})")
+            profile_lines.append(t("pdf_profile_line").format(title=s["title"], v=v, planet=s.get("planet", "")))
         else:
-            profile_lines.append(f"• {s['title']} ({s.get('planet', '')})")
-    brief = (
-        "Краткая карта вашего профиля по ключевым сферам и числовым акцентам:\n\n"
-        + "\n".join(profile_lines)
-    )
+            profile_lines.append(t("pdf_profile_line_plain").format(title=s["title"], planet=s.get("planet", "")))
+    brief = t("pdf_profile_intro") + "\n\n" + "\n".join(profile_lines)
     if calc_snapshot:
         cs = calc_snapshot
-        brief += (
-            f"\n\nТекущий расчётный возраст: {cs['age']} полных лет. "
-            f"Номер 7-летнего цикла: {cs['cycle_number']} "
-            f"(полоса {cs['cycle_start_age']}–{cs['cycle_end_age']} лет); "
-            f"энергия цикла — {cs['cycle_energy']} ({cs['planet_cycle']})."
+        brief += "\n\n" + t("pdf_age_line").format(
+            age=cs["age"],
+            cycle_number=cs["cycle_number"],
+            cycle_start_age=cs["cycle_start_age"],
+            cycle_end_age=cs["cycle_end_age"],
+            cycle_energy=cs["cycle_energy"],
+            planet_cycle=cs["planet_cycle"],
         )
     story.append(Paragraph(_pdf_flowable_text(brief), body_style))
     story.append(Spacer(1, 0.6 * cm))
     story.append(
         Paragraph(
-            _pdf_flowable_text(
-                "Если разбор откликается, вы можете поделиться им с тем, кому сейчас важно "
-                "лучше понять себя.\n\n"
-                "Контакт: @GodStatistics_bot\n"
-                "Статистика Души"
-            ),
+            _pdf_flowable_text(t("pdf_share")),
             body_center_style,
         )
     )
@@ -1785,8 +1828,8 @@ def build_pdf_report(
         canvas.rect(0, 0, width, 1.05 * cm, stroke=0, fill=1)
         canvas.setFont(font_name, 8)
         canvas.setFillColor(C_FOOTER_TXT)
-        canvas.drawString(1.6 * cm, 0.32 * cm, "Статистика Души")
-        canvas.drawRightString(width - 1.6 * cm, 0.32 * cm, f"Стр. {doc_obj.page}")
+        canvas.drawString(1.6 * cm, 0.32 * cm, t("pdf_footer"))
+        canvas.drawRightString(width - 1.6 * cm, 0.32 * cm, t("pdf_page").format(page=doc_obj.page))
         canvas.restoreState()
 
     def _draw_cover_page(canvas, doc_obj):
@@ -1801,8 +1844,8 @@ def build_pdf_report(
         canvas.rect(0, 0, width, 1.05 * cm, stroke=0, fill=1)
         canvas.setFont(font_name, 8)
         canvas.setFillColor(C_FOOTER_TXT)
-        canvas.drawString(1.6 * cm, 0.32 * cm, "Статистика Души")
-        canvas.drawRightString(width - 1.6 * cm, 0.32 * cm, f"Стр. {doc_obj.page}")
+        canvas.drawString(1.6 * cm, 0.32 * cm, t("pdf_footer"))
+        canvas.drawRightString(width - 1.6 * cm, 0.32 * cm, t("pdf_page").format(page=doc_obj.page))
         canvas.restoreState()
 
     try:
@@ -1831,7 +1874,7 @@ async def send_pdf_report(
         print("❌ Нет chat для отправки PDF")
         return False
 
-    status_msg = await update.effective_chat.send_message("⏳ Генерирую PDF...")
+    status_msg = await update.effective_chat.send_message(t("pdf_generating"))
 
     pdf_path = None
 
@@ -1841,23 +1884,23 @@ async def send_pdf_report(
 
         if not pdf_path:
             print("❌ build_pdf_report вернул None")
-            await status_msg.edit_text("❌ Не удалось создать PDF")
+            await status_msg.edit_text(t("pdf_failed"))
             return False
 
         if not os.path.exists(pdf_path):
             print(f"❌ Файл не найден: {pdf_path}")
-            await status_msg.edit_text("❌ PDF не найден после генерации")
+            await status_msg.edit_text(t("pdf_not_found"))
             return False
 
         file_size = os.path.getsize(pdf_path)
         print(f"📦 Размер PDF: {file_size}")
 
         if file_size == 0:
-            await status_msg.edit_text("❌ PDF пустой")
+            await status_msg.edit_text(t("pdf_empty"))
             return False
 
         if file_size > 50 * 1024 * 1024:
-            await status_msg.edit_text("❌ PDF слишком большой")
+            await status_msg.edit_text(t("pdf_too_big"))
             return False
 
         # ASCII-имя файла — кириллица в multipart filename часто ломает клиенты/API
@@ -1871,14 +1914,14 @@ async def send_pdf_report(
         caption = (
             "PDF Паспорта Души для клиента готов."
             if for_practitioner
-            else "Ваш персональный PDF-разбор готов."
+            else t("pdf_caption")
         )
         await update.effective_chat.send_document(
             document=InputFile(pdf_bytes, filename=pdf_filename),
             caption=caption,
         )
 
-        await status_msg.edit_text("✅ PDF готов")
+        await status_msg.edit_text(t("pdf_ready_status"))
 
         if for_practitioner:
             keyboard = InlineKeyboardMarkup([
@@ -2283,7 +2326,8 @@ async def send_mini_app_offer(
     chat_id: int | None = None,
     prefix: str | None = None,
 ) -> None:
-    if not user_id:
+    # English bot: mini app comes later. Do not offer it on the EN path.
+    if is_en() or not user_id:
         return
     text = prefix or (
         "Интерактивный Паспорт Души готов — откройте мини-приложение, "
@@ -3264,7 +3308,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "chat_id": query.message.chat_id,
             }
 
-        await query.message.reply_text("⏳ Проверяем оплату, это займёт до 1–2 минут")
+        await query.message.reply_text(t("payment_checking"))
 
         admin_keyboard = InlineKeyboardMarkup([
             [
@@ -3410,7 +3454,7 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
             print(f"⚠️ user_storage miss for {user_id}")
             await context.bot.send_message(
                 chat_id=user_id,
-                text="❌ Данные расчёта не найдены. Пожалуйста, сделай расчёт заново.",
+                text=t("calc_not_found"),
             )
             try:
                 await query.edit_message_text("❌ Данные не найдены")
@@ -3420,7 +3464,7 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
 
         await context.bot.send_message(
             chat_id=user_id,
-            text="✅ Оплата подтверждена! Отправляю ваш Паспорт Души.",
+            text=t("payment_confirmed"),
         )
         print(f"📄 SEND FORMAT TO: {user_id} (pdf)")
         try:
@@ -3436,8 +3480,8 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
                 safe_fio = re.sub(r"[\\/:*?\"<>|]+", "", raw_fio)
                 safe_fio = re.sub(r"\s+", " ", safe_fio).strip()
                 if not safe_fio:
-                    safe_fio = "Паспорт Души"
-                pdf_filename = f"{safe_fio}, Паспорт Души.pdf"
+                    safe_fio = t("pdf_title")
+                pdf_filename = f"{safe_fio}, {t('pdf_filename_suffix')}"
                 with open(pdf_path, "rb") as f:
                     await context.bot.send_document(
                         chat_id=user_id,
@@ -3452,29 +3496,24 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
             else:
                 await context.bot.send_message(
                     chat_id=user_id,
-                    text="❌ Не удалось создать PDF. Обратитесь в поддержку.",
+                    text=t("pdf_create_failed"),
                 )
             warm_keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔮 Новый расчет Паспорта Души", callback_data="get_stats")],
-                [InlineKeyboardButton("📢 Поделиться с другом", callback_data="share_bot")],
-                [InlineKeyboardButton("💬 Оставить отзыв", callback_data="feedback_open")],
-                [InlineKeyboardButton("🕊 Записаться на личный разбор", callback_data="consult_higher_self")],
+                [InlineKeyboardButton(t("btn_new_calc"), callback_data="get_stats")],
+                [InlineKeyboardButton(t("btn_share"), callback_data="share_bot")],
+                [InlineKeyboardButton(t("btn_feedback"), callback_data="feedback_open")],
+                [InlineKeyboardButton(t("btn_consult"), callback_data="consult_higher_self")],
             ])
             await context.bot.send_message(
                 chat_id=user_id,
-                text=(
-                    "Запомни этот момент и воспользуйся полученной информацией со всей любовью и мудростью. "
-                    "Сейчас ты прикоснулся к более глубокому пониманию себя. "
-                    "Я рядом как проводник и понимаю, насколько ценно не потерять импульс 🤍\n\n"
-                    "Если почувствуешь отклик — продолжим путь в удобном для тебя формате 🙏"
-                ),
+                text=t("after_pdf"),
                 reply_markup=warm_keyboard,
             )
         except Exception as e:
             print("ERROR in admin_payment_callback (approve):", e)
             await context.bot.send_message(
                 chat_id=user_id,
-                text="❌ Ошибка при генерации PDF. Обратитесь в поддержку.",
+                text=t("pdf_error"),
             )
 
         _payment_pending.pop(user_id_str, None)
@@ -3491,7 +3530,7 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
                 "Если перевод уже ушёл — напиши проводнику, мы разберёмся без суеты."
             )
         else:
-            reject_text = "❌ Платёж не подтверждён. Проверь перевод и попробуй снова."
+            reject_text = t("payment_rejected")
         await context.bot.send_message(chat_id=user_id, text=reject_text)
         try:
             await query.edit_message_text("❌ Платёж отклонён")
@@ -3653,16 +3692,24 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(t("input_format_error"))
             return
 
-        if len(parts) == 3:
+        if is_en():
+            # American order: Last First [Middle] DD.MM.YYYY
+            if len(parts) == 3:
+                surname, name, birth_date = parts
+                patronymic = "-"
+            else:
+                surname, name, patronymic, birth_date = parts
+            name_blob = f"{surname} {name} {patronymic}"
+            if any("\u0400" <= ch <= "\u04FF" for ch in name_blob):
+                await update.message.reply_text(t("latin_only_error"))
+                return
+        elif len(parts) == 3:
             name, surname, birth_date = parts
             patronymic = "-"
         else:
             surname, name, patronymic, birth_date = parts
         if not re.match(r"^\d{2}\.\d{2}\.\d{4}$", birth_date):
-            await update.message.reply_text(
-                "Дата должна быть в формате ДД.ММ.ГГГГ\n\n"
-                "Пример:\nИван Иванов 12.05.1991"
-            )
+            await update.message.reply_text(t("date_format_error"))
             return
 
         submitted_user_id = update.effective_user.id if update.effective_user else None
@@ -3712,16 +3759,16 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pdf_sections = []
         try:
             blocks = [
-                f"1️⃣ Физическое тело\nПланета: {PLANETS[physical]}\n{block_description(physical, PHYSICAL_BODY)}",
-                f"2️⃣ Астральное тело\nПланета: {PLANETS[astral]}\n{block_description(astral, ASTRAL_BODY)}",
-                f"3️⃣ Ментальное тело\nПланета: {PLANETS[mental]}\n{block_description(mental, MENTAL_BODY)}",
-                f"4️⃣ Жизненная задача\nПланета: {PLANETS[life_task]}\n{block_description(life_task, LIFE_TASK_BODY)}",
-                f"5️⃣ Родовой эгрегор\nПланета: {PLANETS[ancestral_egregor]}\n{block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)}",
-                f"6️⃣ Высшее Я\nПланета: {PLANETS[higher_self]}\n{block_description(higher_self, HIGHER_SELF_BODY)}",
-                f"7️⃣ Родовая программа\nПланета: {PLANETS[ancestral_program]}\n{block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)}",
-                f"8️⃣ Социальная задача\nПланета: {PLANETS[social_task]}\n{block_description(social_task, SOCIAL_TASK_BODY)}",
-                f"9️⃣ Сочетание жизненной и социальной задач\nПланета: {PLANETS[task_combo]}\n{block_description(task_combo, TASK_COMBO_BODY)}",
-                f"🔄 Текущий 7-летний цикл ({cycle_number}-й, возраст {cycle_start_age}-{cycle_end_age} лет) — {PLANETS[cycle_energy]}\n{cycle_description(cycle_energy, CYCLE_BODY)}",
+                f"1️⃣ {t('section_physical')}\n{t('planet_prefix')} {planet_label(physical)}\n{block_description(physical, PHYSICAL_BODY)}",
+                f"2️⃣ {t('section_astral')}\n{t('planet_prefix')} {planet_label(astral)}\n{block_description(astral, ASTRAL_BODY)}",
+                f"3️⃣ {t('section_mental')}\n{t('planet_prefix')} {planet_label(mental)}\n{block_description(mental, MENTAL_BODY)}",
+                f"4️⃣ {t('section_life')}\n{t('planet_prefix')} {planet_label(life_task)}\n{block_description(life_task, LIFE_TASK_BODY)}",
+                f"5️⃣ {t('section_egregor')}\n{t('planet_prefix')} {planet_label(ancestral_egregor)}\n{block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)}",
+                f"6️⃣ {t('section_higher')}\n{t('planet_prefix')} {planet_label(higher_self)}\n{block_description(higher_self, HIGHER_SELF_BODY)}",
+                f"7️⃣ {t('section_program')}\n{t('planet_prefix')} {planet_label(ancestral_program)}\n{block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)}",
+                f"8️⃣ {t('section_social')}\n{t('planet_prefix')} {planet_label(social_task)}\n{block_description(social_task, SOCIAL_TASK_BODY)}",
+                f"9️⃣ {t('section_combo')}\n{t('planet_prefix')} {planet_label(task_combo)}\n{block_description(task_combo, TASK_COMBO_BODY)}",
+                f"🔄 {t('section_cycle_n').format(n=cycle_number)} ({cycle_start_age}-{cycle_end_age}) — {planet_label(cycle_energy)}\n{cycle_description(cycle_energy, CYCLE_BODY)}",
             ]
             
             # Формируем структуру результата для сохранения
@@ -3746,39 +3793,39 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 },
                 "physical": {
                     "title": "Физическое тело. Качества, формирующие здоровье физического тела.",
-                    "text": f"Планета: {PLANETS[physical]}\n\n{block_description(physical, PHYSICAL_BODY)}"
+                    "text": f"{t('planet_prefix')} {planet_label(physical)}\n\n{block_description(physical, PHYSICAL_BODY)}"
                 },
                 "astral": {
                     "title": "Астральное тело. Качества, из которых формируются чувства и эмоции.",
-                    "text": f"Планета: {PLANETS[astral]}\n\n{block_description(astral, ASTRAL_BODY)}"
+                    "text": f"{t('planet_prefix')} {planet_label(astral)}\n\n{block_description(astral, ASTRAL_BODY)}"
                 },
                 "mental": {
                     "title": "Ментальное тело. Качества, из которых формируются представления об окружающем мире, разумные мысли и интуитивные представления.",
-                    "text": f"Планета: {PLANETS[mental]}\n\n{block_description(mental, MENTAL_BODY)}"
+                    "text": f"{t('planet_prefix')} {planet_label(mental)}\n\n{block_description(mental, MENTAL_BODY)}"
                 },
                 "life": {
                     "title": "Жизненная задача воплощённого духа, качества, которые он должен приобрести во время воплощения.",
-                    "text": f"Планета: {PLANETS[life_task]}\n\n{block_description(life_task, LIFE_TASK_BODY)}"
+                    "text": f"{t('planet_prefix')} {planet_label(life_task)}\n\n{block_description(life_task, LIFE_TASK_BODY)}"
                 },
                 "egregor": {
                     "title": "Вибрации родового эгрегора. Настрой на вибрации родового эгрегора помогает в достижении жизненных задач воплощённого духа.",
-                    "text": f"Планета: {PLANETS[ancestral_egregor]}\n\n{block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)}"
+                    "text": f"{t('planet_prefix')} {planet_label(ancestral_egregor)}\n\n{block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)}"
                 },
                 "higher": {
                     "title": "Вибрация духовной сущности – Высшего Я. Качества, наработанные в прошлых воплощениях. Энергетика Высшего Я.",
-                    "text": f"Планета: {PLANETS[higher_self]}\n\n{block_description(higher_self, HIGHER_SELF_BODY)}"
+                    "text": f"{t('planet_prefix')} {planet_label(higher_self)}\n\n{block_description(higher_self, HIGHER_SELF_BODY)}"
                 },
                 "program": {
                     "title": "Родовая программа. Задача рода, выполнение которой будет возмещением энергозатрат на воплощение через родовой эгрегор.",
-                    "text": f"Планета: {PLANETS[ancestral_program]}\n\n{block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)}"
+                    "text": f"{t('planet_prefix')} {planet_label(ancestral_program)}\n\n{block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)}"
                 },
                 "social": {
                     "title": "Социальная задача. Это ожидания эгрегоров Земли при воплощении духа.",
-                    "text": f"Планета: {PLANETS[social_task]}\n\n{block_description(social_task, SOCIAL_TASK_BODY)}"
+                    "text": f"{t('planet_prefix')} {planet_label(social_task)}\n\n{block_description(social_task, SOCIAL_TASK_BODY)}"
                 },
                 "combo": {
                     "title": "Сочетание жизненной и социальной задач – вибрация, на которую нужно обратить особое внимание.",
-                    "text": f"Планета: {PLANETS[task_combo]}\n\n{block_description(task_combo, TASK_COMBO_BODY)}"
+                    "text": f"{t('planet_prefix')} {planet_label(task_combo)}\n\n{block_description(task_combo, TASK_COMBO_BODY)}"
                 }
             }
 
@@ -3800,42 +3847,42 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "year": year,
                 "date_digits_sum": date_digits_sum,
                 "physical": physical,
-                "planet_physical": PLANETS[physical],
+                "planet_physical": planet_label(physical),
                 "astral": astral,
-                "planet_astral": PLANETS[astral],
+                "planet_astral": planet_label(astral),
                 "mental": mental,
-                "planet_mental": PLANETS[mental],
+                "planet_mental": planet_label(mental),
                 "life_task": life_task,
-                "planet_life": PLANETS[life_task],
+                "planet_life": planet_label(life_task),
                 "ancestral_egregor": ancestral_egregor,
-                "planet_egregor": PLANETS[ancestral_egregor],
+                "planet_egregor": planet_label(ancestral_egregor),
                 "higher_self": higher_self,
-                "planet_higher": PLANETS[higher_self],
+                "planet_higher": planet_label(higher_self),
                 "ancestral_program": ancestral_program,
-                "planet_program": PLANETS[ancestral_program],
+                "planet_program": planet_label(ancestral_program),
                 "social_task": social_task,
-                "planet_social": PLANETS[social_task],
+                "planet_social": planet_label(social_task),
                 "task_combo": task_combo,
-                "planet_combo": PLANETS[task_combo],
+                "planet_combo": planet_label(task_combo),
                 "age": age,
                 "cycle_number": cycle_number,
                 "cycle_start_age": cycle_start_age,
                 "cycle_end_age": cycle_end_age,
                 "cycle_energy": cycle_energy,
-                "planet_cycle": PLANETS[cycle_energy],
+                "planet_cycle": planet_label(cycle_energy),
             }
 
             pdf_sections = [
-                {"title": "Физическое тело", "vibration": physical, "planet": PLANETS[physical], "text": block_description(physical, PHYSICAL_BODY)},
-                {"title": "Астральное тело", "vibration": astral, "planet": PLANETS[astral], "text": block_description(astral, ASTRAL_BODY)},
-                {"title": "Ментальное тело", "vibration": mental, "planet": PLANETS[mental], "text": block_description(mental, MENTAL_BODY)},
-                {"title": "Жизненная задача", "vibration": life_task, "planet": PLANETS[life_task], "text": block_description(life_task, LIFE_TASK_BODY)},
-                {"title": "Родовой эгрегор", "vibration": ancestral_egregor, "planet": PLANETS[ancestral_egregor], "text": block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)},
-                {"title": "Высшее Я", "vibration": higher_self, "planet": PLANETS[higher_self], "text": block_description(higher_self, HIGHER_SELF_BODY)},
-                {"title": "Родовая программа", "vibration": ancestral_program, "planet": PLANETS[ancestral_program], "text": block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)},
-                {"title": "Социальная задача", "vibration": social_task, "planet": PLANETS[social_task], "text": block_description(social_task, SOCIAL_TASK_BODY)},
-                {"title": "Сочетание задач", "vibration": task_combo, "planet": PLANETS[task_combo], "text": block_description(task_combo, TASK_COMBO_BODY)},
-                {"title": f"Текущий 7-летний цикл ({cycle_number}-й)", "vibration": cycle_energy, "planet": PLANETS[cycle_energy], "text": cycle_description(cycle_energy, CYCLE_BODY)},
+                {"title": t("section_physical"), "vibration": physical, "planet": planet_label(physical), "text": block_description(physical, PHYSICAL_BODY)},
+                {"title": t("section_astral"), "vibration": astral, "planet": planet_label(astral), "text": block_description(astral, ASTRAL_BODY)},
+                {"title": t("section_mental"), "vibration": mental, "planet": planet_label(mental), "text": block_description(mental, MENTAL_BODY)},
+                {"title": t("section_life"), "vibration": life_task, "planet": planet_label(life_task), "text": block_description(life_task, LIFE_TASK_BODY)},
+                {"title": t("section_egregor"), "vibration": ancestral_egregor, "planet": planet_label(ancestral_egregor), "text": block_description(ancestral_egregor, ANCESTRAL_EGREGOR_BODY)},
+                {"title": t("section_higher"), "vibration": higher_self, "planet": planet_label(higher_self), "text": block_description(higher_self, HIGHER_SELF_BODY)},
+                {"title": t("section_program"), "vibration": ancestral_program, "planet": planet_label(ancestral_program), "text": block_description(ancestral_program, ANCESTRAL_PROGRAM_BODY)},
+                {"title": t("section_social"), "vibration": social_task, "planet": planet_label(social_task), "text": block_description(social_task, SOCIAL_TASK_BODY)},
+                {"title": t("section_combo"), "vibration": task_combo, "planet": planet_label(task_combo), "text": block_description(task_combo, TASK_COMBO_BODY)},
+                {"title": t("section_cycle_n").format(n=cycle_number), "vibration": cycle_energy, "planet": planet_label(cycle_energy), "text": cycle_description(cycle_energy, CYCLE_BODY)},
             ]
             
         except Exception as e:
