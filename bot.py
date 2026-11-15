@@ -2348,9 +2348,21 @@ async def send_mini_app_offer(
         await bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
 
 
-def passport_is_free_for(user_id: int | None) -> bool:
-    """Owner account walks the English path without a Stars charge."""
-    return bool(user_id) and int(user_id) == ADMIN_ID
+FREE_PASSPORT_USERNAMES = {"octaviachi"}
+
+
+def passport_is_free_for(user) -> bool:
+    """Owner and listed accounts walk the English path without a Stars charge."""
+    if user is None:
+        return False
+    user_id = getattr(user, "id", user)
+    try:
+        if int(user_id) == ADMIN_ID:
+            return True
+    except (TypeError, ValueError):
+        return False
+    username = getattr(user, "username", None)
+    return bool(username) and username.lstrip("@").lower() in FREE_PASSPORT_USERNAMES
 
 
 def passport_star_price() -> int:
@@ -3384,7 +3396,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         pending = context.user_data.get("pending_pdf")
         if pending:
             pending["delivery_format"] = "pdf"
-        if is_en() and user and passport_is_free_for(user.id):
+        if is_en() and user and passport_is_free_for(user):
             await query.message.reply_text(t("owner_free_pass"))
             stored = user_storage.get(user.id) or {}
             if stored.get("sections"):
@@ -4061,7 +4073,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_mini_app_offer(_uid, update=update)
             return
 
-        if is_en() and passport_is_free_for(_uid):
+        if is_en() and passport_is_free_for(update.effective_user):
             await update.message.reply_text(t("owner_free_pass"))
             ok = await send_pdf_report(
                 update,
