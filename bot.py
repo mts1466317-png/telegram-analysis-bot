@@ -1943,10 +1943,10 @@ async def send_pdf_report(
             follow = "Продолжай в своём ритме — система рядом."
         else:
             keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔮 Новый разбор", callback_data="get_stats")],
-                [InlineKeyboardButton("💝 Поддержать проект", callback_data="support_project")],
+                [InlineKeyboardButton(t("btn_new_reading"), callback_data="get_stats")],
+                [InlineKeyboardButton(t("btn_support_project"), callback_data="support_project")],
             ])
-            follow = "Хочешь разобрать ещё или пойти глубже?"
+            follow = t("after_pdf_follow")
 
         await update.effective_chat.send_message(follow, reply_markup=keyboard)
         return True
@@ -3332,22 +3332,12 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             reply_markup=keyboard
         )
     elif data == "support_project":
-        text = (
-            "💝 Поддержать проект\n\n"
-            "Если статистика была для вас полезна,\n"
-            "вы можете поддержать развитие проекта.\n\n"
-            "Реквизиты для доната:\n\n"
-            "Банк: Т-Банк\n"
-            "Карта: <code>2200 7008 8290 3809</code>\n"
-            "Нажми на номер карты, чтобы скопировать 👆\n"
-            "Получатель: Кристина Г\n\n"
-            "После перевода нажмите кнопку «Я оплатил»."
-        )
+        text = t("support_text")
 
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📋 Скопировать номер карты", callback_data="copy_card")],
-            [InlineKeyboardButton("💝 Я оплатил", callback_data="donate_paid")],
-            [InlineKeyboardButton("⬅️ Назад", callback_data="back_menu")],
+            [InlineKeyboardButton(t("btn_copy_card"), callback_data="copy_card")],
+            [InlineKeyboardButton(t("btn_i_donated"), callback_data="donate_paid")],
+            [InlineKeyboardButton(t("btn_back"), callback_data="back_menu")],
         ])
 
         await query.message.reply_text(

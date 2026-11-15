@@ -111,6 +111,22 @@ UI = {
             "Я рядом как проводник и понимаю, насколько ценно не потерять импульс 🤍\n\n"
             "Если почувствуешь отклик — продолжим путь в удобном для тебя формате 🙏"
         ),
+        "after_pdf_follow": "Хочешь разобрать ещё или пойти глубже?",
+        "btn_new_reading": "🔮 Новый разбор",
+        "btn_support_project": "💝 Поддержать проект",
+        "btn_back": "⬅️ Назад",
+        "support_text": (
+            "💝 Поддержать проект\n\n"
+            "Если статистика была для вас полезна,\n"
+            "вы можете поддержать развитие проекта.\n\n"
+            "Реквизиты для доната:\n\n"
+            "Банк: Т-Банк\n"
+            "Карта: <code>2200 7008 8290 3809</code>\n"
+            "Нажми на номер карты, чтобы скопировать 👆\n"
+            "Получатель: Кристина Г\n\n"
+            "После перевода нажмите кнопку «Я оплатил»."
+        ),
+        "btn_i_donated": "💝 Я оплатил",
         "btn_new_calc": "🔮 Новый расчет Паспорта Души",
         "btn_share": "📢 Поделиться с другом",
         "btn_feedback": "💬 Оставить отзыв",
@@ -233,6 +249,22 @@ UI = {
             "I am here as a guide, and the next step can wait until you are ready.\n\n"
             "If it resonates, we can continue in a form that suits you."
         ),
+        "after_pdf_follow": "Want another reading, or to go a little deeper?",
+        "btn_new_reading": "🔮 New reading",
+        "btn_support_project": "💝 Support the project",
+        "btn_back": "⬅️ Back",
+        "support_text": (
+            "💝 Support the project\n\n"
+            "If this reading was useful,\n"
+            "you can support the project.\n\n"
+            "Donation details:\n\n"
+            "Bank: T-Bank\n"
+            "Card: <code>2200 7008 8290 3809</code>\n"
+            "Tap the card number to copy it.\n"
+            "Recipient: Kristina G.\n\n"
+            "After the transfer, tap «I paid»."
+        ),
+        "btn_i_donated": "💝 I paid",
         "btn_new_calc": "🔮 New Soul Passport",
         "btn_share": "📢 Share with a friend",
         "btn_feedback": "💬 Leave feedback",
