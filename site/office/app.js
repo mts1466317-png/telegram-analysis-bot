@@ -238,15 +238,20 @@ function coverHTML() {
     const v = n[s.id];
     return `<div class="meta"><span>${esc(s.title)}</span><b>${v} · ${esc(planetName(v))}</b></div>`;
   }).join("");
+  const tone = state.paid ? "#31d68a" : "#f0b429";
   return `<div class="spread">
     <div class="page left">
-      <svg class="pass-seal" viewBox="0 0 200 200" aria-hidden="true">
-        <circle cx="100" cy="100" r="86" fill="none" stroke="#f0b429" stroke-width="1.2" opacity=".8"/>
-        <circle cx="100" cy="100" r="64" fill="none" stroke="#37e0f0" stroke-width=".6" opacity=".55"/>
-        <path d="M100 42 L138 122 L62 122 Z" fill="none" stroke="#f0b429" stroke-width="1"/>
-        <circle cx="100" cy="100" r="16" fill="#f0b429"/>
-        <text x="100" y="106" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="18" fill="#1a1204">${n.life}</text>
-      </svg>
+      <div class="pass-photo">
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <circle cx="100" cy="100" r="78" fill="none" stroke="${tone}" stroke-width="1.2" opacity=".8"/>
+          <circle cx="100" cy="100" r="58" fill="none" stroke="${tone}" stroke-width=".6" stroke-dasharray="3 4" opacity=".55"/>
+          <path d="M100 46 L140 128 L60 128 Z" fill="none" stroke="#ff3d8b" stroke-width="1"/>
+          <circle cx="100" cy="100" r="22" fill="${tone}"/>
+          <text x="100" y="108" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="22" fill="#1a1204">${n.life}</text>
+        </svg>
+        <span class="photo-tag">ЧИСЛО ПУТИ</span>
+      </div>
+      <div class="mrz">${esc(p.full.toUpperCase())}\n${esc(p.dateStr)}  Σ${p.fio}  Ж${n.life}  С${n.social}  Ц${p.cycle}</div>
       <div class="meta-list">
         <div class="meta"><span>Владелец</span><b>${esc(p.full)}</b></div>
         <div class="meta"><span>Дата рождения</span><b>${esc(p.dateStr)}</b></div>
@@ -258,8 +263,15 @@ function coverHTML() {
     <div class="page right">
       <div class="holder"><small>Паспорт Души</small>${esc(p.full)}</div>
       <p class="essay" style="margin-top:12px">Числа ниже посчитаны формулами Паспорта Души. Тексты сфер — авторские описания этих чисел. Печать-рисунок к расчёту не относится.</p>
+      <div class="el-badge" style="color:${tone}"><i></i>${esc(planetName(n.life))} · жизненная задача</div>
       <div class="big-nums">${cards}</div>
       <div class="meta-list">${rows}</div>
+      <svg class="stamp" viewBox="0 0 200 200" aria-hidden="true">
+        <circle cx="100" cy="100" r="86" fill="none" stroke="${tone}" stroke-width="1.4" opacity=".75"/>
+        <circle cx="100" cy="100" r="60" fill="none" stroke="${tone}" stroke-width=".7" opacity=".5" stroke-dasharray="4 4"/>
+        <text x="100" y="96" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="30" fill="${tone}">${n.life}</text>
+        <text x="100" y="118" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="2" fill="${tone}">${state.paid ? "COMPLETE" : "BASIC"}</text>
+      </svg>
     </div>
   </div>`;
 }
@@ -602,6 +614,8 @@ function sky() {
   let w = 0;
   let h = 0;
   let stars = [];
+  let shoot = null;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   function resize() {
     const dpr = Math.min(1.5, window.devicePixelRatio || 1);
     w = window.innerWidth;
@@ -611,30 +625,141 @@ function sky() {
     c.style.width = w + "px";
     c.style.height = h + "px";
     x.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const n = Math.round(Math.min(260, Math.max(80, (w * h) / 9000)));
-    stars = Array.from({ length: n }, () => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      r: Math.random() * 1.3 + 0.3,
-      p: Math.random() * TAU,
-    }));
+    const n = Math.round(Math.min(340, Math.max(110, (w * h) / 7000)));
+    stars = Array.from({ length: n }, (_, i) => {
+      const layer = i % 3;
+      return {
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: (layer === 0 ? 0.5 : layer === 1 ? 0.9 : 1.5) * (0.6 + Math.random() * 0.8),
+        s: (layer + 1) * 0.006,
+        p: Math.random() * TAU,
+        tw: 0.4 + Math.random() * 1.4,
+        c: layer === 2 ? "#f0b429" : layer === 1 ? "#cfe0ff" : "#8fa3d8",
+      };
+    });
   }
   resize();
   window.addEventListener("resize", resize, { passive: true });
+  let last = performance.now();
   function frame(t) {
+    const dt = Math.min(0.05, (t - last) / 1000 || 0);
+    last = t;
     x.clearRect(0, 0, w, h);
+    const sy = window.scrollY || 0;
     stars.forEach((s) => {
-      const a = 0.25 + Math.abs(Math.sin(s.p + t / 900)) * 0.6;
+      s.p += dt * s.tw;
+      const a = 0.28 + Math.abs(Math.sin(s.p)) * 0.62;
+      let yy = (s.y - sy * s.s * 0.35) % h;
+      if (yy < 0) yy += h;
       x.globalAlpha = a;
-      x.fillStyle = "#c9d4f5";
+      x.fillStyle = s.c;
       x.beginPath();
-      x.arc(s.x, s.y, s.r, 0, TAU);
+      x.arc(s.x, yy, s.r, 0, TAU);
       x.fill();
     });
     x.globalAlpha = 1;
+    if (!reduced) {
+      if (!shoot && Math.random() < dt * 0.09) {
+        shoot = { x: Math.random() * w * 0.8, y: Math.random() * h * 0.4, vx: 260 + Math.random() * 220, vy: 90 + Math.random() * 70, life: 0, max: 1.1 };
+      }
+      if (shoot) {
+        shoot.life += dt;
+        shoot.x += shoot.vx * dt;
+        shoot.y += shoot.vy * dt;
+        const k = 1 - shoot.life / shoot.max;
+        if (k <= 0) shoot = null;
+        else {
+          const g = x.createLinearGradient(shoot.x, shoot.y, shoot.x - shoot.vx * 0.16, shoot.y - shoot.vy * 0.16);
+          g.addColorStop(0, "rgba(255,240,200," + (k * 0.9) + ")");
+          g.addColorStop(1, "rgba(255,240,200,0)");
+          x.strokeStyle = g;
+          x.lineWidth = 1.5;
+          x.beginPath();
+          x.moveTo(shoot.x, shoot.y);
+          x.lineTo(shoot.x - shoot.vx * 0.16, shoot.y - shoot.vy * 0.16);
+          x.stroke();
+        }
+      }
+    }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+}
+
+function guilloche() {
+  const svg = $("#guilloche");
+  if (!svg) return;
+  const W = 1200;
+  const H = 800;
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  let paths = "";
+  for (let k = 0; k < 7; k++) {
+    let d = "";
+    const R = 180 + k * 26;
+    const r = 52 + k * 9;
+    const dd = 90 + k * 17;
+    for (let i = 0; i <= 720; i++) {
+      const t = (i / 720) * TAU * 6;
+      const px = W / 2 + (R - r) * Math.cos(t) + dd * Math.cos(((R - r) / r) * t);
+      const py = H / 2 + (R - r) * Math.sin(t) - dd * Math.sin(((R - r) / r) * t);
+      d += (i ? "L" : "M") + px.toFixed(1) + " " + py.toFixed(1);
+    }
+    paths += '<path d="' + d + '" fill="none" stroke="' + (k % 2 ? "#f0b429" : "#37e0f0") + '" stroke-width=".5" opacity="' + (0.5 - k * 0.05) + '"/>';
+  }
+  svg.innerHTML = paths;
+}
+
+function bindSound() {
+  const b = $("#sndBtn");
+  if (!b) return;
+  let ctx = null;
+  let master = null;
+  function set(on) {
+    state.sound = on;
+    save();
+    b.dataset.on = on ? "1" : "0";
+    b.setAttribute("aria-pressed", String(on));
+    b.setAttribute("aria-label", "Звук канцелярии: " + (on ? "включён" : "выключен"));
+    if (on && !ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = 0.0001;
+      master.connect(ctx.destination);
+      const g = ctx.createGain();
+      g.gain.value = 0.05;
+      g.connect(master);
+      [55, 82.5, 110].forEach((f, i) => {
+        const o = ctx.createOscillator();
+        o.type = i === 2 ? "triangle" : "sine";
+        o.frequency.value = f;
+        const og = ctx.createGain();
+        og.gain.value = 0.25;
+        o.connect(og);
+        og.connect(g);
+        o.start();
+      });
+    }
+    if (ctx && master) {
+      if (ctx.state === "suspended") ctx.resume();
+      master.gain.setTargetAtTime(on ? 0.45 : 0, ctx.currentTime, 0.4);
+    }
+  }
+  b.addEventListener("click", () => set(b.dataset.on !== "1"));
+}
+
+function bindPhysical() {
+  const obj = $("#physObj");
+  if (!obj) return;
+  obj.addEventListener("pointermove", (e) => {
+    const r = obj.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    obj.style.transform = "rotateY(" + (x * 16).toFixed(2) + "deg) rotateX(" + (-y * 12).toFixed(2) + "deg)";
+  });
+  obj.addEventListener("pointerleave", () => { obj.style.transform = ""; });
 }
 
 function clock() {
@@ -848,6 +973,9 @@ async function main() {
   faq();
   bind();
   bindNav();
+  bindSound();
+  bindPhysical();
+  guilloche();
   sky();
   clock();
   solstice();
