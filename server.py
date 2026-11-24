@@ -4,7 +4,7 @@ import threading
 import traceback
 from typing import Optional
 
-from flask import Flask, redirect, request, send_from_directory, jsonify
+from flask import Flask, request, send_from_directory, jsonify
 from telegram import MenuButtonWebApp, Update, WebAppInfo
 from telegram.ext import (
     ApplicationBuilder,
@@ -286,25 +286,6 @@ def office_index():
 @app.route("/mysoulpassport/<path:filename>", methods=["GET"])
 def office_assets(filename: str):
     return send_from_directory(OFFICE_DIR, filename)
-
-
-def _office_redirect(filename: str = ""):
-    target = "/mysoulpassport/" + filename
-    query = request.query_string.decode()
-    if query:
-        target += "?" + query
-    return redirect(target, code=302)
-
-
-@app.route("/office", methods=["GET"])
-@app.route("/office/", methods=["GET"])
-def office_legacy_index():
-    return _office_redirect()
-
-
-@app.route("/office/<path:filename>", methods=["GET"])
-def office_legacy_asset(filename: str):
-    return _office_redirect(filename)
 
 
 if __name__ == "__main__":
