@@ -274,6 +274,20 @@ def site_assets(filename: str):
     return send_from_directory(SITE_DIR, filename)
 
 
+OFFICE_DIR = os.path.join(SITE_DIR, "office")
+
+
+@app.route("/office", methods=["GET"])
+@app.route("/office/", methods=["GET"])
+def office_index():
+    return send_from_directory(OFFICE_DIR, "index.html")
+
+
+@app.route("/office/<path:filename>", methods=["GET"])
+def office_assets(filename: str):
+    return send_from_directory(OFFICE_DIR, filename)
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     app.run(host="0.0.0.0", port=port)

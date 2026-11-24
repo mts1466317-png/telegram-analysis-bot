@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Паспорт Души · Небесная канцелярия</title>
+<meta name="description" content="Небесная канцелярия выдаёт Паспорт Души по авторским формулам: девять сфер, семилетние циклы и матрица расчёта.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="office.css">
+</head>
+<body>
+<canvas id="sky" aria-hidden="true"></canvas>
+<div class="aurora" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<header class="nav">
+  <div class="nav-in">
+    <a class="brand" href="#chancellery">
+      <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="18" fill="none" stroke="#f0b429" stroke-width=".8"/>
+        <path d="M20 4 L33 27 L7 27 Z" fill="none" stroke="#f0b429" stroke-width=".8"/>
+        <circle cx="20" cy="20" r="3.2" fill="#f0b429"/>
+      </svg>
+      <span class="brand-txt"><b>Паспорт Души</b><span>Небесная канцелярия</span></span>
+    </a>
+    <nav class="nav-links" id="navlinks" aria-label="Разделы">
+      <a href="#chancellery">Канцелярия</a>
+      <a href="#protocol">Протокол</a>
+      <a href="#registry">Прошение</a>
+      <a href="#passport">Паспорт</a>
+      <a href="#access">Доступ</a>
+      <a href="#physical">Физический</a>
+    </nav>
+    <div class="nav-act">
+      <button class="btn solid sm" id="navCta" type="button">Подать прошение</button>
+    </div>
+  </div>
+</header>
+
+<main>
+<section id="chancellery">
+  <div class="wrap hero-grid">
+    <div class="hero-l">
+      <div class="eyebrow">Реестр душ · отдел VII · окно приёма прошений</div>
+      <h1 class="hero-title"><span>Паспорт</span> <em>Души</em></h1>
+      <p class="hero-sub">Документ, который собирается из имени и даты — по одной методике.</p>
+      <p class="lead hero-p">Фамилия, имя, отчество и дата рождения становятся девятью сферами, семилетним циклом и матрицей, где видно каждое сложение. Это не гороскоп и не рисунок из букв.</p>
+      <div class="hero-cta">
+        <a class="btn solid" href="#registry">Подать прошение</a>
+        <a class="btn ghost" href="#passport">Открыть документ</a>
+      </div>
+      <div class="hero-meta">
+        <span class="chip"><i class="dot"></i> Реестр открыт</span>
+        <span class="chip">Время канцелярии: <b id="clockTxt">—</b></span>
+      </div>
+    </div>
+    <div class="hero-r">
+      <svg class="hero-seal" viewBox="0 0 200 200" aria-hidden="true">
+        <circle cx="100" cy="100" r="88" fill="none" stroke="#f0b429" stroke-width=".7" opacity=".7"/>
+        <circle cx="100" cy="100" r="68" fill="none" stroke="#37e0f0" stroke-width=".5" opacity=".5"/>
+        <path d="M100 38 L146 132 L54 132 Z" fill="none" stroke="#f0b429" stroke-width="1"/>
+        <path d="M100 162 L54 68 L146 68 Z" fill="none" stroke="#ff3d8b" stroke-width=".8" opacity=".75"/>
+        <circle cx="100" cy="100" r="8" fill="#f0b429"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section id="protocol">
+  <div class="wrap">
+    <div class="proto-grid">
+      <div class="proto-sticky">
+        <div class="proto-num">01</div>
+        <div>
+          <div class="eyebrow">Протокол выдачи</div>
+          <h2>Три окна<br><em>одной канцелярии</em></h2>
+          <p class="lead" style="margin-top:16px">Имя остаётся в браузере. С сервера приходят только готовые тексты сфер — те же, что в боте.</p>
+        </div>
+      </div>
+      <div class="steps">
+        <article class="step act" data-reveal>
+          <div class="step-i"><span>Окно 01</span><span class="step-tag tag-free">Бесплатно</span></div>
+          <h3>Прошение</h3>
+          <p>Фамилия, имя, отчество и дата рождения. Почта и пароль не нужны.</p>
+        </article>
+        <article class="step" data-reveal style="--d:80ms">
+          <div class="step-i"><span>Окно 02</span><span class="step-tag tag-free">Сразу</span></div>
+          <h3>Расчёт</h3>
+          <p>Девять чисел по авторским формулам, матрица букв и текущий семилетний цикл. В базовой версии открыты тексты жизненной и социальной задач.</p>
+        </article>
+        <article class="step" data-reveal style="--d:160ms">
+          <div class="step-i"><span>Окно 03</span><span class="step-tag tag-paid">3 333 ₽</span></div>
+          <h3>Полный документ</h3>
+          <p>Остальные сферы, тексты всех циклов и PDF выдаёт бот после перевода. На сайте можно открыть полный текст в этом браузере — перевод при этом не проверяется.</p>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="registry">
+  <div class="wrap">
+    <div class="eyebrow">Окно приёма · форма №7-Δ</div>
+    <h2>Прошение о выдаче <em>Паспорта Души</em></h2>
+    <p class="lead" style="margin-top:14px">Как в документе. Кириллица и латиница считаются разными алфавитами и не смешиваются. Буква «ё» в сумму не входит.</p>
+    <div class="reg-grid">
+      <form class="form-card" id="regForm" novalidate>
+        <div class="form-head">
+          <div>
+            <h3>Заявление</h3>
+            <p style="font-size:12.5px;color:var(--slate-dim);margin-top:5px">Рядом — живые суммы, без отдельной картинки</p>
+          </div>
+          <div class="form-no">ФОРМА №7-Δ<br>РЕЕСТР ДУШ<br><span id="formDate">—</span></div>
+        </div>
+        <div class="fields">
+          <div class="field" id="fLast">
+            <label for="iLast">Фамилия</label>
+            <input type="text" id="iLast" autocomplete="family-name" placeholder="Малеев" spellcheck="false">
+            <div class="err">Введите фамилию буквами</div>
+          </div>
+          <div class="field" id="fFirst">
+            <label for="iFirst">Имя</label>
+            <input type="text" id="iFirst" autocomplete="given-name" placeholder="Егор" spellcheck="false">
+            <div class="err">Введите имя буквами</div>
+          </div>
+          <div class="field" id="fMiddle">
+            <label for="iMiddle">Отчество <span>— если есть</span></label>
+            <input type="text" id="iMiddle" autocomplete="additional-name" placeholder="Олегович" spellcheck="false">
+            <div class="err">Только буквы, пробел и дефис</div>
+          </div>
+          <div class="field" id="fDob">
+            <label>Дата рождения</label>
+            <div class="dob">
+              <select id="iDay" aria-label="День"></select>
+              <select id="iMonth" aria-label="Месяц"></select>
+              <select id="iYear" aria-label="Год"></select>
+            </div>
+            <div class="err">Выберите существующую дату</div>
+          </div>
+          <label class="consent" id="fConsent">
+            <input type="checkbox" id="iConsent"><i></i>
+            <span>Понимаю, что Паспорт Души — инструмент саморефлексии, а не предсказание и не медицинская рекомендация.</span>
+          </label>
+        </div>
+        <div class="form-actions">
+          <button class="btn solid" type="submit">Подать прошение</button>
+          <button class="btn ghost" type="button" id="fillSample">Пример: Малеев</button>
+        </div>
+      </form>
+      <aside class="readout">
+        <div class="readout-h">Суммы по мере ввода</div>
+        <div id="liveBox"></div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<section id="passport">
+  <div class="wrap">
+    <div class="eyebrow">Выдача документа</div>
+    <h2>Ваш <em>Паспорт Души</em></h2>
+    <div class="pass-bar">
+      <div class="tabs" role="tablist">
+        <button class="tab on" type="button" data-tab="cover" role="tab" aria-selected="true">Обложка</button>
+        <button class="tab" type="button" data-tab="spheres" role="tab">Сферы</button>
+        <button class="tab" type="button" data-tab="cycles" role="tab">Циклы</button>
+        <button class="tab" type="button" data-tab="matrix" role="tab">Матрица</button>
+        <button class="tab" type="button" data-tab="keys" role="tab">Ключи</button>
+      </div>
+      <div class="pass-actions">
+        <button class="btn sm" type="button" id="pdfBtn">PDF в боте</button>
+        <button class="btn ghost sm" type="button" id="shareBtn">Ссылка</button>
+        <button class="btn ghost sm" type="button" id="newBtn">Новое прошение</button>
+      </div>
+    </div>
+    <div class="doc" id="doc">
+      <div id="docBanner"></div>
+      <div class="panel on" id="p-cover" role="tabpanel"></div>
+      <div class="panel" id="p-spheres" role="tabpanel"></div>
+      <div class="panel" id="p-cycles" role="tabpanel"></div>
+      <div class="panel" id="p-matrix" role="tabpanel"></div>
+      <div class="panel" id="p-keys" role="tabpanel"></div>
+    </div>
+  </div>
+</section>
+
+<section id="access">
+  <div class="wrap">
+    <div class="eyebrow">Касса канцелярии</div>
+    <h2>Один платёж. <em>Документ в боте.</em></h2>
+    <p class="lead" style="margin-top:14px">Цена как в боте: 3 333 ₽ один раз. Карта и СБП те же. Сайт не списывает деньги и не подтверждает перевод.</p>
+    <div class="acc-grid">
+      <div class="price-card" data-reveal>
+        <div class="price-tag">Полный доступ · единоразово</div>
+        <div class="price" id="priceVal">3 333 ₽</div>
+        <div class="price-sub">Т-Банк и СБП · получатель Кристина Г.</div>
+        <ul class="incl">
+          <li><span>Девять сфер: проявленность, риски, рекомендации</span></li>
+          <li><span>Семилетние циклы и текст текущего цикла</span></li>
+          <li><span>Матрица букв и все сложения до свёртки</span></li>
+          <li><span>Сопоставление двух паспортов по тем же формулам</span></li>
+          <li><span>PDF выдаёт Telegram-бот после перевода</span></li>
+        </ul>
+        <button class="btn solid" id="buyBtn" type="button">Реквизиты и полный текст</button>
+        <div class="demo-note">Кнопка «Показать полный текст здесь» не проверяет оплату. Она нужна, чтобы прочитать сферы в этом браузере. Чек принимает бот.</div>
+      </div>
+      <div>
+        <div class="cmp" data-reveal>
+          <table>
+            <thead><tr><th>Раздел</th><th>На сайте</th><th>В боте</th></tr></thead>
+            <tbody>
+              <tr><td>Числа и матрица</td><td>да</td><td>да</td></tr>
+              <tr><td>Жизненная и социальная</td><td>текст открыт</td><td>да</td></tr>
+              <tr><td>Остальные сферы</td><td>по кнопке просмотра</td><td>после перевода</td></tr>
+              <tr><td>Циклы</td><td>числа всех, текст текущего</td><td>полный текст</td></tr>
+              <tr><td>PDF</td><td>ссылка в бот</td><td>файл</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="faq" id="faq" data-reveal></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="physical">
+  <div class="wrap">
+    <div class="eyebrow">Особый отдел · закрытый тираж</div>
+    <h2>Физический <em>Паспорт Души</em></h2>
+    <p class="lead" style="margin-top:14px">Тираж 300 экземпляров. Очередь открывается к зимнему солнцестоянию. Номер хранится только в этом браузере.</p>
+    <div class="phys-grid">
+      <div class="phys-obj" data-reveal>
+        <div class="phys-in">
+          <div class="k">Edition of 300</div>
+          <div class="t">Паспорт Души</div>
+          <div class="s">Кожа · латунь · тиснение</div>
+        </div>
+      </div>
+      <div data-reveal>
+        <h3>До зимнего солнцестояния</h3>
+        <div class="cd">
+          <div><b id="cdD">—</b><span>дней</span></div>
+          <div><b id="cdH">—</b><span>часов</span></div>
+          <div><b id="cdM">—</b><span>минут</span></div>
+          <div><b id="cdS">—</b><span>секунд</span></div>
+        </div>
+        <ul class="spec-list">
+          <li><b>Обложка</b><span>тиснение, персональные числа паспорта</span></li>
+          <li><b>Блок</b><span>развороты по девяти сферам</span></li>
+          <li><b>Вкладыш</b><span>карта семилетних циклов</span></li>
+          <li><b>Номер</b><span>001–300 в реестре владельцев</span></li>
+        </ul>
+        <div class="wl" id="wlBox"></div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="foot">
+    <div>
+      <h5>Небесная канцелярия</h5>
+      <p>Паспорт Души — инструмент самопознания. Это не предсказание и не медицинская, юридическая или финансовая консультация.</p>
+    </div>
+    <div>
+      <h5>Окна</h5>
+      <a href="#registry">Подать прошение</a>
+      <a href="#passport">Документ</a>
+      <a href="#access">Доступ</a>
+      <a href="#physical">Физический тираж</a>
+    </div>
+    <div>
+      <h5>Порядок</h5>
+      <a href="#protocol">Протокол</a>
+      <a href="https://t.me/GodStatistics_bot" target="_blank" rel="noopener">Бот</a>
+    </div>
+  </div>
+  <div class="foot-b"><span>Имя хранится в браузере</span><span>Реестр душ · отдел VII</span></div>
+</footer>
+
+<button class="status" id="statusChip" type="button"><i class="dot" id="statusDot"></i><span id="statusTxt">Прошение не подано</span></button>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<div class="overlay" id="issuing" role="dialog" aria-modal="true" aria-label="Сборка документа">
+  <div class="iss">
+    <div class="iss-sub">Канцелярия считает</div>
+    <h3>Паспорт собирается</h3>
+    <div class="iss-steps" id="issSteps">
+      <div class="iss-step act"><i>1</i><span>Буквы имени</span></div>
+      <div class="iss-step"><i>2</i><span>Девять сфер</span></div>
+      <div class="iss-step"><i>3</i><span>Семилетний цикл</span></div>
+      <div class="iss-step"><i>4</i><span>Обложка</span></div>
+    </div>
+    <div class="iss-bar"><i id="issBar"></i></div>
+    <div style="margin-top:18px"><button class="btn ghost sm" id="issSkip" type="button">Пропустить</button></div>
+  </div>
+</div>
+
+<div class="modal" id="checkout" role="dialog" aria-modal="true" aria-label="Оплата">
+  <div class="modal-box">
+    <div class="modal-h"><b>Касса</b><button class="x" id="coClose" type="button" aria-label="Закрыть">×</button></div>
+    <div class="modal-b" id="coBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="confirm" role="dialog" aria-modal="true" aria-label="Новое прошение">
+  <div class="modal-box">
+    <div class="modal-h"><b>Новое прошение</b><button class="x" id="cfClose" type="button" aria-label="Закрыть">×</button></div>
+    <div class="modal-b">
+      <p class="lead">Текущий документ будет стёрт из этого браузера.</p>
+      <div class="form-actions">
+        <button class="btn mag sm" id="cfYes" type="button">Начать заново</button>
+        <button class="btn ghost sm" id="cfNo" type="button">Оставить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
