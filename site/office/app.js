@@ -309,28 +309,26 @@ const SEQ = {};
 [...EN_SEQ].forEach((ch, i) => { SEQ[ch] = (i % 9) + 1; });
 const ENERGY_VOWELS = new Set([..."АЕЁИОУЫЭЮЯAEIOU"]);
 
-function reducePlain(n) {
-  n = Math.abs(Math.round(Number(n) || 0));
-  while (n > 9) n = [...String(n)].reduce((a, d) => a + Number(d), 0);
-  return n || 9;
-}
-
-function digitSum(n) {
+function energyDigitSum(n) {
   return [...String(Math.abs(Number(n) || 0))].reduce((a, d) => a + Number(d), 0);
 }
 
-function reduceMaster(n) {
+function energyReduce(n, master) {
   n = Math.abs(Math.round(Number(n) || 0));
   while (n > 9) {
-    if (n === 11 || n === 22 || n === 33) return n;
+    if (master && (n === 11 || n === 22 || n === 33)) return n;
     n = [...String(n)].reduce((a, d) => a + Number(d), 0);
   }
   return n || 9;
 }
 
+function cleanEnergyName(s) {
+  return String(s || "").toUpperCase().replace(/[^А-ЯЁA-Z\s'\-]/g, "").replace(/\s+/g, " ").trim();
+}
+
 function energiesOf(p) {
-  const words = [p.last, p.first, p.middle].map((s) => String(s || "").toUpperCase().replace(/[^A-ZА-ЯЁ]/g, ""));
-  const letters = [...words.join("")].filter((ch) => SEQ[ch]);
+  const words = [cleanEnergyName(p.last), cleanEnergyName(p.first), cleanEnergyName(p.middle)].filter(Boolean);
+  const letters = [...words.join(" ")].filter((ch) => SEQ[ch]);
   const sum = letters.reduce((a, ch) => a + SEQ[ch], 0);
   const vow = letters.filter((ch) => ENERGY_VOWELS.has(ch));
   const con = letters.filter((ch) => !ENERGY_VOWELS.has(ch));
@@ -339,21 +337,20 @@ function energiesOf(p) {
   const wSum = words.map((w) => [...w].filter((ch) => SEQ[ch]).reduce((a, ch) => a + SEQ[ch], 0));
   const present = new Set(letters.map((ch) => SEQ[ch]));
   const missing = [];
-  for (let i = 1; i <= 9; i++) if (!present.has(i)) missing.push(i);
-  const lifeRaw = reduceMaster(digitSum(p.day) + digitSum(p.month) + digitSum(p.year));
-  const lifeBase = lifeRaw > 9 ? reducePlain(lifeRaw) : lifeRaw;
-  const firstVow = [...(words[1] || "")].filter((ch) => ENERGY_VOWELS.has(ch) && SEQ[ch]).reduce((a, ch) => a + SEQ[ch], 0);
+  for (let i = 1; i <= 9; i += 1) if (!present.has(i)) missing.push(i);
+  const lifeRaw = energyReduce(energyDigitSum(p.day) + energyDigitSum(p.month) + energyDigitSum(p.year), true);
+  const lifeBase = lifeRaw > 9 ? energyReduce(lifeRaw) : lifeRaw;
   const nums = {
     will: lifeBase,
-    mind: reducePlain(wSum[0] || sum),
-    voice: reducePlain(firstVow || vowSum),
-    heart: reducePlain(vowSum),
-    body: reducePlain(p.day),
-    work: reducePlain(conSum),
-    ties: reducePlain(p.month + (wSum[2] || wSum[0] || 0)),
-    res: reducePlain(digitSum(p.year)),
-    shadow: reducePlain(missing.reduce((a, b) => a + b, 0) || 9),
-    path: reducePlain(sum + lifeBase),
+    mind: energyReduce(wSum[0] || sum),
+    voice: energyReduce([...(words[1] || "")].filter((ch) => ENERGY_VOWELS.has(ch)).reduce((a, ch) => a + (SEQ[ch] || 0), 0) || vowSum),
+    heart: energyReduce(vowSum),
+    body: energyReduce(p.day),
+    work: energyReduce(conSum),
+    ties: energyReduce(p.month + (wSum[2] || wSum[0] || 0)),
+    res: energyReduce(energyDigitSum(p.year)),
+    shadow: energyReduce(missing.reduce((a, b) => a + b, 0) || 9),
+    path: energyReduce(sum + lifeBase),
   };
   return (typeof ENERGIES === "undefined" ? [] : ENERGIES).map((e) => ({ ...e, n: nums[e.id] }));
 }
