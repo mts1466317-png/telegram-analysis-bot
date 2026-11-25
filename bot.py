@@ -17,6 +17,7 @@ from app_locale import is_en, planet_label
 from env_token import resolve_bot_token
 from locales import t
 from snapshot_store import load_last_snapshot, save_last_snapshot
+from site_pass import load_site_pass, mark_site_pass_paid, save_site_pass
 from telemetry import track_event
 from practitioner_store import (
     extend_practitioner_subscription,
@@ -66,7 +67,7 @@ print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕ�
 
 ADMIN_ID = 7471303897
 _SITE_HANDOFFS = {}
-_SITE_HANDOFF_TTL = 30 * 60
+_SITE_HANDOFF_TTL = 14 * 24 * 60 * 60
 _SITE_NAME_RE = re.compile(r"^[A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё'\-\s]{0,60}$")
 
 
@@ -93,27 +94,66 @@ def create_site_handoff(last: str, first: str, middle: str, day: int, month: int
         raise ValueError("date")
     _purge_site_handoffs()
     code = secrets.token_hex(6)
-    _SITE_HANDOFFS[code] = {
+    profile = {
         "last": last,
         "first": first,
         "middle": middle,
         "date": born.strftime("%d.%m.%Y"),
+    }
+    _SITE_HANDOFFS[code] = {
+        **profile,
+        "paid": False,
         "exp": time.time() + _SITE_HANDOFF_TTL,
     }
+    save_site_pass(code, profile)
     return code
 
 
-def lookup_site_handoff(code: str):
-    _purge_site_handoffs()
-    item = _SITE_HANDOFFS.get(str(code or ""))
-    if not item:
-        return None
+def _profile_from_item(item: dict) -> dict:
     return {
         "last": item["last"],
         "first": item["first"],
         "middle": item["middle"],
         "date": item["date"],
     }
+
+
+def lookup_site_handoff(code: str):
+    status = site_pass_status(code)
+    if not status:
+        return None
+    return status["profile"]
+
+
+def site_pass_status(code: str):
+    code = str(code or "")
+    if not re.fullmatch(r"[0-9a-f]{12}", code):
+        return None
+    stored = load_site_pass(code)
+    if stored and stored.get("profile"):
+        profile = stored["profile"]
+        _SITE_HANDOFFS[code] = {
+            **profile,
+            "paid": bool(stored.get("paid")),
+            "exp": time.time() + (365 * 24 * 60 * 60 if stored.get("paid") else _SITE_HANDOFF_TTL),
+        }
+        return {"paid": bool(stored.get("paid")), "profile": _profile_from_item(profile)}
+    _purge_site_handoffs()
+    item = _SITE_HANDOFFS.get(code)
+    if not item:
+        return None
+    return {"paid": bool(item.get("paid")), "profile": _profile_from_item(item)}
+
+
+def remember_site_pass_paid(code: str, telegram_user_id: int | None = None) -> None:
+    code = str(code or "")
+    if not re.fullmatch(r"[0-9a-f]{12}", code):
+        return
+    item = _SITE_HANDOFFS.get(code)
+    if item:
+        item["paid"] = True
+        item["exp"] = time.time() + 365 * 24 * 60 * 60
+    mark_site_pass_paid(code, telegram_user_id)
 CHANNEL_LINK = "https://t.me/higherself_connection"
 DISCUSSION_GROUP_LINK = "https://t.me/DISCUSSION_GROUP_LINK"
 def _default_mini_app_url() -> str:
@@ -2102,6 +2142,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Данные с сайта уже здесь:\n{shown}\n{profile['date']}\n\n"
             "Повторно вводить имя и дату не нужно. Ниже оплата полного паспорта."
         )
+        context.user_data["site_code"] = args[0][1:]
         await handle_text(
             update,
             context,
@@ -2506,6 +2547,7 @@ async def stars_successful_payment(update: Update, context: ContextTypes.DEFAULT
         return
 
     await message.reply_text(t("payment_confirmed"))
+    remember_site_pass_paid(data.get("site_code") or context.user_data.get("site_code"), user.id)
     try:
         pdf_path = await asyncio.to_thread(
             build_pdf_report,
@@ -3679,6 +3721,7 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
             chat_id=user_id,
             text=t("payment_confirmed"),
         )
+        remember_site_pass_paid(data.get("site_code"), user_id)
         print(f"📄 SEND FORMAT TO: {user_id} (pdf)")
         try:
             pdf_path = await asyncio.to_thread(
@@ -3893,6 +3936,7 @@ async def practitioner_list_cmd(update: Update, context: ContextTypes.DEFAULT_TY
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE, identity=None):
     try:
         if identity is None:
+            context.user_data.pop("site_code", None)
             text = update.message.text.strip()
             step = context.user_data.get("step")
             # Используем единый ввод: Фамилия Имя Отчество ДД.ММ.ГГГГ
@@ -4140,6 +4184,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE, identi
             "sections": pdf_sections,
             "calc_snapshot": calc_snapshot,
         }
+        site_code = context.user_data.get("site_code")
+        if site_code:
+            context.user_data["pending_pdf"]["site_code"] = site_code
+            user_storage[_uid]["site_code"] = site_code
 
         # Отправляем живой инсайт-тизер
         insight = generate_compiled_insight(calc_snapshot, pdf_sections)

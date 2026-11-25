@@ -21,6 +21,7 @@ from snapshot_store import init_snapshot_store
 from snapshot_store import save_last_snapshot
 from practitioner_store import init_practitioner_store
 from telemetry import init_telemetry_store, track_event
+from site_pass import init_site_pass
 
 # По этому маркеру в логах видно, что задеплоена актуальная версия (не старый server.py:27)
 from app_locale import get_locale, is_en
@@ -37,6 +38,7 @@ print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕ�
 init_snapshot_store()
 init_practitioner_store()
 init_telemetry_store()
+init_site_pass()
 
 if not TOKEN:
     raise RuntimeError(
@@ -65,6 +67,7 @@ from bot import (
     stars_successful_payment,
     MINI_APP_URL,
     create_site_handoff,
+    site_pass_status,
 )
 
 # Один event loop в отдельном потоке (Flask воркеры в разных потоках).
@@ -313,7 +316,44 @@ def office_handoff():
     except ValueError:
         return jsonify({"error": "Проверьте имя и дату"}), 400
     base = PUBLIC_BOT_URL.split("?")[0].rstrip("/")
-    return jsonify({"url": f"{base}?start=s{code}"})
+    return jsonify({"url": f"{base}?start=s{code}", "code": code})
+
+
+def _access_profile(profile: dict) -> dict:
+    day, month, year = str(profile.get("date") or "").split(".")
+    return {
+        "last": profile.get("last") or "",
+        "first": profile.get("first") or "",
+        "middle": profile.get("middle") or "",
+        "d": int(day),
+        "m": int(month),
+        "y": int(year),
+    }
+
+
+def full_office_content():
+    with open(os.path.join(OFFICE_DIR, "content.json"), encoding="utf-8") as handle:
+        return jsonify(json.load(handle))
+
+
+@app.route("/mysoulpassport/access/<code>", methods=["GET"])
+def office_access(code: str):
+    status = site_pass_status(code)
+    if not status:
+        return jsonify({"paid": False}), 200
+    try:
+        profile = _access_profile(status["profile"])
+    except (TypeError, ValueError):
+        return jsonify({"paid": False}), 200
+    return jsonify({"paid": bool(status["paid"]), "profile": profile})
+
+
+@app.route("/mysoulpassport/full/<code>", methods=["GET"])
+def office_full(code: str):
+    status = site_pass_status(code)
+    if not status or not status.get("paid"):
+        return jsonify({"error": "locked"}), 403
+    return full_office_content()
 
 
 @app.route("/mysoulpassport", methods=["GET"])

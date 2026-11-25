@@ -148,7 +148,8 @@ function cyclesOf(profile, count = 12) {
 }
 
 let CONTENT = null;
-let state = { profile: null, paid: false, sound: false, waitlist: null };
+let state = { profile: null, paid: false, accessCode: null, sound: false, waitlist: null };
+let accessTimer = null;
 let V = null;
 
 function load() {
@@ -201,7 +202,7 @@ function updateStatus() {
     d.style.boxShadow = "0 0 10px #ff9f1c";
     cta.textContent = "Открыть полный доступ";
   } else {
-    t.textContent = "Полный текст открыт в браузере";
+    t.textContent = "Полный паспорт открыт";
     d.style.background = "#31d68a";
     d.style.boxShadow = "0 0 10px #31d68a";
     cta.textContent = "Мой паспорт";
@@ -554,7 +555,7 @@ function openModal(id) { const m = $("#" + id); if (m) m.classList.add("on"); }
 function closeModal(id) { const m = $("#" + id); if (m) m.classList.remove("on"); }
 
 function checkoutHTML() {
-  return `<p class="lead">Кнопка откроет бота с уже введёнными именем и датой. Там останется перевести ${PRICE} и нажать «Я оплатил». Подтверждение придёт в Telegram, и бот пришлёт полный паспорт.</p>
+  return `<p class="lead">Кнопка откроет бота с уже введёнными именем и датой. Там останется перевести ${PRICE} и нажать «Я оплатил». Когда оплату подтвердят, вернитесь на эту страницу: полный паспорт откроется здесь сам.</p>
   <div class="meta-list" style="margin:14px 0">
     <div class="meta"><span>Сумма</span><b>${PRICE}</b></div>
     <div class="meta"><span>Карта</span><b>${CARD_PRETTY}</b></div>
@@ -586,7 +587,11 @@ async function openBotPayment() {
       }),
     });
     const data = await res.json();
-    if (!res.ok || !data.url) throw new Error("handoff");
+    if (!res.ok || !data.url || !data.code) throw new Error("handoff");
+    state.accessCode = data.code;
+    state.paid = false;
+    save();
+    watchAccess();
     window.open(data.url, "_blank", "noopener");
   } catch (e) {
     toast("Не удалось открыть бота с этими данными", "err");
@@ -597,6 +602,42 @@ function showBuy() {
   $("#coBody").innerHTML = checkoutHTML();
   openModal("checkout");
   $("#payBotBtn").addEventListener("click", openBotPayment);
+}
+
+async function refreshAccess() {
+  if (!state.accessCode) return;
+  let data;
+  try {
+    const res = await fetch("/mysoulpassport/access/" + state.accessCode);
+    data = await res.json();
+  } catch (e) {
+    return;
+  }
+  if (!data.paid) return;
+  const opened = !state.paid;
+  state.paid = true;
+  if (data.profile) state.profile = data.profile;
+  save();
+  try {
+    const full = await fetch("/mysoulpassport/full/" + state.accessCode);
+    if (full.ok) CONTENT = await full.json();
+  } catch (e) { /* numbers still render */ }
+  renderPassport();
+  updateStatus();
+  if (opened) {
+    closeModal("checkout");
+    toast("Оплата подтверждена. Полный паспорт открыт.", "ok");
+    if (location.hash !== "#passport") location.hash = "#passport";
+  }
+  if (accessTimer) {
+    clearInterval(accessTimer);
+    accessTimer = null;
+  }
+}
+
+function watchAccess() {
+  if (accessTimer || !state.accessCode || state.paid) return;
+  accessTimer = setInterval(refreshAccess, 8000);
 }
 
 function copyText(value, okMsg) {
@@ -880,6 +921,7 @@ function bind() {
     if (!validate(inp, $("#iConsent").checked)) return;
     state.profile = inp;
     state.paid = false;
+    state.accessCode = null;
     save();
     issue();
   });
@@ -945,6 +987,7 @@ function bind() {
   $("#cfYes").addEventListener("click", () => {
     state.profile = null;
     state.paid = false;
+    state.accessCode = null;
     save();
     closeModal("confirm");
     renderPassport();
@@ -1000,11 +1043,15 @@ function fromQuery() {
 async function main() {
   load();
   fromQuery();
-  try {
-    const res = await fetch("content.json");
-    CONTENT = await res.json();
-  } catch (e) {
-    toast("Тексты сфер не загрузились. Числа всё равно считаются.", "err");
+  state.paid = false;
+  await refreshAccess();
+  if (!state.paid) {
+    try {
+      const res = await fetch("content.json");
+      CONTENT = await res.json();
+    } catch (e) {
+      toast("Тексты сфер не загрузились. Числа всё равно считаются.", "err");
+    }
   }
   fillDateSelects($("#iDay"), $("#iMonth"), $("#iYear"), state.profile || null);
   if (state.profile) {
@@ -1029,6 +1076,8 @@ async function main() {
   liveReadout();
   renderPassport();
   updateStatus();
+  watchAccess();
+  window.addEventListener("focus", refreshAccess);
   const reveals = $$("[data-reveal]");
   if ("IntersectionObserver" in window) {
     const io = new IntersectionObserver((entries) => {
