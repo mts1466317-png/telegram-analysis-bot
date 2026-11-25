@@ -35,7 +35,10 @@ const SPHERES = [
   { id: "social", title: "Социальная задача", sub: "астральное + жизненная", color: "#31d68a" },
   { id: "combo", title: "Сочетание задач", sub: "социальная + жизненная", color: "#f4e7cf" },
 ];
-const FREE = new Set(["life", "social"]);
+const FREE = new Set(["physical", "life", "higher", "social"]);
+const CARD_PRETTY = "2202 2089 7358 7430";
+const CARD_RAW = "2202208973587430";
+const RECIPIENT = "Егор Малеев";
 
 function reduceNumber(n) {
   n = Math.abs(Math.round(Number(n) || 0));
@@ -152,6 +155,7 @@ function load() {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) state = { ...state, ...JSON.parse(raw) };
+    state.paid = false;
   } catch (e) { /* keep defaults */ }
 }
 function save() {
@@ -219,22 +223,19 @@ function renderBanner() {
   }
   if (!state.paid) {
     b.className = "banner basic";
-    b.innerHTML = `<span>Базовая версия · открыты жизненная и социальная задачи</span><button class="btn sm" data-act="buy" type="button">Открыть остальные сферы</button>`;
+    b.innerHTML = `<span>Базовая версия · момент проявленности</span><button class="btn sm" data-act="buy" type="button">Полный паспорт в боте</button>`;
   } else {
     b.className = "banner full";
-    b.innerHTML = "<span>Полный текст в этом браузере</span><span style=\"color:var(--slate)\">Оплата на сайте не проверяется</span>";
+    b.innerHTML = "<span>Полный паспорт</span>";
   }
 }
 
 function coverHTML() {
   const p = V;
   const n = p.nums;
-  const cards = [
-    ["Жизненная", n.life],
-    ["Социальная", n.social],
-    ["Сочетание", n.combo],
-  ].map(([k, v]) => `<div class="bn"><span>${k}</span><b>${v}</b><span>${esc(planetName(v))}</span></div>`).join("");
-  const rows = SPHERES.map((s) => {
+  const basic = SPHERES.filter((s) => FREE.has(s.id));
+  const cards = basic.map((s) => `<div class="bn"><span>${esc(s.title)}</span><b>${n[s.id]}</b><span>${esc(planetName(n[s.id]))}</span></div>`).join("");
+  const rows = basic.map((s) => {
     const v = n[s.id];
     return `<div class="meta"><span>${esc(s.title)}</span><b>${v} · ${esc(planetName(v))}</b></div>`;
   }).join("");
@@ -251,18 +252,17 @@ function coverHTML() {
         </svg>
         <span class="photo-tag">ЧИСЛО ПУТИ</span>
       </div>
-      <div class="mrz">${esc(p.full.toUpperCase())}\n${esc(p.dateStr)}  Σ${p.fio}  Ж${n.life}  С${n.social}  Ц${p.cycle}</div>
+      <div class="mrz">${esc(p.full.toUpperCase())}\n${esc(p.dateStr)}  Ж${n.life}  С${n.social}</div>
       <div class="meta-list">
         <div class="meta"><span>Владелец</span><b>${esc(p.full)}</b></div>
         <div class="meta"><span>Дата рождения</span><b>${esc(p.dateStr)}</b></div>
         <div class="meta"><span>Алфавит</span><b>${p.mode === "en" ? "латиница" : "кириллица"}</b></div>
-        <div class="meta"><span>Σ ФИО</span><b>${p.fio}</b></div>
-        <div class="meta"><span>Возраст / цикл</span><b>${p.age} лет · ${p.cycle}-й, ${p.cycleStart}–${p.cycleEnd}</b></div>
+        <div class="meta"><span>Возраст</span><b>${p.age} лет</b></div>
       </div>
     </div>
     <div class="page right">
       <div class="holder"><small>Паспорт Души</small>${esc(p.full)}</div>
-      <p class="essay" style="margin-top:12px">Числа ниже посчитаны формулами Паспорта Души. Тексты сфер — авторские описания этих чисел. Печать-рисунок к расчёту не относится.</p>
+      <p class="essay" style="margin-top:12px">Базовая версия показывает момент проявленности четырёх сфер: физическое тело, жизненная задача, Высшее Я и социальная задача. Полный паспорт — после подтверждения оплаты в боте.</p>
       <div class="el-badge" style="color:${tone}"><i></i>${esc(planetName(n.life))} · жизненная задача</div>
       <div class="big-nums">${cards}</div>
       <div class="meta-list">${rows}</div>
@@ -310,15 +310,20 @@ function radarSVG() {
 function sphereCard(s, index) {
   const num = V.nums[s.id];
   const open = state.paid || FREE.has(s.id);
-  const data = entryFor(CONTENT && CONTENT.bodies[s.id], num);
-  const body = data
-    ? `<div class="lenses">${lens("m", "Проявленность", data.manifestation)}${lens("r", "Риски", data.risks)}${lens("p", "Рекомендации", data.recommendations)}</div>`
-    : `<div class="lenses"><p class="essay">Текст сферы не загрузился.</p></div>`;
-  const veil = open ? "" : `<div class="veil"><div class="veil-in"><p>Полный текст этой сферы</p><button class="btn sm" type="button" data-act="buy">Открыть полный доступ</button></div></div>`;
+  const data = open ? entryFor(CONTENT && CONTENT.bodies[s.id], num) : null;
+  const lenses = data && data.manifestation ? lens("m", "Проявленность", data.manifestation) : "";
+  const paidLenses = state.paid && data
+    ? `${lens("r", "Риски", data.risks)}${lens("p", "Рекомендации", data.recommendations)}`
+    : "";
+  const body = open
+    ? `<div class="lenses">${lenses || `<p class="essay">Текст проявленности не загрузился.</p>`}${paidLenses}</div>`
+    : "";
+  const veil = open ? "" : `<div class="veil"><div class="veil-in"><p>Полный паспорт</p><button class="btn sm" type="button" data-act="buy">Реквизиты</button></div></div>`;
+  const detail = open ? `${num} · ${esc(planetName(num))}` : "после оплаты в боте";
   return `<article class="sphere${open ? " open" : " locked"}" style="--sc:${s.color}" data-sph="${index}">
     <button class="sph-top" type="button" data-act="toggle" aria-expanded="${open ? "true" : "false"}">
       <span class="sph-n">${pad(index + 1)}</span>
-      <span class="sph-t"><b>${esc(s.title)}</b><span>${esc(s.sub)} · ${num} ${esc(planetName(num))}</span></span>
+      <span class="sph-t"><b>${esc(s.title)}</b><span>${detail}</span></span>
       <svg class="sph-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 9l6 6 6-6"/></svg>
     </button>
     <div class="sph-body"><div class="sph-inner">${body}</div></div>
@@ -330,14 +335,21 @@ function spheresHTML() {
   return `<div class="sph-head">
       <div>
         <h3>Девять сфер</h3>
-        <p class="lead" style="margin-top:8px">Радиус на карте — сама вибрация от 1 до 9. Мастер-числа 11, 22 и 33 на карте стоят на внешнем кольце и подписаны своим числом в карточке. В базовой версии открыты жизненная и социальная задачи.</p>
+        <p class="lead" style="margin-top:8px">В базовой версии открыт момент проявленности: физическое тело, жизненная задача, Высшее Я и социальная задача. Остальные сферы, риски, рекомендации и формулы приходят в полном паспорте после оплаты.</p>
       </div>
       ${radarSVG()}
     </div>
     <div class="sph-list">${SPHERES.map(sphereCard).join("")}</div>`;
 }
 
+function paywallBlock(text) {
+  return `<div class="pad"><p class="lead">${text}</p><button class="btn sm" type="button" data-act="buy">Реквизиты для оплаты</button></div>`;
+}
+
 function cyclesHTML() {
+  if (!state.paid) {
+    return paywallBlock("Тексты семилетних циклов входят в полный паспорт. Он приходит в бот после того, как оплата подтверждена в Telegram.");
+  }
   const rows = cyclesOf(V);
   const cards = rows.map((c) => {
     const showText = state.paid || c.current;
@@ -360,6 +372,9 @@ function cyclesHTML() {
 }
 
 function matrixHTML() {
+  if (!state.paid) {
+    return paywallBlock("Буквы, суммы и сложения до свёртки входят в полный паспорт. В базовой версии их нет.");
+  }
   const words = V.parts.map((p) => {
     const chips = p.items.length
       ? p.items.map((it) => `<span class="lt${it.v === 0 ? " v" : ""}"><b>${esc(it.ch)}</b><span>${it.v}</span></span>`).join("")
@@ -392,6 +407,9 @@ function matrixHTML() {
 }
 
 function keysHTML() {
+  if (!state.paid) {
+    return paywallBlock("Сопоставление двух паспортов входит в полный документ и открывается после подтверждения оплаты.");
+  }
   return `<div class="pad">
     <h3>Ключ совместимости</h3>
     <p class="lead" style="margin:8px 0 16px">Два паспорта сопоставляются теми же формулами. Общий вектор жизненных задач — свёртка двух жизненных чисел. Общий социальный вектор — свёртка двух социальных чисел. Отдельной «парной планеты» в методике нет.</p>
@@ -467,11 +485,9 @@ function liveReadout() {
   }
   const n = p.nums;
   const cells = [
-    ["Σ фамилии", p.parts[0].sum],
-    ["Σ имени", p.parts[1].sum],
-    ["Σ отчества", p.parts[2].sum],
+    ["Физическое", `${n.physical} · ${planetName(n.physical)}`],
     ["Жизненная", `${n.life} · ${planetName(n.life)}`],
-    ["Астральное", `${n.astral} · ${planetName(n.astral)}`],
+    ["Высшее Я", `${n.higher} · ${planetName(n.higher)}`],
     ["Социальная", `${n.social} · ${planetName(n.social)}`],
   ];
   box.innerHTML = `<div class="ro-grid">${cells.map(([k, v]) => `<div class="ro"><span>${esc(k)}</span><b style="font-size:22px">${esc(v)}</b></div>`).join("")}</div>`;
@@ -538,31 +554,31 @@ function openModal(id) { const m = $("#" + id); if (m) m.classList.add("on"); }
 function closeModal(id) { const m = $("#" + id); if (m) m.classList.remove("on"); }
 
 function checkoutHTML() {
-  return `<p class="lead">Полный документ в боте открывается после перевода ${PRICE}. На этой странице перевод не проверяется: кнопка ниже только показывает остальные тексты в вашем браузере.</p>
+  return `<p class="lead">Переведите ${PRICE} и в боте нажмите «Я оплатил». Подтверждение придёт в Telegram, после него бот пришлёт полный паспорт. На сайте до этого остаётся базовая версия.</p>
   <div class="meta-list" style="margin:14px 0">
     <div class="meta"><span>Сумма</span><b>${PRICE}</b></div>
-    <div class="meta"><span>Т-Банк</span><b>2200 7008 8290 3809</b></div>
-    <div class="meta"><span>СБП</span><b>89990238238</b></div>
-    <div class="meta"><span>Получатель</span><b>Кристина Г.</b></div>
+    <div class="meta"><span>Карта</span><b>${CARD_PRETTY}</b></div>
+    <div class="meta"><span>Получатель</span><b>${RECIPIENT}</b></div>
   </div>
   <div class="form-actions">
-    <a class="btn solid sm" href="${BOT_URL}" target="_blank" rel="noopener">Открыть бота</a>
-    <button class="btn sm" type="button" id="unlockBtn">Показать полный текст здесь</button>
+    <button class="btn sm" type="button" data-copy="${CARD_RAW}" data-copy-msg="Номер карты скопирован">Скопировать карту</button>
+    <button class="btn ghost sm" type="button" data-copy="${RECIPIENT}" data-copy-msg="Имя получателя скопировано">Скопировать получателя</button>
+    <a class="btn solid sm" href="${BOT_URL}" target="_blank" rel="noopener">Я оплатил в боте</a>
   </div>`;
 }
 
 function showBuy() {
   $("#coBody").innerHTML = checkoutHTML();
   openModal("checkout");
-  $("#unlockBtn").addEventListener("click", () => {
-    state.paid = true;
-    save();
-    closeModal("checkout");
-    renderPassport();
-    updateStatus();
-    setTab("spheres");
-    toast("Полный текст открыт в этом браузере", "ok");
-  });
+}
+
+function copyText(value, okMsg) {
+  const done = () => toast(okMsg || "Скопировано", "ok");
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(value).then(done).catch(() => toast(value, "info"));
+    return;
+  }
+  toast(value, "info");
 }
 
 function issue() {
@@ -860,6 +876,8 @@ function bind() {
   });
   $("#buyBtn").addEventListener("click", showBuy);
   document.body.addEventListener("click", (e) => {
+    const copyBtn = e.target.closest("[data-copy]");
+    if (copyBtn) copyText(copyBtn.dataset.copy, copyBtn.dataset.copyMsg);
     const act = e.target.closest("[data-act]");
     if (!act) return;
     if (act.dataset.act === "buy") showBuy();

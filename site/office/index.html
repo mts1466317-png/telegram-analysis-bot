@@ -114,17 +114,17 @@
         <article class="step" data-reveal style="--d:80ms" data-step="2">
           <div class="step-i"><span>Окно 02</span><span class="step-tag tag-free">Мгновенно</span></div>
           <h3>Расчёт</h3>
-          <p>Девять чисел по авторским формулам, матрица букв и текущий семилетний цикл. В базовой версии открыты тексты жизненной и социальной задач.</p>
+          <p>Базовая версия сразу показывает момент проявленности четырёх сфер. Формулы и остальные разборы в неё не входят.</p>
         </article>
         <article class="step" data-reveal style="--d:160ms" data-step="3">
           <div class="step-i"><span>Окно 03</span><span class="step-tag tag-free">Базовая версия</span></div>
           <h3>Документ на руках</h3>
-          <p>Обложка, ключевые числа и две раскрытые сферы: жизненная и социальная. Этого достаточно, чтобы понять — ваше или нет.</p>
+          <p>Обложка и момент проявленности: физическое тело, жизненная задача, Высшее Я и социальная задача.</p>
         </article>
         <article class="step" data-reveal style="--d:240ms" data-step="4">
           <div class="step-i"><span>Окно 04</span><span class="step-tag tag-paid">Один платёж</span></div>
           <h3>Полный доступ</h3>
-          <p>Остальные сферы, тексты циклов и PDF в боте. Один платёж 3 333 ₽ — без подписки.</p>
+          <p>Остальные сферы, риски, рекомендации, формулы и PDF. После перевода нажмите «Я оплатил» в боте — подтверждение приходит в Telegram.</p>
         </article>
       </div>
     </div>
@@ -222,32 +222,36 @@
   <div class="wrap">
     <div class="eyebrow">Касса канцелярии</div>
     <h2>Один платёж. <em>Документ в боте.</em></h2>
-    <p class="lead" style="margin-top:14px">Цена как в боте: 3 333 ₽ один раз. Карта и СБП те же. Сайт не списывает деньги и не подтверждает перевод.</p>
+    <p class="lead" style="margin-top:14px">Один раз 3 333 ₽. Карту можно скопировать. Подтверждение оплаты остаётся в Telegram: после перевода нажмите «Я оплатил» в боте.</p>
     <div class="acc-grid">
       <div class="price-card" data-reveal>
         <div class="price-tag">Полный доступ · единоразово</div>
         <div class="price" id="priceVal">3 333 ₽</div>
-        <div class="price-sub">Т-Банк и СБП · получатель Кристина Г.</div>
+        <div class="price-sub">Карта · получатель Егор Малеев</div>
         <ul class="incl">
-          <li><span>Девять сфер: проявленность, риски, рекомендации</span></li>
-          <li><span>Семилетние циклы и текст текущего цикла</span></li>
-          <li><span>Матрица букв и все сложения до свёртки</span></li>
-          <li><span>Сопоставление двух паспортов по тем же формулам</span></li>
-          <li><span>PDF выдаёт Telegram-бот после перевода</span></li>
+          <li><span>Полный разбор девяти сфер</span></li>
+          <li><span>Риски, рекомендации и семилетние циклы</span></li>
+          <li><span>Формулы расчёта и сопоставление двух паспортов</span></li>
+          <li><span>PDF в Telegram после подтверждения</span></li>
         </ul>
-        <button class="btn solid" id="buyBtn" type="button">Реквизиты и полный текст</button>
-        <div class="demo-note">Кнопка «Показать полный текст здесь» не проверяет оплату. Она нужна, чтобы прочитать сферы в этом браузере. Чек принимает бот.</div>
+        <div class="meta-list" style="margin:14px 0">
+          <div class="meta"><span>Карта</span><b>2202 2089 7358 7430</b></div>
+          <div class="meta"><span>Получатель</span><b>Егор Малеев</b></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn sm" type="button" data-copy="2202208973587430" data-copy-msg="Номер карты скопирован">Скопировать карту</button>
+          <button class="btn ghost sm" type="button" data-copy="Егор Малеев" data-copy-msg="Имя получателя скопировано">Скопировать получателя</button>
+        </div>
+        <button class="btn solid" id="buyBtn" type="button" style="margin-top:12px">Как подтвердить оплату</button>
       </div>
       <div>
         <div class="cmp" data-reveal>
           <table>
             <thead><tr><th>Раздел</th><th>На сайте</th><th>В боте</th></tr></thead>
             <tbody>
-              <tr><td>Числа и матрица</td><td>да</td><td>да</td></tr>
-              <tr><td>Жизненная и социальная</td><td>текст открыт</td><td>да</td></tr>
-              <tr><td>Остальные сферы</td><td>по кнопке просмотра</td><td>после перевода</td></tr>
-              <tr><td>Циклы</td><td>числа всех, текст текущего</td><td>полный текст</td></tr>
-              <tr><td>PDF</td><td>ссылка в бот</td><td>файл</td></tr>
+              <tr><td>Проявленность четырёх сфер</td><td>открыта</td><td>да</td></tr>
+              <tr><td>Остальные сферы и формулы</td><td>скрыты</td><td>после подтверждения</td></tr>
+              <tr><td>PDF</td><td>ссылка в бот</td><td>после подтверждения</td></tr>
             </tbody>
           </table>
         </div>
@@ -362,6 +366,6 @@
   </div>
 </div>
 
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

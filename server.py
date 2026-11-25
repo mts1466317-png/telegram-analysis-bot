@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import threading
 import traceback
@@ -271,10 +272,29 @@ def site_config():
 
 @app.route("/site/<path:filename>", methods=["GET"])
 def site_assets(filename: str):
+    if filename == "office/content.json":
+        return public_office_content()
     return send_from_directory(SITE_DIR, filename)
 
 
 OFFICE_DIR = os.path.join(SITE_DIR, "office")
+BASIC_SPHERES = ("physical", "life", "higher", "social")
+
+
+def public_office_content():
+    """Базовый паспорт: только момент проявленности четырёх сфер."""
+    with open(os.path.join(OFFICE_DIR, "content.json"), encoding="utf-8") as handle:
+        data = json.load(handle)
+    bodies = {}
+    source = data.get("bodies") or {}
+    for key in BASIC_SPHERES:
+        block = source.get(key) or {}
+        bodies[key] = {
+            name: {"manifestation": entry.get("manifestation", "")}
+            for name, entry in block.items()
+            if isinstance(entry, dict)
+        }
+    return jsonify({"planets": data.get("planets") or {}, "bodies": bodies})
 
 
 @app.route("/mysoulpassport", methods=["GET"])
@@ -285,6 +305,8 @@ def office_index():
 
 @app.route("/mysoulpassport/<path:filename>", methods=["GET"])
 def office_assets(filename: str):
+    if filename == "content.json":
+        return public_office_content()
     return send_from_directory(OFFICE_DIR, filename)
 
 

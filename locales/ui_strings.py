@@ -28,9 +28,8 @@ UI = {
         "paywall": (
             "К оплате 3333 рублей - за лучший инструмент для самопознания на всю жизнь\n"
             "Реквизиты:\n"
-            "💳 Т-Банк: <code>2200 7008 8290 3809</code>\n"
-            "💸 СБП: <code>89990238238</code>\n"
-            "Получатель: Кристина Г.\n\n"
+            "💳 Т-Банк: <code>2202 2089 7358 7430</code>\n"
+            "Получатель: Егор Малеев\n\n"
             "После перевода нажми «Я оплатил» — и мы сразу пришлем твой Паспорт."
         ),
         "label_manifestation": "🔹 Как проявляется:",
@@ -122,9 +121,9 @@ UI = {
             "вы можете поддержать развитие проекта.\n\n"
             "Реквизиты для доната:\n\n"
             "Банк: Т-Банк\n"
-            "Карта: <code>2200 7008 8290 3809</code>\n"
+            "Карта: <code>2202 2089 7358 7430</code>\n"
             "Нажми на номер карты, чтобы скопировать 👆\n"
-            "Получатель: Кристина Г\n\n"
+            "Получатель: Егор Малеев\n\n"
             "После перевода нажмите кнопку «Я оплатил»."
         ),
         "btn_i_donated": "💝 Я оплатил",
@@ -165,9 +164,8 @@ UI = {
         "paywall": (
             "Payment due: $49 — the best lifelong tool for self-knowledge\n"
             "Payment details:\n"
-            "💳 T-Bank: <code>2200 7008 8290 3809</code>\n"
-            "💸 SBP: <code>89990238238</code>\n"
-            "Recipient: Kristina G.\n\n"
+            "💳 T-Bank: <code>2202 2089 7358 7430</code>\n"
+            "Recipient: Egor Maleev\n\n"
             "After transfer tap «I paid» — and we will send your Passport right away."
         ),
         "label_manifestation": "🔹 How it shows up:",
@@ -263,9 +261,9 @@ UI = {
             "you can support the project.\n\n"
             "Donation details:\n\n"
             "Bank: T-Bank\n"
-            "Card: <code>2200 7008 8290 3809</code>\n"
+            "Card: <code>2202 2089 7358 7430</code>\n"
             "Tap the card number to copy it.\n"
-            "Recipient: Kristina G.\n\n"
+            "Recipient: Egor Maleev\n\n"
             "After the transfer, tap «I paid»."
         ),
         "btn_i_donated": "💝 I paid",
