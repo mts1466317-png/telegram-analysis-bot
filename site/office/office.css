@@ -405,8 +405,8 @@ option{background:#0a0d22;color:var(--parchment)}
 .sph-str span{font-family:var(--mono);font-size:8.5px;color:var(--slate-dim);letter-spacing:.1em}
 .sph-arrow{transition:.4s;color:var(--slate-dim);flex:0 0 auto}
 .sphere.open .sph-arrow{transform:rotate(180deg);color:var(--sc)}
-.sph-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .5s cubic-bezier(.2,.8,.2,1)}
-.sphere.open .sph-body{grid-template-rows:1fr}
+.sph-body{max-height:0;overflow:hidden;transition:max-height .55s cubic-bezier(.2,.8,.2,1)}
+.sphere.open .sph-body{max-height:4000px}
 .sph-inner{overflow:hidden}
 .lenses{padding:0 18px 18px;display:grid;gap:11px}
 .lens{border-left:2px solid;padding:2px 0 2px 13px}

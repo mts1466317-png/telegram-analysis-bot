@@ -311,6 +311,7 @@ function radarSVG() {
 function sphereCard(s, index) {
   const num = V.nums[s.id];
   const open = state.paid || FREE.has(s.id);
+  const expanded = FREE.has(s.id);
   const data = open ? entryFor(CONTENT && CONTENT.bodies[s.id], num) : null;
   const lenses = data && data.manifestation ? lens("m", "Проявленность", data.manifestation) : "";
   const paidLenses = state.paid && data
@@ -321,8 +322,8 @@ function sphereCard(s, index) {
     : "";
   const veil = open ? "" : `<div class="veil"><div class="veil-in"><p>Полный паспорт</p><button class="btn sm" type="button" data-act="buy">Реквизиты</button></div></div>`;
   const detail = open ? `${num} · ${esc(planetName(num))}` : "после оплаты в боте";
-  return `<article class="sphere${open ? " open" : " locked"}" style="--sc:${s.color}" data-sph="${index}">
-    <button class="sph-top" type="button" data-act="toggle" aria-expanded="${open ? "true" : "false"}">
+  return `<article class="sphere${expanded ? " open" : ""}${open ? "" : " locked"}" style="--sc:${s.color}" data-sph="${index}">
+    <button class="sph-top" type="button" data-act="toggle" aria-expanded="${expanded ? "true" : "false"}">
       <span class="sph-n">${pad(index + 1)}</span>
       <span class="sph-t"><b>${esc(s.title)}</b><span>${detail}</span></span>
       <svg class="sph-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 9l6 6 6-6"/></svg>
