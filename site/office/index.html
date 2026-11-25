@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Manrope:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="office.css?v=5">
+<link rel="stylesheet" href="office.css?v=6">
 </head>
 <body>
 <canvas id="sky" aria-hidden="true"></canvas>
@@ -124,7 +124,7 @@
         <article class="step" data-reveal style="--d:240ms" data-step="4">
           <div class="step-i"><span>Окно 04</span><span class="step-tag tag-paid">Один платёж</span></div>
           <h3>Полный доступ</h3>
-          <p>Остальные сферы, риски, рекомендации, формулы и PDF. После перевода нажмите «Я оплатил» в боте — подтверждение приходит в Telegram.</p>
+          <p>После подтверждения в Telegram весь паспорт открывается на сайте. В боте приходят PDF и доступ к приложению.</p>
         </article>
       </div>
     </div>
@@ -217,14 +217,29 @@
 <section id="access">
   <div class="wrap">
     <div class="eyebrow">Касса канцелярии</div>
-    <h2>Один платёж. <em>Документ в боте и приложение в Telegram.</em></h2>
-    <p class="lead" style="margin-top:14px">Один раз 3 333 ₽. Карту можно скопировать. Кнопка открывает бота с уже введёнными именем и датой: там остаётся перевод и кнопка «Я оплатил». После подтверждения приходят PDF и доступ к приложению в Telegram.</p>
+    <h2>Один платёж. <em>Сайт, бот и приложение.</em></h2>
+    <p class="lead" style="margin-top:14px">Один раз 3 333 ₽. Карту можно скопировать. Кнопка открывает бота с уже введёнными именем и датой: там остаётся перевод и кнопка «Я оплатил». Когда оплату подтвердят, на этой странице открывается весь паспорт.</p>
+    <div class="unlock-row">
+      <article class="unlock">
+        <b>На сайте</b>
+        <span>Все сферы, риски, рекомендации, циклы и формулы — здесь же, после подтверждения.</span>
+      </article>
+      <article class="unlock">
+        <b>В боте</b>
+        <span>PDF и полный разбор приходят в Telegram, когда оплату подтверждают.</span>
+      </article>
+      <article class="unlock">
+        <b>В приложении</b>
+        <span>Отдельный доступ в Telegram: сферы, цикл и персональная матрица.</span>
+      </article>
+    </div>
     <div class="acc-grid">
       <div class="price-card" data-reveal>
         <div class="price-tag">Полный доступ · единоразово</div>
         <div class="price" id="priceVal">3 333 ₽</div>
         <div class="price-sub">Карта · получатель Егор Малеев</div>
         <ul class="incl">
+          <li><span>Весь паспорт на сайте после подтверждения</span></li>
           <li><span>Полный разбор девяти сфер</span></li>
           <li><span>Риски, рекомендации и семилетние циклы</span></li>
           <li><span>Формулы расчёта и сопоставление двух паспортов</span></li>
@@ -246,10 +261,10 @@
           <table>
             <thead><tr><th>Раздел</th><th>На сайте</th><th>В боте</th></tr></thead>
             <tbody>
-              <tr><td>Проявленность четырёх сфер</td><td>открыта</td><td>да</td></tr>
-              <tr><td>Остальные сферы и формулы</td><td>скрыты</td><td>после подтверждения</td></tr>
-              <tr><td>PDF</td><td>ссылка в бот</td><td>после подтверждения</td></tr>
-              <tr><td>Приложение в Telegram</td><td>нет</td><td>после подтверждения</td></tr>
+              <tr><td>Проявленность четырёх сфер</td><td>сразу</td><td>да</td></tr>
+              <tr><td>Весь паспорт</td><td>после подтверждения</td><td>после подтверждения</td></tr>
+              <tr><td>PDF</td><td>в боте</td><td>после подтверждения</td></tr>
+              <tr><td>Приложение в Telegram</td><td>в боте</td><td>после подтверждения</td></tr>
             </tbody>
           </table>
         </div>

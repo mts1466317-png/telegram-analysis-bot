@@ -467,7 +467,12 @@ option{background:#0a0d22;color:var(--parchment)}
 /* ============================================================
    ДОСТУП / ЦЕНА
    ============================================================ */
-.acc-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:clamp(20px,3vw,40px);align-items:start;margin-top:32px}
+.unlock-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:26px}
+.unlock{border:1px solid var(--line);border-top:2px solid var(--gold);padding:16px 16px 18px;
+  background:linear-gradient(180deg,rgba(240,180,41,.08),rgba(8,11,28,.55))}
+.unlock b{display:block;font-family:var(--serif);font-size:24px;font-weight:500;color:var(--parchment);line-height:1.15}
+.unlock span{display:block;margin-top:8px;font-size:13.5px;line-height:1.5;color:var(--slate)}
+.acc-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:clamp(20px,3vw,40px);align-items:start;margin-top:28px}
 .price-card{border:1px solid var(--gold);border-radius:3px;padding:clamp(22px,3vw,36px);position:relative;overflow:hidden;
   background:linear-gradient(160deg,rgba(48,26,10,.7),rgba(10,8,28,.94));box-shadow:0 40px 90px -40px rgba(240,180,41,.55)}
 .price-card::after{content:'';position:absolute;top:-60%;left:-30%;width:80%;height:220%;
@@ -670,7 +675,7 @@ footer{border-top:1px solid var(--line-soft);position:relative;z-index:3;backgro
   .brand{order:1} .nav-act{order:2;margin-left:auto}
   .nav-links{order:3;width:100%;margin:0;padding-bottom:8px;border-top:1px solid var(--line-soft);padding-top:6px}
   .nav-links a{padding:7px 10px;font-size:9.5px}
-  .proto-grid,.reg-grid,.acc-grid,.phys-grid,.spread{grid-template-columns:1fr}
+  .proto-grid,.reg-grid,.acc-grid,.phys-grid,.spread,.unlock-row{grid-template-columns:1fr}
   .proto-sticky{position:relative;top:0;display:flex;align-items:center;gap:18px}
   .proto-num{font-size:76px}
   .page.left{border-right:0;border-bottom:1px solid var(--line)}
