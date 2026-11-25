@@ -278,8 +278,8 @@ option{background:#0a0d22;color:var(--parchment)}
 /* ============================================================
    РЕГИСТРАЦИЯ
    ============================================================ */
-.reg-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(20px,3vw,44px);align-items:start;margin-top:32px}
-.form-card{
+.reg-grid{margin-top:32px}
+.form-card{max-width:720px;
   border:1px solid var(--line);background:
     linear-gradient(180deg,rgba(14,18,48,.9),rgba(6,8,24,.94));
   padding:clamp(20px,3vw,34px);position:relative;border-radius:3px;box-shadow:var(--shadow)
