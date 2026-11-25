@@ -263,7 +263,7 @@ function coverHTML() {
     </div>
     <div class="page right">
       <div class="holder"><small>Паспорт Души</small>${esc(p.full)}</div>
-      <p class="essay" style="margin-top:12px">Базовая версия показывает момент проявленности четырёх сфер: физическое тело, жизненная задача, Высшее Я и социальная задача. Полный паспорт — после подтверждения оплаты в боте.</p>
+      <p class="essay" style="margin-top:12px">${state.paid ? "Полный паспорт: девять сфер, риски, рекомендации, циклы и формулы расчёта." : "Базовая версия показывает момент проявленности четырёх сфер: физическое тело, жизненная задача, Высшее Я и социальная задача. Полный паспорт — после подтверждения оплаты в боте."}</p>
       <div class="el-badge" style="color:${tone}"><i></i>${esc(planetName(n.life))} · жизненная задача</div>
       <div class="big-nums">${cards}</div>
       <div class="meta-list">${rows}</div>
@@ -311,7 +311,7 @@ function radarSVG() {
 function sphereCard(s, index) {
   const num = V.nums[s.id];
   const open = state.paid || FREE.has(s.id);
-  const expanded = FREE.has(s.id);
+  const expanded = state.paid || FREE.has(s.id);
   const data = open ? entryFor(CONTENT && CONTENT.bodies[s.id], num) : null;
   const lenses = data && data.manifestation ? lens("m", "Проявленность", data.manifestation) : "";
   const paidLenses = state.paid && data
@@ -337,7 +337,7 @@ function spheresHTML() {
   return `<div class="sph-head">
       <div>
         <h3>Девять сфер</h3>
-        <p class="lead" style="margin-top:8px">В базовой версии открыт момент проявленности: физическое тело, жизненная задача, Высшее Я и социальная задача. Остальные сферы, риски, рекомендации и формулы приходят в полном паспорте после оплаты.</p>
+        <p class="lead" style="margin-top:8px">${state.paid ? "Полный паспорт открыт: девять сфер, риски и рекомендации." : "В базовой версии открыт момент проявленности: физическое тело, жизненная задача, Высшее Я и социальная задача. Остальные сферы, риски, рекомендации и формулы приходят в полном паспорте после оплаты."}</p>
       </div>
       ${radarSVG()}
     </div>
@@ -556,7 +556,7 @@ function openModal(id) { const m = $("#" + id); if (m) m.classList.add("on"); }
 function closeModal(id) { const m = $("#" + id); if (m) m.classList.remove("on"); }
 
 function checkoutHTML() {
-  return `<p class="lead">Кнопка откроет бота с уже введёнными именем и датой. Там останется перевести ${PRICE} и нажать «Я оплатил». Когда оплату подтвердят, вернитесь на эту страницу: полный паспорт откроется здесь сам.</p>
+  return `<p class="lead">Кнопка откроет бота с уже введёнными именем и датой. Там останется перевести ${PRICE} и нажать «Я оплатил». Когда оплату подтвердят, эта страница откроет полный паспорт сама. В боте также придёт прямая ссылка.</p>
   <div class="meta-list" style="margin:14px 0">
     <div class="meta"><span>Сумма</span><b>${PRICE}</b></div>
     <div class="meta"><span>Карта</span><b>${CARD_PRETTY}</b></div>
@@ -605,31 +605,40 @@ function showBuy() {
   $("#payBotBtn").addEventListener("click", openBotPayment);
 }
 
+let accessCheck = null;
+
 async function refreshAccess() {
-  if (!state.accessCode) return;
+  if (!state.accessCode || state.paid) return;
+  if (accessCheck) return accessCheck;
+  accessCheck = loadPaidPassport().finally(() => { accessCheck = null; });
+  return accessCheck;
+}
+
+async function loadPaidPassport() {
+  if (!state.accessCode || state.paid) return;
   let data;
   try {
-    const res = await fetch("/mysoulpassport/access/" + state.accessCode);
+    const res = await fetch("/mysoulpassport/access/" + state.accessCode, { cache: "no-store" });
     data = await res.json();
   } catch (e) {
     return;
   }
   if (!data.paid) return;
-  const opened = !state.paid;
+  let fullBody = null;
+  try {
+    const full = await fetch("/mysoulpassport/full/" + state.accessCode, { cache: "no-store" });
+    if (full.ok) fullBody = await full.json();
+  } catch (e) { /* keep polling */ }
+  if (!fullBody || !fullBody.bodies) return;
+  CONTENT = fullBody;
   state.paid = true;
   if (data.profile) state.profile = data.profile;
   save();
-  try {
-    const full = await fetch("/mysoulpassport/full/" + state.accessCode);
-    if (full.ok) CONTENT = await full.json();
-  } catch (e) { /* numbers still render */ }
   renderPassport();
   updateStatus();
-  if (opened) {
-    closeModal("checkout");
-    toast("Оплата подтверждена. Полный паспорт открыт.", "ok");
-    if (location.hash !== "#passport") location.hash = "#passport";
-  }
+  closeModal("checkout");
+  toast("Оплата подтверждена. Полный паспорт открыт.", "ok");
+  if (location.hash !== "#passport") location.hash = "#passport";
   if (accessTimer) {
     clearInterval(accessTimer);
     accessTimer = null;
@@ -1025,6 +1034,14 @@ function bind() {
   });
 }
 
+function accessFromQuery() {
+  const code = new URLSearchParams(location.search).get("access") || "";
+  if (!/^[0-9a-f]{12}$/.test(code)) return;
+  state.accessCode = code;
+  state.paid = false;
+  save();
+}
+
 function fromQuery() {
   const q = new URLSearchParams(location.search);
   if (!q.get("last") || !q.get("first")) return;
@@ -1044,6 +1061,7 @@ function fromQuery() {
 async function main() {
   load();
   fromQuery();
+  accessFromQuery();
   state.paid = false;
   await refreshAccess();
   if (!state.paid) {
@@ -1079,6 +1097,10 @@ async function main() {
   updateStatus();
   watchAccess();
   window.addEventListener("focus", refreshAccess);
+  window.addEventListener("pageshow", refreshAccess);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") refreshAccess();
+  });
   const reveals = $$("[data-reveal]");
   if ("IntersectionObserver" in window) {
     const io = new IntersectionObserver((entries) => {

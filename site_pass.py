@@ -89,6 +89,26 @@ def load_site_pass(code: str) -> Optional[dict]:
         return None
 
 
+def bind_site_pass_user(code: str, telegram_user_id: int | None) -> None:
+    """Привязать код сайта к Telegram ещё до подтверждения оплаты."""
+    init_site_pass()
+    if not _STORE_ENABLED or not code or not telegram_user_id:
+        return
+    try:
+        with psycopg2.connect(_database_url(), connect_timeout=3) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE site_passport_pass
+                    SET telegram_user_id = %s
+                    WHERE code = %s
+                    """,
+                    (telegram_user_id, code),
+                )
+    except Exception as exc:
+        print(f"⚠️ site_pass: bind user failed ({exc})")
+
+
 def mark_site_pass_paid(code: str, telegram_user_id: int | None = None) -> None:
     init_site_pass()
     if not code:
@@ -110,3 +130,28 @@ def mark_site_pass_paid(code: str, telegram_user_id: int | None = None) -> None:
                 )
     except Exception as exc:
         print(f"⚠️ site_pass: mark paid failed ({exc})")
+
+
+def mark_unpaid_site_passes(telegram_user_id: int | None) -> list[str]:
+    """Открыть все ещё не оплаченные паспорта, которые этот человек начал с сайта."""
+    init_site_pass()
+    if not _STORE_ENABLED or not telegram_user_id:
+        return []
+    try:
+        with psycopg2.connect(_database_url(), connect_timeout=3) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE site_passport_pass
+                    SET paid = TRUE,
+                        paid_at = NOW()
+                    WHERE telegram_user_id = %s AND paid = FALSE
+                    RETURNING code
+                    """,
+                    (telegram_user_id,),
+                )
+                rows = cur.fetchall()
+        return [str(row[0]) for row in rows]
+    except Exception as exc:
+        print(f"⚠️ site_pass: mark user failed ({exc})")
+        return []

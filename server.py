@@ -336,30 +336,37 @@ def full_office_content():
         return jsonify(json.load(handle))
 
 
+def _no_store(response):
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.route("/mysoulpassport/access/<code>", methods=["GET"])
 def office_access(code: str):
     status = site_pass_status(code)
     if not status:
-        return jsonify({"paid": False}), 200
+        return _no_store(jsonify({"paid": False}))
     try:
         profile = _access_profile(status["profile"])
     except (TypeError, ValueError):
-        return jsonify({"paid": False}), 200
-    return jsonify({"paid": bool(status["paid"]), "profile": profile})
+        return _no_store(jsonify({"paid": False}))
+    return _no_store(jsonify({"paid": bool(status["paid"]), "profile": profile}))
 
 
 @app.route("/mysoulpassport/full/<code>", methods=["GET"])
 def office_full(code: str):
     status = site_pass_status(code)
     if not status or not status.get("paid"):
-        return jsonify({"error": "locked"}), 403
-    return full_office_content()
+        return _no_store(jsonify({"error": "locked"})), 403
+    return _no_store(full_office_content())
 
 
 @app.route("/mysoulpassport", methods=["GET"])
 @app.route("/mysoulpassport/", methods=["GET"])
 def office_index():
-    return send_from_directory(OFFICE_DIR, "index.html")
+    response = send_from_directory(OFFICE_DIR, "index.html")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 @app.route("/mysoulpassport/<path:filename>", methods=["GET"])

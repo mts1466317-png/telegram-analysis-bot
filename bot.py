@@ -17,7 +17,13 @@ from app_locale import is_en, planet_label
 from env_token import resolve_bot_token
 from locales import t
 from snapshot_store import load_last_snapshot, save_last_snapshot
-from site_pass import load_site_pass, mark_site_pass_paid, save_site_pass
+from site_pass import (
+    bind_site_pass_user,
+    load_site_pass,
+    mark_site_pass_paid,
+    mark_unpaid_site_passes,
+    save_site_pass,
+)
 from telemetry import track_event
 from practitioner_store import (
     extend_practitioner_subscription,
@@ -145,15 +151,66 @@ def site_pass_status(code: str):
     return {"paid": bool(item.get("paid")), "profile": _profile_from_item(item)}
 
 
-def remember_site_pass_paid(code: str, telegram_user_id: int | None = None) -> None:
+def _mark_handoff_paid(code: str, telegram_user_id: int | None = None) -> None:
+    item = _SITE_HANDOFFS.get(code)
+    if not item:
+        return
+    item["paid"] = True
+    item["exp"] = time.time() + 365 * 24 * 60 * 60
+    if telegram_user_id:
+        item["user_id"] = telegram_user_id
+
+
+def bind_site_handoff_user(code: str, telegram_user_id: int | None) -> None:
     code = str(code or "")
-    if not re.fullmatch(r"[0-9a-f]{12}", code):
+    if not re.fullmatch(r"[0-9a-f]{12}", code) or not telegram_user_id:
         return
     item = _SITE_HANDOFFS.get(code)
-    if item:
-        item["paid"] = True
-        item["exp"] = time.time() + 365 * 24 * 60 * 60
-    mark_site_pass_paid(code, telegram_user_id)
+    if item is not None:
+        item["user_id"] = telegram_user_id
+    bind_site_pass_user(code, telegram_user_id)
+
+
+def public_site_origin() -> str:
+    explicit = os.getenv("PUBLIC_SITE_URL", "").strip().rstrip("/")
+    if explicit:
+        return explicit
+    domain = (os.getenv("RAILWAY_PUBLIC_DOMAIN") or os.getenv("RAILWAY_STATIC_URL") or "").strip().rstrip("/")
+    if domain:
+        if "://" not in domain:
+            domain = f"https://{domain}"
+        return domain
+    return "https://web-production-bff199.up.railway.app"
+
+
+def site_unlock_text(code: str) -> str:
+    url = f"{public_site_origin()}/mysoulpassport/?access={code}#passport"
+    if is_en():
+        return f"The full passport is open on the site:\n{url}"
+    return (
+        "Полный разбор уже открыт на сайте — все сферы, циклы и формулы:\n"
+        f"{url}"
+    )
+
+
+def remember_site_pass_paid(code: str, telegram_user_id: int | None = None) -> str | None:
+    """Отметить паспорт с сайта оплаченным и вернуть код, который откроет страницу."""
+    code = str(code or "")
+    unlocked = code if re.fullmatch(r"[0-9a-f]{12}", code) else ""
+    if unlocked:
+        _mark_handoff_paid(unlocked, telegram_user_id)
+        mark_site_pass_paid(unlocked, telegram_user_id)
+    for extra in mark_unpaid_site_passes(telegram_user_id):
+        _mark_handoff_paid(extra, telegram_user_id)
+        if not unlocked:
+            unlocked = extra
+    if telegram_user_id:
+        for key, item in _SITE_HANDOFFS.items():
+            if item.get("user_id") == telegram_user_id:
+                _mark_handoff_paid(key, telegram_user_id)
+                if not unlocked:
+                    unlocked = key
+    return unlocked or None
 CHANNEL_LINK = "https://t.me/higherself_connection"
 DISCUSSION_GROUP_LINK = "https://t.me/DISCUSSION_GROUP_LINK"
 def _default_mini_app_url() -> str:
@@ -2143,6 +2200,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Повторно вводить имя и дату не нужно. Ниже оплата полного паспорта."
         )
         context.user_data["site_code"] = args[0][1:]
+        bind_site_handoff_user(args[0][1:], update.effective_user.id)
         await handle_text(
             update,
             context,
@@ -2547,7 +2605,12 @@ async def stars_successful_payment(update: Update, context: ContextTypes.DEFAULT
         return
 
     await message.reply_text(t("payment_confirmed"))
-    remember_site_pass_paid(data.get("site_code") or context.user_data.get("site_code"), user.id)
+    site_code = remember_site_pass_paid(
+        data.get("site_code") or context.user_data.get("site_code"),
+        user.id,
+    )
+    if site_code:
+        await message.reply_text(site_unlock_text(site_code))
     try:
         pdf_path = await asyncio.to_thread(
             build_pdf_report,
@@ -3721,7 +3784,13 @@ async def admin_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
             chat_id=user_id,
             text=t("payment_confirmed"),
         )
-        remember_site_pass_paid(data.get("site_code"), user_id)
+        stored = user_storage.get(user_id) or {}
+        site_code = remember_site_pass_paid(
+            data.get("site_code") or stored.get("site_code"),
+            user_id,
+        )
+        if site_code:
+            await context.bot.send_message(chat_id=user_id, text=site_unlock_text(site_code))
         print(f"📄 SEND FORMAT TO: {user_id} (pdf)")
         try:
             pdf_path = await asyncio.to_thread(
@@ -4203,9 +4272,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE, identi
         context.user_data["pending_pdf"]["delivery_format"] = "pdf"
 
         if has_practitioner_access(_uid):
+            site_code = remember_site_pass_paid(context.user_data.get("site_code"), _uid)
             await update.message.reply_text(
                 "Разбор готов. Собираю PDF в рамках доступа практика — без отдельного шага оплаты."
             )
+            if site_code:
+                await update.message.reply_text(site_unlock_text(site_code))
             ok = await send_pdf_report(
                 update,
                 fio,
@@ -4220,7 +4292,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE, identi
             return
 
         if is_en() and passport_is_free_for(update.effective_user):
+            site_code = remember_site_pass_paid(context.user_data.get("site_code"), _uid)
             await update.message.reply_text(t("owner_free_pass"))
+            if site_code:
+                await update.message.reply_text(site_unlock_text(site_code))
             ok = await send_pdf_report(
                 update,
                 fio,
