@@ -302,6 +302,86 @@ function paywallBlock(text) {
   return `<div class="pad"><p class="lead">${text}</p><button class="btn sm" type="button" data-act="buy">Реквизиты для оплаты</button></div>`;
 }
 
+const RU_SEQ = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
+const EN_SEQ = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const SEQ = {};
+[...RU_SEQ].forEach((ch, i) => { SEQ[ch] = (i % 9) + 1; });
+[...EN_SEQ].forEach((ch, i) => { SEQ[ch] = (i % 9) + 1; });
+const ENERGY_VOWELS = new Set([..."АЕЁИОУЫЭЮЯAEIOU"]);
+
+function reducePlain(n) {
+  n = Math.abs(Math.round(Number(n) || 0));
+  while (n > 9) n = [...String(n)].reduce((a, d) => a + Number(d), 0);
+  return n || 9;
+}
+
+function digitSum(n) {
+  return [...String(Math.abs(Number(n) || 0))].reduce((a, d) => a + Number(d), 0);
+}
+
+function reduceMaster(n) {
+  n = Math.abs(Math.round(Number(n) || 0));
+  while (n > 9) {
+    if (n === 11 || n === 22 || n === 33) return n;
+    n = [...String(n)].reduce((a, d) => a + Number(d), 0);
+  }
+  return n || 9;
+}
+
+function energiesOf(p) {
+  const words = [p.last, p.first, p.middle].map((s) => String(s || "").toUpperCase().replace(/[^A-ZА-ЯЁ]/g, ""));
+  const letters = [...words.join("")].filter((ch) => SEQ[ch]);
+  const sum = letters.reduce((a, ch) => a + SEQ[ch], 0);
+  const vow = letters.filter((ch) => ENERGY_VOWELS.has(ch));
+  const con = letters.filter((ch) => !ENERGY_VOWELS.has(ch));
+  const vowSum = vow.reduce((a, ch) => a + SEQ[ch], 0);
+  const conSum = con.reduce((a, ch) => a + SEQ[ch], 0);
+  const wSum = words.map((w) => [...w].filter((ch) => SEQ[ch]).reduce((a, ch) => a + SEQ[ch], 0));
+  const present = new Set(letters.map((ch) => SEQ[ch]));
+  const missing = [];
+  for (let i = 1; i <= 9; i++) if (!present.has(i)) missing.push(i);
+  const lifeRaw = reduceMaster(digitSum(p.day) + digitSum(p.month) + digitSum(p.year));
+  const lifeBase = lifeRaw > 9 ? reducePlain(lifeRaw) : lifeRaw;
+  const firstVow = [...(words[1] || "")].filter((ch) => ENERGY_VOWELS.has(ch) && SEQ[ch]).reduce((a, ch) => a + SEQ[ch], 0);
+  const nums = {
+    will: lifeBase,
+    mind: reducePlain(wSum[0] || sum),
+    voice: reducePlain(firstVow || vowSum),
+    heart: reducePlain(vowSum),
+    body: reducePlain(p.day),
+    work: reducePlain(conSum),
+    ties: reducePlain(p.month + (wSum[2] || wSum[0] || 0)),
+    res: reducePlain(digitSum(p.year)),
+    shadow: reducePlain(missing.reduce((a, b) => a + b, 0) || 9),
+    path: reducePlain(sum + lifeBase),
+  };
+  return (typeof ENERGIES === "undefined" ? [] : ENERGIES).map((e) => ({ ...e, n: nums[e.id] }));
+}
+
+function energyCard(e, index) {
+  const n = e.n;
+  const body = `<div class="lenses">${lens("m", "Проявленность", e.m[n - 1])}${lens("r", "Перекос", e.r[n - 1])}${lens("p", "Практика", e.p[n - 1])}</div>`;
+  return `<article class="sphere" style="--sc:${e.c}" data-sph="${index}">
+    <button class="sph-top" type="button" data-act="toggle" aria-expanded="false">
+      <span class="sph-n">${pad(index + 1)}</span>
+      <span class="sph-t"><b>${esc(e.t)}</b><em class="about">${esc(e.s)}</em><span>${n}</span></span>
+      <svg class="sph-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <div class="sph-body"><div class="sph-inner">${body}</div></div>
+  </article>`;
+}
+
+function energiesHTML() {
+  const rows = energiesOf(V);
+  return `<div class="sph-head">
+      <div>
+        <h3>Десять энергий</h3>
+        <p class="lead" style="margin-top:8px">Воля, разум, голос, сердце, тело, дело, связи, ресурсы, тень и путь. Под названием — что это за сила. Число — как она собрана у вас. Текст открывается по нажатию.</p>
+      </div>
+    </div>
+    <div class="sph-list">${rows.map(energyCard).join("")}</div>`;
+}
+
 function cyclesHTML() {
   if (!state.paid) {
     return paywallBlock("Тексты семилетних циклов входят в полный паспорт. Он приходит в бот после того, как оплата подтверждена в Telegram.");
@@ -429,18 +509,21 @@ function renderPassport() {
   if (V && V.error) V = null;
   renderBanner();
   const spheres = $("#p-spheres");
+  const energies = $("#p-energies");
   const cycles = $("#p-cycles");
   const matrix = $("#p-matrix");
   const keys = $("#p-keys");
   if (!V) {
     const empty = `<div class="pad"><p class="lead">Подайте прошение — документ соберётся из фамилии, имени, отчества и даты.</p></div>`;
     spheres.innerHTML = empty;
+    if (energies) energies.innerHTML = "";
     cycles.innerHTML = "";
     matrix.innerHTML = "";
     keys.innerHTML = "";
     return;
   }
   spheres.innerHTML = spheresHTML();
+  if (energies) energies.innerHTML = energiesHTML();
   cycles.innerHTML = cyclesHTML();
   matrix.innerHTML = matrixHTML();
   keys.innerHTML = keysHTML();
