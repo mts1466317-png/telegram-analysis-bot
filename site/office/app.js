@@ -322,7 +322,7 @@ function cyclesHTML() {
   }).join("");
   return `<div class="pad">
     <h3>Семилетние циклы</h3>
-    <p class="lead" style="margin:8px 0 16px">Номер цикла — это возраст, делённый на 7, плюс один. Энергия цикла — свёртка жизненной задачи и этого номера. Сейчас ${V.cycle}-й цикл, ${V.cycleStart}–${V.cycleEnd} лет, энергия ${V.cycleEnergy} · ${esc(planetName(V.cycleEnergy))}.</p>
+    <p class="lead" style="margin:8px 0 16px">Сейчас ${V.cycle}-й цикл, ${V.cycleStart}–${V.cycleEnd} лет, энергия ${V.cycleEnergy} · ${esc(planetName(V.cycleEnergy))}.</p>
     <div class="cyc-grid">${cards}</div>
   </div>`;
 }
