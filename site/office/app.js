@@ -554,7 +554,7 @@ function openModal(id) { const m = $("#" + id); if (m) m.classList.add("on"); }
 function closeModal(id) { const m = $("#" + id); if (m) m.classList.remove("on"); }
 
 function checkoutHTML() {
-  return `<p class="lead">Переведите ${PRICE} и в боте нажмите «Я оплатил». Подтверждение придёт в Telegram, после него бот пришлёт полный паспорт. На сайте до этого остаётся базовая версия.</p>
+  return `<p class="lead">Кнопка откроет бота с уже введёнными именем и датой. Там останется перевести ${PRICE} и нажать «Я оплатил». Подтверждение придёт в Telegram, и бот пришлёт полный паспорт.</p>
   <div class="meta-list" style="margin:14px 0">
     <div class="meta"><span>Сумма</span><b>${PRICE}</b></div>
     <div class="meta"><span>Карта</span><b>${CARD_PRETTY}</b></div>
@@ -563,13 +563,40 @@ function checkoutHTML() {
   <div class="form-actions">
     <button class="btn sm" type="button" data-copy="${CARD_RAW}" data-copy-msg="Номер карты скопирован">Скопировать карту</button>
     <button class="btn ghost sm" type="button" data-copy="${RECIPIENT}" data-copy-msg="Имя получателя скопировано">Скопировать получателя</button>
-    <a class="btn solid sm" href="${BOT_URL}" target="_blank" rel="noopener">Я оплатил в боте</a>
+    <button class="btn solid sm" type="button" id="payBotBtn">Открыть оплату в боте</button>
   </div>`;
+}
+
+async function openBotPayment() {
+  if (!state.profile) {
+    toast("Сначала подайте прошение", "err");
+    return;
+  }
+  try {
+    const res = await fetch("/mysoulpassport/handoff", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        last: state.profile.last,
+        first: state.profile.first,
+        middle: state.profile.middle || "",
+        d: state.profile.d,
+        m: state.profile.m,
+        y: state.profile.y,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.url) throw new Error("handoff");
+    window.open(data.url, "_blank", "noopener");
+  } catch (e) {
+    toast("Не удалось открыть бота с этими данными", "err");
+  }
 }
 
 function showBuy() {
   $("#coBody").innerHTML = checkoutHTML();
   openModal("checkout");
+  $("#payBotBtn").addEventListener("click", openBotPayment);
 }
 
 function copyText(value, okMsg) {
@@ -947,7 +974,7 @@ function bind() {
   });
   $("#pdfBtn").addEventListener("click", () => {
     toast("Полный PDF выдаёт бот после оплаты", "info");
-    window.open(BOT_URL, "_blank", "noopener");
+    openBotPayment();
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") { closeModal("checkout"); closeModal("confirm"); }

@@ -64,6 +64,7 @@ from bot import (
     stars_precheckout,
     stars_successful_payment,
     MINI_APP_URL,
+    create_site_handoff,
 )
 
 # Один event loop в отдельном потоке (Flask воркеры в разных потоках).
@@ -295,6 +296,24 @@ def public_office_content():
             if isinstance(entry, dict)
         }
     return jsonify({"planets": data.get("planets") or {}, "bodies": bodies})
+
+
+@app.route("/mysoulpassport/handoff", methods=["POST"])
+def office_handoff():
+    payload = request.get_json(silent=True) or {}
+    try:
+        code = create_site_handoff(
+            payload.get("last", ""),
+            payload.get("first", ""),
+            payload.get("middle", ""),
+            payload.get("d"),
+            payload.get("m"),
+            payload.get("y"),
+        )
+    except ValueError:
+        return jsonify({"error": "Проверьте имя и дату"}), 400
+    base = PUBLIC_BOT_URL.split("?")[0].rstrip("/")
+    return jsonify({"url": f"{base}?start=s{code}"})
 
 
 @app.route("/mysoulpassport", methods=["GET"])

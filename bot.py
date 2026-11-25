@@ -4,7 +4,9 @@ import re
 import random
 import asyncio
 import os
+import secrets
 import sys
+import time
 from datetime import datetime
 import html
 import json
@@ -63,6 +65,55 @@ TOKEN = resolve_bot_token()
 print(f"🔑 TOKEN: {'установлен' if TOKEN else 'ОТСУТСТВУЕТ'}")
 
 ADMIN_ID = 7471303897
+_SITE_HANDOFFS = {}
+_SITE_HANDOFF_TTL = 30 * 60
+_SITE_NAME_RE = re.compile(r"^[A-Za-zА-Яа-яЁё][A-Za-zА-Яа-яЁё'\-\s]{0,60}$")
+
+
+def _purge_site_handoffs() -> None:
+    now = time.time()
+    stale = [key for key, item in _SITE_HANDOFFS.items() if item["exp"] <= now]
+    for key in stale:
+        _SITE_HANDOFFS.pop(key, None)
+
+
+def create_site_handoff(last: str, first: str, middle: str, day: int, month: int, year: int) -> str:
+    last = " ".join(str(last or "").split())
+    first = " ".join(str(first or "").split())
+    middle = " ".join(str(middle or "").split())
+    if not _SITE_NAME_RE.match(last) or not _SITE_NAME_RE.match(first):
+        raise ValueError("name")
+    if middle and not _SITE_NAME_RE.match(middle):
+        raise ValueError("name")
+    try:
+        born = datetime(int(year), int(month), int(day))
+    except (TypeError, ValueError):
+        raise ValueError("date")
+    if born.date() > datetime.now().date() or born.year < 1900:
+        raise ValueError("date")
+    _purge_site_handoffs()
+    code = secrets.token_hex(6)
+    _SITE_HANDOFFS[code] = {
+        "last": last,
+        "first": first,
+        "middle": middle,
+        "date": born.strftime("%d.%m.%Y"),
+        "exp": time.time() + _SITE_HANDOFF_TTL,
+    }
+    return code
+
+
+def lookup_site_handoff(code: str):
+    _purge_site_handoffs()
+    item = _SITE_HANDOFFS.get(str(code or ""))
+    if not item:
+        return None
+    return {
+        "last": item["last"],
+        "first": item["first"],
+        "middle": item["middle"],
+        "date": item["date"],
+    }
 CHANNEL_LINK = "https://t.me/higherself_connection"
 DISCUSSION_GROUP_LINK = "https://t.me/DISCUSSION_GROUP_LINK"
 def _default_mini_app_url() -> str:
@@ -2038,6 +2089,25 @@ def cycle_description(num: int, cycle: dict) -> str:
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_user or not update.message:
         return
+    args = context.args or []
+    if args and args[0].startswith("s") and len(args[0]) > 1:
+        profile = lookup_site_handoff(args[0][1:])
+        if not profile:
+            await update.message.reply_text(
+                "Ссылка с сайта уже не действует. Откройте паспорт на сайте и нажмите оплату ещё раз."
+            )
+            return
+        shown = " ".join(part for part in (profile["last"], profile["first"], profile["middle"]) if part)
+        await update.message.reply_text(
+            f"Данные с сайта уже здесь:\n{shown}\n{profile['date']}\n\n"
+            "Повторно вводить имя и дату не нужно. Ниже оплата полного паспорта."
+        )
+        await handle_text(
+            update,
+            context,
+            identity=(profile["last"], profile["first"], profile["middle"], profile["date"]),
+        )
+        return
     user_id = update.effective_user.id
     track_event("start_entry", user_id, props={"entry": "/start"})
     sub_state = get_practitioner_subscription_state(user_id)
@@ -3820,43 +3890,60 @@ async def practitioner_list_cmd(update: Update, context: ContextTypes.DEFAULT_TY
     await update.message.reply_text(text)
 
 
-async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE, identity=None):
     try:
-        text = update.message.text.strip()
-        step = context.user_data.get("step")
-        # Используем единый ввод: Фамилия Имя Отчество ДД.ММ.ГГГГ
-        if step in {"last_name", "first_name", "middle_name", "birth_date"}:
-            context.user_data["step"] = "fio_birth_line"
-            await update.message.reply_text(build_birth_input_prompt())
-            return
+        if identity is None:
+            text = update.message.text.strip()
+            step = context.user_data.get("step")
+            # Используем единый ввод: Фамилия Имя Отчество ДД.ММ.ГГГГ
+            if step in {"last_name", "first_name", "middle_name", "birth_date"}:
+                context.user_data["step"] = "fio_birth_line"
+                await update.message.reply_text(build_birth_input_prompt())
+                return
 
-        parts = text.split()
-        if len(parts) not in {3, 4}:
-            await update.message.reply_text(t("input_format_error"))
-            return
+            parts = text.split()
+            if len(parts) not in {3, 4}:
+                await update.message.reply_text(t("input_format_error"))
+                return
 
-        if is_en():
-            # American order: Last First [Middle] DD.MM.YYYY
-            if len(parts) == 3:
-                surname, name, birth_date = parts
+            if is_en():
+                # American order: Last First [Middle] DD.MM.YYYY
+                if len(parts) == 3:
+                    surname, name, birth_date = parts
+                    patronymic = "-"
+                else:
+                    surname, name, patronymic, birth_date = parts
+                name_blob = f"{surname} {name} {patronymic}"
+                if any("\u0400" <= ch <= "\u04FF" for ch in name_blob):
+                    await update.message.reply_text(t("latin_only_error"))
+                    return
+            elif len(parts) == 3:
+                name, surname, birth_date = parts
                 patronymic = "-"
             else:
                 surname, name, patronymic, birth_date = parts
+            if not re.match(r"^\d{2}\.\d{2}\.\d{4}$", birth_date):
+                await update.message.reply_text(t("date_format_error"))
+                return
+        else:
+            surname, name, patronymic, birth_date = identity
+            surname = " ".join(str(surname or "").split())
+            name = " ".join(str(name or "").split())
+            patronymic = " ".join(str(patronymic or "").split()) or "-"
             name_blob = f"{surname} {name} {patronymic}"
-            if any("\u0400" <= ch <= "\u04FF" for ch in name_blob):
+            if is_en() and any("\u0400" <= ch <= "\u04FF" for ch in name_blob):
                 await update.message.reply_text(t("latin_only_error"))
                 return
-        elif len(parts) == 3:
-            name, surname, birth_date = parts
-            patronymic = "-"
-        else:
-            surname, name, patronymic, birth_date = parts
-        if not re.match(r"^\d{2}\.\d{2}\.\d{4}$", birth_date):
-            await update.message.reply_text(t("date_format_error"))
-            return
+            if not re.match(r"^\d{2}\.\d{2}\.\d{4}$", birth_date):
+                await update.message.reply_text(t("date_format_error"))
+                return
 
         submitted_user_id = update.effective_user.id if update.effective_user else None
-        track_event("identity_input_submitted", submitted_user_id, props={"parts_count": len(parts)})
+        track_event(
+            "identity_input_submitted",
+            submitted_user_id,
+            props={"source": "site" if identity else "chat"},
+        )
 
         fio = f"{surname} {name} {patronymic}"
         date_str = birth_date
