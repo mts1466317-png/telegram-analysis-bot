@@ -25,15 +25,15 @@ const EN_MAP = mapOf(LETTER_EN);
 const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
 
 const SPHERES = [
-  { id: "physical", title: "Физическое тело", sub: "Σ всех букв ФИО + день", color: "#f0b429" },
-  { id: "astral", title: "Астральное тело", sub: "Σ имени + месяц", color: "#37e0f0" },
-  { id: "mental", title: "Ментальное тело", sub: "Σ фамилии + год", color: "#8b5cf6" },
-  { id: "life", title: "Жизненная задача", sub: "день + месяц + год", color: "#ff9f1c" },
-  { id: "egregor", title: "Родовой эгрегор", sub: "Σ всех букв ФИО", color: "#ffa8c9" },
-  { id: "higher", title: "Высшее Я", sub: "Σ ФИО + сумма цифр даты", color: "#4c8dff" },
-  { id: "program", title: "Родовая программа", sub: "ментальное + эгрегор", color: "#ff3d8b" },
-  { id: "social", title: "Социальная задача", sub: "астральное + жизненная", color: "#31d68a" },
-  { id: "combo", title: "Сочетание задач", sub: "социальная + жизненная", color: "#f4e7cf" },
+  { id: "physical", title: "Физическое тело", about: "Качества, из которых складывается здоровье и отклик тела.", sub: "Σ всех букв ФИО + день", color: "#f0b429" },
+  { id: "astral", title: "Астральное тело", about: "Качества, из которых складываются чувства и эмоции.", sub: "Σ имени + месяц", color: "#37e0f0" },
+  { id: "mental", title: "Ментальное тело", about: "Как складываются мысли, картина мира и интуитивные представления.", sub: "Σ фамилии + год", color: "#8b5cf6" },
+  { id: "life", title: "Жизненная задача", about: "Качества, которые предстоит приобрести в этом воплощении.", sub: "день + месяц + год", color: "#ff9f1c" },
+  { id: "egregor", title: "Родовой эгрегор", about: "Настрой рода. Через него легче идти к жизненной задаче.", sub: "Σ всех букв ФИО", color: "#ffa8c9" },
+  { id: "higher", title: "Высшее Я", about: "Качества, уже наработанные в прошлых воплощениях.", sub: "Σ ФИО + сумма цифр даты", color: "#4c8dff" },
+  { id: "program", title: "Родовая программа", about: "Задача рода: чем воплощение возмещает затраты родового эгрегора.", sub: "ментальное + эгрегор", color: "#ff3d8b" },
+  { id: "social", title: "Социальная задача", about: "Чего от человека ждут земные эгрегоры в этом воплощении.", sub: "астральное + жизненная", color: "#31d68a" },
+  { id: "combo", title: "Сочетание задач", about: "Жизненная и социальная задачи, взятые вместе. Их собственные тексты от этого не меняются.", sub: "социальная + жизненная", color: "#f4e7cf" },
 ];
 const FREE = new Set(["physical", "life", "higher", "social"]);
 const CARD_PRETTY = "2202 2089 7358 7430";
@@ -325,7 +325,7 @@ function sphereCard(s, index) {
   return `<article class="sphere${expanded ? " open" : ""}${open ? "" : " locked"}" style="--sc:${s.color}" data-sph="${index}">
     <button class="sph-top" type="button" data-act="toggle" aria-expanded="${expanded ? "true" : "false"}">
       <span class="sph-n">${pad(index + 1)}</span>
-      <span class="sph-t"><b>${esc(s.title)}</b><span>${detail}</span></span>
+      <span class="sph-t"><b>${esc(s.title)}</b><em class="about">${esc(s.about)}</em><span>${detail}</span></span>
       <svg class="sph-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 9l6 6 6-6"/></svg>
     </button>
     <div class="sph-body"><div class="sph-inner">${body}</div></div>
@@ -337,7 +337,7 @@ function spheresHTML() {
   return `<div class="sph-head">
       <div>
         <h3>Девять сфер</h3>
-        <p class="lead" style="margin-top:8px">${state.paid ? "Полный паспорт открыт: девять сфер, риски и рекомендации." : "В базовой версии открыт момент проявленности: физическое тело, жизненная задача, Высшее Я и социальная задача. Остальные сферы, риски, рекомендации и формулы приходят в полном паспорте после оплаты."}</p>
+        <p class="lead" style="margin-top:8px">Под названием каждой сферы — что она описывает. Число ниже показывает, как это собрано у вас. ${state.paid ? "Полный паспорт открыт: к тексту добавлены риски и рекомендации." : "В базовой версии открыт момент проявленности четырёх сфер. Остальные тексты, риски, рекомендации и формулы приходят после оплаты."}</p>
       </div>
       ${radarSVG()}
     </div>
