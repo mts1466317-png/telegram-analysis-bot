@@ -453,6 +453,13 @@ option{background:#0a0d22;color:var(--parchment)}
 .miss b{font-family:var(--mono);font-size:12px;border:1px dashed var(--crimson);color:var(--crimson);
   padding:6px 11px;border-radius:2px}
 .reso{display:grid;grid-template-columns:1fr 260px;gap:22px;align-items:center}
+.pair-form{max-width:640px}
+.pair-board{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+.pair-col{border:1px solid var(--line-soft);padding:16px 16px 6px;background:rgba(8,11,28,.45)}
+.pair-col h4{font-family:var(--serif);font-size:26px;font-weight:500;line-height:1.15}
+.pair-same{margin-top:18px;color:var(--paper);font-size:15px;line-height:1.5}
+.pair-vector{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.pair-vector h4{font-family:var(--serif);font-size:26px;font-weight:500;margin-bottom:6px}
 .reso-form{display:grid;gap:11px}
 .reso-out{border:1px solid var(--line);border-radius:2px;padding:18px;text-align:center;
   background:radial-gradient(70% 70% at 50% 30%,rgba(255,61,139,.14),rgba(4,5,14,.7))}
@@ -667,7 +674,7 @@ footer{border-top:1px solid var(--line-soft);position:relative;z-index:3;backgro
   .dock-row{grid-template-columns:repeat(4,1fr)}
   .sph-head{grid-template-columns:1fr}
   .radar{margin:0 auto}
-  .reso{grid-template-columns:1fr}
+  .reso,.pair-board{grid-template-columns:1fr}
 }
 @media (max-width:900px){
   :root{--nav-h:112px}

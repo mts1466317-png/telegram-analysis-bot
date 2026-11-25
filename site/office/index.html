@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Manrope:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="office.css?v=6">
+<link rel="stylesheet" href="office.css?v=7">
 </head>
 <body>
 <canvas id="sky" aria-hidden="true"></canvas>
@@ -118,7 +118,7 @@
         <article class="step" data-reveal style="--d:160ms" data-step="3">
           <div class="step-i"><span>Окно 03</span><span class="step-tag tag-free">Базовая версия</span></div>
           <h3>Документ на руках</h3>
-          <p>Обложка и момент проявленности: физическое тело, жизненная задача, Высшее Я и социальная задача.</p>
+          <p>Момент проявленности: физическое тело, жизненная задача, Высшее Я и социальная задача.</p>
         </article>
         <article class="step" data-reveal style="--d:240ms" data-step="4">
           <div class="step-i"><span>Окно 04</span><span class="step-tag tag-paid">Один платёж</span></div>
@@ -189,11 +189,10 @@
     <h2>Ваш <em>Паспорт Души</em></h2>
     <div class="pass-bar">
       <div class="tabs" role="tablist">
-        <button class="tab on" type="button" data-tab="cover" role="tab" aria-selected="true">Обложка</button>
-        <button class="tab" type="button" data-tab="spheres" role="tab">Сферы</button>
+        <button class="tab on" type="button" data-tab="spheres" role="tab" aria-selected="true">Сферы</button>
         <button class="tab" type="button" data-tab="cycles" role="tab">Циклы</button>
         <button class="tab" type="button" data-tab="matrix" role="tab">Матрица</button>
-        <button class="tab" type="button" data-tab="keys" role="tab">Ключи</button>
+        <button class="tab" type="button" data-tab="keys" role="tab">Созвучие</button>
       </div>
       <div class="pass-actions">
         <button class="btn sm" type="button" id="pdfBtn">PDF в боте</button>
@@ -204,8 +203,7 @@
     <div class="doc" id="doc">
       <svg class="doc-guilloche" id="guilloche" aria-hidden="true" preserveAspectRatio="none"></svg>
       <div id="docBanner"></div>
-      <div class="panel on" id="p-cover" role="tabpanel"></div>
-      <div class="panel" id="p-spheres" role="tabpanel"></div>
+      <div class="panel on" id="p-spheres" role="tabpanel"></div>
       <div class="panel" id="p-cycles" role="tabpanel"></div>
       <div class="panel" id="p-matrix" role="tabpanel"></div>
       <div class="panel" id="p-keys" role="tabpanel"></div>
@@ -241,7 +239,7 @@
           <li><span>Весь паспорт на сайте после подтверждения</span></li>
           <li><span>Полный разбор девяти сфер</span></li>
           <li><span>Риски, рекомендации и семилетние циклы</span></li>
-          <li><span>Формулы расчёта и сопоставление двух паспортов</span></li>
+          <li><span>Формулы расчёта и созвучие двух паспортов</span></li>
           <li><span>PDF в Telegram после подтверждения</span></li>
           <li><span>Доступ к приложению в Telegram</span></li>
         </ul>
@@ -351,7 +349,7 @@
       <div class="iss-step act"><i>1</i><span>Буквы имени</span></div>
       <div class="iss-step"><i>2</i><span>Девять сфер</span></div>
       <div class="iss-step"><i>3</i><span>Семилетний цикл</span></div>
-      <div class="iss-step"><i>4</i><span>Обложка</span></div>
+      <div class="iss-step"><i>4</i><span>Документ</span></div>
     </div>
     <div class="iss-bar"><i id="issBar"></i></div>
     <div style="margin-top:18px"><button class="btn ghost sm" id="issSkip" type="button">Пропустить</button></div>
@@ -378,6 +376,6 @@
   </div>
 </div>
 
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

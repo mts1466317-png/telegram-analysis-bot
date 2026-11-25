@@ -231,52 +231,6 @@ function renderBanner() {
   }
 }
 
-function coverHTML() {
-  const p = V;
-  const n = p.nums;
-  const basic = SPHERES.filter((s) => FREE.has(s.id));
-  const cards = basic.map((s) => `<div class="bn"><span>${esc(s.title)}</span><b>${n[s.id]}</b><span>${esc(planetName(n[s.id]))}</span></div>`).join("");
-  const rows = basic.map((s) => {
-    const v = n[s.id];
-    return `<div class="meta"><span>${esc(s.title)}</span><b>${v} · ${esc(planetName(v))}</b></div>`;
-  }).join("");
-  const tone = state.paid ? "#31d68a" : "#f0b429";
-  return `<div class="spread">
-    <div class="page left">
-      <div class="pass-photo">
-        <svg viewBox="0 0 200 200" aria-hidden="true">
-          <circle cx="100" cy="100" r="78" fill="none" stroke="${tone}" stroke-width="1.2" opacity=".8"/>
-          <circle cx="100" cy="100" r="58" fill="none" stroke="${tone}" stroke-width=".6" stroke-dasharray="3 4" opacity=".55"/>
-          <path d="M100 46 L140 128 L60 128 Z" fill="none" stroke="#ff3d8b" stroke-width="1"/>
-          <circle cx="100" cy="100" r="22" fill="${tone}"/>
-          <text x="100" y="108" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="22" fill="#1a1204">${n.life}</text>
-        </svg>
-        <span class="photo-tag">ЧИСЛО ПУТИ</span>
-      </div>
-      <div class="mrz">${esc(p.full.toUpperCase())}\n${esc(p.dateStr)}  Ж${n.life}  С${n.social}</div>
-      <div class="meta-list">
-        <div class="meta"><span>Владелец</span><b>${esc(p.full)}</b></div>
-        <div class="meta"><span>Дата рождения</span><b>${esc(p.dateStr)}</b></div>
-        <div class="meta"><span>Алфавит</span><b>${p.mode === "en" ? "латиница" : "кириллица"}</b></div>
-        <div class="meta"><span>Возраст</span><b>${p.age} лет</b></div>
-      </div>
-    </div>
-    <div class="page right">
-      <div class="holder"><small>Паспорт Души</small>${esc(p.full)}</div>
-      <p class="essay" style="margin-top:12px">${state.paid ? "Полный паспорт: девять сфер, риски, рекомендации, циклы и формулы расчёта." : "Базовая версия показывает момент проявленности четырёх сфер: физическое тело, жизненная задача, Высшее Я и социальная задача. Полный паспорт — после подтверждения оплаты в боте."}</p>
-      <div class="el-badge" style="color:${tone}"><i></i>${esc(planetName(n.life))} · жизненная задача</div>
-      <div class="big-nums">${cards}</div>
-      <div class="meta-list">${rows}</div>
-      <svg class="stamp" viewBox="0 0 200 200" aria-hidden="true">
-        <circle cx="100" cy="100" r="86" fill="none" stroke="${tone}" stroke-width="1.4" opacity=".75"/>
-        <circle cx="100" cy="100" r="60" fill="none" stroke="${tone}" stroke-width=".7" opacity=".5" stroke-dasharray="4 4"/>
-        <text x="100" y="96" text-anchor="middle" font-family="Cormorant Garamond, serif" font-size="30" fill="${tone}">${n.life}</text>
-        <text x="100" y="118" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="2" fill="${tone}">${state.paid ? "COMPLETE" : "BASIC"}</text>
-      </svg>
-    </div>
-  </div>`;
-}
-
 function radarSVG() {
   const S = SPHERES.length;
   const cx = 150;
@@ -408,27 +362,64 @@ function matrixHTML() {
   </div>`;
 }
 
+function manifestation(blockId, num) {
+  const data = entryFor(CONTENT && CONTENT.bodies && CONTENT.bodies[blockId], num);
+  return (data && data.manifestation) || "";
+}
+
+function pairReport(other) {
+  const life = reduceNumber(V.nums.life + other.nums.life);
+  const social = reduceNumber(V.nums.social + other.nums.social);
+  const shared = SPHERES.filter((s) => V.nums[s.id] === other.nums[s.id]);
+  const sharedLine = shared.length
+    ? "Одно и то же число в сферах: " + shared.map((s) => `${s.title.toLowerCase()} · ${V.nums[s.id]} ${planetName(V.nums[s.id])}`).join("; ") + "."
+    : "Одинаковых чисел нет: сферы собраны из разных планет.";
+  const rows = SPHERES.map((s) => {
+    const a = V.nums[s.id];
+    const b = other.nums[s.id];
+    return `<tr><td>${esc(s.title)}</td><td>${a} · ${esc(planetName(a))}</td><td>${b} · ${esc(planetName(b))}</td><td>${a === b ? "совпадает" : ""}</td></tr>`;
+  }).join("");
+  const person = (p) => `<article class="pair-col">
+      <h4>${esc(p.full)}</h4>
+      <p class="formula">${esc(p.dateStr)} · ${p.age} лет</p>
+      ${lens("m", `Жизненная задача · ${p.nums.life} · ${planetName(p.nums.life)}`, manifestation("life", p.nums.life))}
+      ${lens("m", `Социальная задача · ${p.nums.social} · ${planetName(p.nums.social)}`, manifestation("social", p.nums.social))}
+    </article>`;
+  return `<div class="pair-report">
+    <p class="pair-same">${esc(sharedLine)}</p>
+    <div class="pair-board">${person(V)}${person(other)}</div>
+    <div class="pair-vector">
+      <h4>Общий вектор</h4>
+      <p class="lead">Свёртка двух чисел. Это не третий человек и не отдельная формула пары: ниже тот же текст сферы, который уже есть у этого числа.</p>
+      ${lens("m", `Жизненные задачи вместе · ${life} · ${planetName(life)}`, manifestation("life", life))}
+      ${lens("m", `Социальные задачи вместе · ${social} · ${planetName(social)}`, manifestation("social", social))}
+    </div>
+    <div class="cmp" style="margin-top:16px"><table>
+      <thead><tr><th>Сфера</th><th>${esc(V.full)}</th><th>${esc(other.full)}</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>`;
+}
+
 function keysHTML() {
   if (!state.paid) {
-    return paywallBlock("Сопоставление двух паспортов входит в полный документ и открывается после подтверждения оплаты.");
+    return paywallBlock("Созвучие двух паспортов входит в полный документ и открывается после подтверждения оплаты.");
   }
   return `<div class="pad">
-    <h3>Ключ совместимости</h3>
-    <p class="lead" style="margin:8px 0 16px">Два паспорта сопоставляются теми же формулами. Общий вектор жизненных задач — свёртка двух жизненных чисел. Общий социальный вектор — свёртка двух социальных чисел. Отдельной «парной планеты» в методике нет.</p>
-    <div class="reso">
-      <form class="reso-form" id="keyForm">
-        <div class="field"><label for="kLast">Фамилия</label><input id="kLast" type="text" autocomplete="off"></div>
-        <div class="field"><label for="kFirst">Имя</label><input id="kFirst" type="text" autocomplete="off"></div>
-        <div class="field"><label for="kMiddle">Отчество, если есть</label><input id="kMiddle" type="text" autocomplete="off"></div>
-        <div class="dob">
-          <select id="kDay" aria-label="День"></select>
-          <select id="kMonth" aria-label="Месяц"></select>
-          <select id="kYear" aria-label="Год"></select>
-        </div>
-        <button class="btn sm" type="submit">Сопоставить</button>
-      </form>
-      <div class="reso-out" id="keyOut"><p>Здесь появятся два числа и их сумма.</p></div>
-    </div>
+    <h3>Созвучие</h3>
+    <p class="lead" style="margin:8px 0 16px">Два паспорта считаются теми же формулами. Рядом встают жизненная и социальная задачи каждого, затем их свёртка. Общий вектор читается текстом уже известной сферы, а не новым гороскопом пары.</p>
+    <form class="reso-form pair-form" id="keyForm">
+      <div class="field"><label for="kLast">Фамилия</label><input id="kLast" type="text" autocomplete="off"></div>
+      <div class="field"><label for="kFirst">Имя</label><input id="kFirst" type="text" autocomplete="off"></div>
+      <div class="field"><label for="kMiddle">Отчество, если есть</label><input id="kMiddle" type="text" autocomplete="off"></div>
+      <div class="dob">
+        <select id="kDay" aria-label="День"></select>
+        <select id="kMonth" aria-label="Месяц"></select>
+        <select id="kYear" aria-label="Год"></select>
+      </div>
+      <button class="btn sm" type="submit">Сложить паспорта</button>
+    </form>
+    <div id="keyOut"><p class="lead" style="margin-top:16px">Введите второй паспорт — имя и дату, как в документе.</p></div>
   </div>`;
 }
 
@@ -437,21 +428,18 @@ function renderPassport() {
   else V = null;
   if (V && V.error) V = null;
   renderBanner();
-  const cover = $("#p-cover");
   const spheres = $("#p-spheres");
   const cycles = $("#p-cycles");
   const matrix = $("#p-matrix");
   const keys = $("#p-keys");
   if (!V) {
     const empty = `<div class="pad"><p class="lead">Подайте прошение — документ соберётся из фамилии, имени, отчества и даты.</p></div>`;
-    cover.innerHTML = empty;
-    spheres.innerHTML = "";
+    spheres.innerHTML = empty;
     cycles.innerHTML = "";
     matrix.innerHTML = "";
     keys.innerHTML = "";
     return;
   }
-  cover.innerHTML = coverHTML();
   spheres.innerHTML = spheresHTML();
   cycles.innerHTML = cyclesHTML();
   matrix.innerHTML = matrixHTML();
@@ -678,7 +666,7 @@ function issue() {
       renderPassport();
       updateStatus();
       location.hash = "#passport";
-      setTab("cover");
+      setTab("spheres");
     }
   }, 450);
   $("#issSkip").onclick = () => {
@@ -987,11 +975,7 @@ function bind() {
       out.innerHTML = `<p>${other.error === "mixed" ? "В втором имени смешаны алфавиты." : "Проверьте дату второго человека."}</p>`;
       return;
     }
-    const life = reduceNumber(V.nums.life + other.nums.life);
-    const social = reduceNumber(V.nums.social + other.nums.social);
-    out.innerHTML = `<p><b>${esc(V.full)}</b><br>жизненная ${V.nums.life} · ${esc(planetName(V.nums.life))}<br>социальная ${V.nums.social} · ${esc(planetName(V.nums.social))}</p>
-      <p style="margin-top:10px"><b>${esc(other.full)}</b><br>жизненная ${other.nums.life} · ${esc(planetName(other.nums.life))}<br>социальная ${other.nums.social} · ${esc(planetName(other.nums.social))}</p>
-      <p style="margin-top:10px">Общий вектор жизненных задач: <b>${life} · ${esc(planetName(life))}</b><br>Общий социальный вектор: <b>${social} · ${esc(planetName(social))}</b></p>`;
+    out.innerHTML = pairReport(other);
   });
   $("#newBtn").addEventListener("click", () => openModal("confirm"));
   $("#cfYes").addEventListener("click", () => {
