@@ -265,7 +265,7 @@ function radarSVG() {
 function sphereCard(s, index) {
   const num = V.nums[s.id];
   const open = state.paid || FREE.has(s.id);
-  const expanded = state.paid || FREE.has(s.id);
+  const expanded = false;
   const data = open ? entryFor(CONTENT && CONTENT.bodies[s.id], num) : null;
   const lenses = data && data.manifestation ? lens("m", "Проявленность", data.manifestation) : "";
   const paidLenses = state.paid && data
