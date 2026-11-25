@@ -948,6 +948,10 @@ function bind() {
   document.body.addEventListener("click", (e) => {
     const copyBtn = e.target.closest("[data-copy]");
     if (copyBtn) copyText(copyBtn.dataset.copy, copyBtn.dataset.copyMsg);
+    const tab = e.target.closest(".tab");
+    if (tab) setTab(tab.dataset.tab);
+    const qa = e.target.closest(".qa > button");
+    if (qa) qa.parentElement.classList.toggle("open");
     const act = e.target.closest("[data-act]");
     if (!act) return;
     if (act.dataset.act === "buy") showBuy();
@@ -957,10 +961,6 @@ function bind() {
       const opened = card.classList.toggle("open");
       act.setAttribute("aria-expanded", opened ? "true" : "false");
     }
-    const tab = e.target.closest(".tab");
-    if (tab) setTab(tab.dataset.tab);
-    const qa = e.target.closest(".qa > button");
-    if (qa) qa.parentElement.classList.toggle("open");
   });
   document.body.addEventListener("submit", (e) => {
     if (e.target.id !== "keyForm") return;
